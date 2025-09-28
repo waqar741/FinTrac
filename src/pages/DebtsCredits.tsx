@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, Calendar, DollarSign } from 'lucide-react'
+import { Plus, User, X, DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface DebtCredit {
@@ -38,6 +38,28 @@ export default function DebtsCredits() {
     formState: { errors },
     setError
   } = useForm<DebtCreditForm>()
+
+  // Fetch budgets for master budget integration
+  const [budgets, setBudgets] = useState<any[]>([])
+
+  useEffect(() => {
+    if (user) {
+      fetchBudgets()
+    }
+  }, [user])
+
+  const fetchBudgets = async () => {
+    try {
+      const { data } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user?.id)
+      
+      if (data) setBudgets(data)
+    } catch (error) {
+      console.error('Error fetching budgets:', error)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -102,12 +124,74 @@ export default function DebtsCredits() {
 
   const toggleSettled = async (id: string, currentStatus: boolean) => {
     try {
+      // Get the debt/credit item details before updating
+      const item = debtsCredits.find(dc => dc.id === id)
+      if (!item) return
+
+      // Find or create a master budget for debt/credit transactions
+      let masterBudget = budgets.find(b => b.name === 'Personal Finance' && b.type === 'master')
+      
+      if (!masterBudget) {
+        // Create a master budget for debt/credit transactions
+        const { data: newBudget, error: budgetError } = await supabase
+          .from('budgets')
+          .insert({
+            user_id: user?.id,
+            name: 'Personal Finance',
+            type: 'master',
+            allocated_amount: 0,
+            current_balance: 0,
+            color: '#3B82F6'
+          })
+          .select()
+          .single()
+
+        if (budgetError) throw budgetError
+        masterBudget = newBudget
+      }
+
+      // Update settlement status
       const { error } = await supabase
         .from('debts_credits')
         .update({ is_settled: !currentStatus })
         .eq('id', id)
 
       if (error) throw error
+
+      // If marking as settled, create corresponding transaction and update budget
+      if (!currentStatus) { // Currently unsettled, marking as settled
+        const transactionType = item.type === 'credit' ? 'income' : 'expense'
+        const description = item.type === 'credit' 
+          ? `Received payment from ${item.person_name}: ${item.description}`
+          : `Paid ${item.person_name}: ${item.description}`
+
+        // Create transaction
+        const { error: txError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: user?.id,
+            budget_id: masterBudget.id,
+            amount: item.amount,
+            type: transactionType,
+            description: description,
+            category: 'Debt/Credit Settlement'
+          })
+
+        if (txError) throw txError
+
+        // Update master budget balance
+        const balanceChange = item.type === 'credit' ? item.amount : -item.amount
+        const { error: budgetUpdateError } = await supabase
+          .from('budgets')
+          .update({ 
+            current_balance: (masterBudget.current_balance || 0) + balanceChange,
+            allocated_amount: Math.max((masterBudget.allocated_amount || 0), (masterBudget.current_balance || 0) + balanceChange)
+          })
+          .eq('id', masterBudget.id)
+
+        if (budgetUpdateError) throw budgetUpdateError
+      }
+
       await fetchDebtsCredits()
     } catch (error) {
       console.error('Error updating settlement status:', error)

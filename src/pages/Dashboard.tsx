@@ -82,7 +82,10 @@ export default function Dashboard() {
         const expenses = transactionsData
           .filter(t => t.budget_id === budget.id && t.type === 'expense')
           .reduce((sum, t) => sum + Number(t.amount), 0)
-        const currentBalance = Math.max(budget.allocated_amount - expenses, 0)
+        const income = transactionsData
+          .filter(t => t.budget_id === budget.id && t.type === 'income')
+          .reduce((sum, t) => sum + Number(t.amount), 0)
+        const currentBalance = budget.allocated_amount + income - expenses
         return { ...budget, current_balance: currentBalance }
       }) || []
 
@@ -121,7 +124,6 @@ export default function Dashboard() {
         .from('debts_credits')
         .select('id, amount, type, is_settled')
         .eq('user_id', user?.id)
-        .eq('is_settled', false)
 
       // Calculate stats
       const { data: allTransactions } = await supabase
@@ -149,11 +151,15 @@ export default function Dashboard() {
         const totalCredit = debtsCreditsData
           ?.filter(d => d.type === 'credit' && !d.is_settled)
           .reduce((sum, d) => sum + Number(d.amount), 0) || 0
+        
+        // Calculate master budget total for more accurate balance
+        const masterBudgetBalance = masters.reduce((sum, b) => sum + (b.current_balance || 0), 0)
+        
         setStats({
           totalIncome,
           totalExpenses,
           totalBudgets: updatedBudgets.length,
-          balance: totalIncome - totalExpenses,
+          balance: masterBudgetBalance, // Use master budget balance for more accurate representation
           totalDebt,
           totalCredit
         })
@@ -166,20 +172,11 @@ export default function Dashboard() {
   }
 
   const getAggregated = (budget: Budget): { allocated: number; current: number; spent: number } => {
-    let allocated = budget.allocated_amount
-    let current = budget.current_balance
-    let spent = allocated - current
-
-    if (budget.children) {
-      budget.children.forEach(child => {
-        const childAgg = getAggregated(child)
-        allocated += childAgg.allocated
-        current += childAgg.current
-        spent += childAgg.spent
-      })
+    return {
+      allocated: budget.allocated_amount,
+      current: budget.current_balance,
+      spent: Math.max(budget.allocated_amount - budget.current_balance, 0)
     }
-
-    return { allocated, current, spent }
   }
 
   const formatCurrency = (amount: number) => {
@@ -309,9 +306,9 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
-            <button className="text-green-600 hover:text-green-700 text-sm font-medium">
+            <Link to="/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
               View All
-            </button>
+            </Link>
           </div>
           <div className="space-y-4">
             {transactions.length === 0 ? (
@@ -355,9 +352,9 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Budget Overview</h2>
-          <button className="text-green-600 hover:text-green-700 text-sm font-medium">
+          <Link to="/budgets" className="text-green-600 hover:text-green-700 text-sm font-medium">
             Manage
-          </button>
+          </Link>
         </div>
         {budgets.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">No budgets created yet</p>

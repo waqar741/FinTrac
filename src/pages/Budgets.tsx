@@ -122,9 +122,18 @@ export default function Budgets() {
   }
 
   const deleteBudget = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this budget?')) return
+    if (!confirm('Are you sure you want to delete this budget? This will also delete all associated transactions.')) return
 
     try {
+      // First delete all transactions associated with this budget
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('budget_id', id)
+
+      if (transactionError) throw transactionError
+
+      // Then delete the budget
       const { error } = await supabase
         .from('budgets')
         .delete()
