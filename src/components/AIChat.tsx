@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { MessageCircle, X, Send } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -577,9 +576,21 @@ Expenses: ${formatCurrency(totalExpenses)}`
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <img src="./src/image/logo1.png" 
-                 alt="AI Assistant Icon" 
-                 className="w-8 h-8"/>
+            {/* LOGO ADDED HERE */}
+            <svg
+              className="w-8 h-8 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
+              />
+            </svg>
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white">Fintrac AI</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">Financial Assistant</p>
