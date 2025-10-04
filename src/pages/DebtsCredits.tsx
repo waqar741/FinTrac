@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, DollarSign } from 'lucide-react'
+import { Plus, User, X, Calendar, DollarSign, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface DebtCredit {
@@ -14,6 +14,7 @@ interface DebtCredit {
   due_date: string | null
   is_settled: boolean
   created_at: string
+  settlement_transaction_id: string | null
 }
 
 interface DebtCreditForm {
@@ -21,7 +22,7 @@ interface DebtCreditForm {
   amount: number
   type: 'debt' | 'credit'
   description: string
-  due_date: string
+  due_date?: string
 }
 
 export default function DebtsCredits() {
@@ -30,6 +31,8 @@ export default function DebtsCredits() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState<DebtCredit | null>(null)
+  const [duplicateMessage, setDuplicateMessage] = useState('')
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
 
   const {
     register,
@@ -38,28 +41,6 @@ export default function DebtsCredits() {
     formState: { errors },
     setError
   } = useForm<DebtCreditForm>()
-
-  // Fetch budgets for master budget integration
-  const [budgets, setBudgets] = useState<any[]>([])
-
-  useEffect(() => {
-    if (user) {
-      fetchBudgets()
-    }
-  }, [user])
-
-  const fetchBudgets = async () => {
-    try {
-      const { data } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', user?.id)
-      
-      if (data) setBudgets(data)
-    } catch (error) {
-      console.error('Error fetching budgets:', error)
-    }
-  }
 
   useEffect(() => {
     if (user) {
@@ -86,6 +67,24 @@ export default function DebtsCredits() {
 
   const onSubmit = async (data: DebtCreditForm) => {
     try {
+      // Check for duplicates
+      const { data: existingDebt } = await supabase
+        .from('debts_credits')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('person_name', data.person_name)
+        .eq('amount', data.amount)
+        .eq('type', data.type)
+        .eq('description', data.description)
+        .eq('is_settled', false)
+        .single()
+
+      if (existingDebt && !editingItem) {
+        setDuplicateMessage('This transaction already exists and has not been added again.')
+        setTimeout(() => setDuplicateMessage(''), 5000)
+        return
+      }
+
       if (editingItem) {
         const { error } = await supabase
           .from('debts_credits')
@@ -108,7 +107,7 @@ export default function DebtsCredits() {
             amount: data.amount,
             type: data.type,
             description: data.description,
-            due_date: data.due_date || null,
+            due_date: data.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             is_settled: false
           })
 
@@ -123,83 +122,115 @@ export default function DebtsCredits() {
   }
 
   const toggleSettled = async (id: string, currentStatus: boolean) => {
+    if (processingIds.has(id)) return
+    setProcessingIds(prev => new Set(prev).add(id))
+
     try {
-      // Get the debt/credit item details before updating
       const item = debtsCredits.find(dc => dc.id === id)
-      if (!item) return
-
-      // Find or create a master budget for debt/credit transactions
-      let masterBudget = budgets.find(b => b.name === 'Personal Finance' && b.type === 'master')
-      
-      if (!masterBudget) {
-        // Create a master budget for debt/credit transactions
-        const { data: newBudget, error: budgetError } = await supabase
-          .from('budgets')
-          .insert({
-            user_id: user?.id,
-            name: 'Personal Finance',
-            type: 'master',
-            allocated_amount: 0,
-            current_balance: 0,
-            color: '#3B82F6'
-          })
-          .select()
-          .single()
-
-        if (budgetError) throw budgetError
-        masterBudget = newBudget
+      if (!item) {
+        setProcessingIds(prev => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+        return
       }
 
-      // Update settlement status
-      const { error } = await supabase
-        .from('debts_credits')
-        .update({ is_settled: !currentStatus })
-        .eq('id', id)
+      if (!currentStatus) {
+        // Marking as settled - create settlement transaction
+        // Find user's first account (chronologically)
+        const { data: firstAccount } = await supabase
+          .from('accounts')
+          .select('*')
+          .eq('user_id', user?.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single()
 
-      if (error) throw error
-
-      // If marking as settled, create corresponding transaction and update budget
-      if (!currentStatus) { // Currently unsettled, marking as settled
+        if (!firstAccount) {
+          alert('No account found. Please create an account first.')
+          return
+        }
+        
         const transactionType = item.type === 'credit' ? 'income' : 'expense'
         const description = item.type === 'credit' 
           ? `Received payment from ${item.person_name}: ${item.description}`
           : `Paid ${item.person_name}: ${item.description}`
 
-        // Create transaction
-        const { error: txError } = await supabase
+        const { data: newTransaction, error: txError } = await supabase
           .from('transactions')
           .insert({
             user_id: user?.id,
-            budget_id: masterBudget.id,
+            account_id: firstAccount.id,
             amount: item.amount,
             type: transactionType,
             description: description,
             category: 'Debt/Credit Settlement'
           })
+          .select()
+          .single()
 
         if (txError) throw txError
 
-        // Update master budget balance
+        // Update account balance
         const balanceChange = item.type === 'credit' ? item.amount : -item.amount
-        const { error: budgetUpdateError } = await supabase
-          .from('budgets')
+        const newBalance = firstAccount.balance + balanceChange
+        
+        await supabase
+          .from('accounts')
           .update({ 
-            current_balance: (masterBudget.current_balance || 0) + balanceChange,
-            allocated_amount: Math.max((masterBudget.allocated_amount || 0), (masterBudget.current_balance || 0) + balanceChange)
+            balance: newBalance
           })
-          .eq('id', masterBudget.id)
+          .eq('id', firstAccount.id)
 
-        if (budgetUpdateError) throw budgetUpdateError
+        // Update debt/credit with settlement info
+        await supabase
+          .from('debts_credits')
+          .update({ 
+            is_settled: true,
+            settlement_transaction_id: newTransaction.id,
+            settlement_account_id: firstAccount.id
+          })
+          .eq('id', id)
+      } else {
+        // Marking as unsettled - remove settlement transaction
+        if (item.settlement_transaction_id) {
+          // Delete the settlement transaction
+          await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', item.settlement_transaction_id)
+        }
+        
+        // Update debt/credit status
+        await supabase
+          .from('debts_credits')
+          .update({ 
+            is_settled: false,
+            settlement_transaction_id: null,
+            settlement_account_id: null
+          })
+          .eq('id', id)
       }
 
       await fetchDebtsCredits()
     } catch (error) {
       console.error('Error updating settlement status:', error)
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   const deleteItem = async (id: string) => {
+    if (processingIds.has(id)) return
     if (!confirm('Are you sure you want to delete this item?')) return
+
+    setProcessingIds(prev => new Set(prev).add(id))
 
     try {
       const { error } = await supabase
@@ -211,6 +242,12 @@ export default function DebtsCredits() {
       await fetchDebtsCredits()
     } catch (error) {
       console.error('Error deleting item:', error)
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -227,7 +264,7 @@ export default function DebtsCredits() {
       amount: item.amount,
       type: item.type,
       description: item.description,
-      due_date: item.due_date ? format(new Date(item.due_date), 'yyyy-MM-dd') : ''
+      due_date: item.due_date ? format(new Date(item.due_date), 'yyyy-MM-dd') : undefined
     })
     setShowModal(true)
   }
@@ -354,19 +391,32 @@ export default function DebtsCredits() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => toggleSettled(debt.id, debt.is_settled)}
-                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                      disabled={processingIds.has(debt.id)}
+                      className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Mark as Paid
+                      {debt.is_settled ? (
+                        <>
+                          <ToggleRight className="w-3 h-3 mr-1" />
+                          Settled
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="w-3 h-3 mr-1" />
+                          {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={() => handleEditItem(debt)}
-                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                      disabled={processingIds.has(debt.id)}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => deleteItem(debt.id)}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
+                      disabled={processingIds.has(debt.id)}
+                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Delete
                     </button>
@@ -399,19 +449,32 @@ export default function DebtsCredits() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => toggleSettled(credit.id, credit.is_settled)}
-                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                      disabled={processingIds.has(credit.id)}
+                      className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Mark as Received
+                      {credit.is_settled ? (
+                        <>
+                          <ToggleRight className="w-3 h-3 mr-1" />
+                          Settled
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="w-3 h-3 mr-1" />
+                          {processingIds.has(credit.id) ? 'Processing...' : 'Mark Received'}
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={() => handleEditItem(credit)}
-                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                      disabled={processingIds.has(credit.id)}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => deleteItem(credit.id)}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
+                      disabled={processingIds.has(credit.id)}
+                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Delete
                     </button>
@@ -440,10 +503,12 @@ export default function DebtsCredits() {
                     ✓ Settled
                   </span>
                   <button
-                    onClick={() => toggleSettled(item.id, item.is_settled)}
-                    className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    onClick={() => deleteItem(item.id)}
+                    disabled={processingIds.has(item.id)}
+                    className="flex items-center px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Mark as Unsettled
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    {processingIds.has(item.id) ? 'Removing...' : 'Remove'}
                   </button>
                 </div>
               </div>
@@ -469,6 +534,12 @@ export default function DebtsCredits() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {duplicateMessage && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                  <p className="text-yellow-700 dark:text-yellow-400 text-sm">{duplicateMessage}</p>
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Person Name
@@ -533,13 +604,17 @@ export default function DebtsCredits() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Due Date (Optional)
+                  Due Date
                 </label>
                 <input
                   {...register('due_date')}
                   type="date"
+                  defaultValue={format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Default: 7 days from today
+                </p>
               </div>
 
               {errors.root && (

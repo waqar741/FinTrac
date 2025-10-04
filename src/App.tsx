@@ -7,10 +7,12 @@ import AIChat from './components/AIChat'
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
-import Budgets from './pages/Budgets'
+import Accounts from './pages/Accounts'
 import Transactions from './pages/Transactions'
-import Analytics from './pages/Analytics'
+import GroupExpenses from './pages/GroupExpenses'
 import DebtsCredits from './pages/DebtsCredits'
+import Goals from './pages/Goals'
+import Settings from './pages/Settings'
 
 function App() {
   return (
@@ -28,10 +30,12 @@ function App() {
             }>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="budgets" element={<Budgets />} />
+              <Route path="accounts" element={<Accounts />} />
               <Route path="transactions" element={<Transactions />} />
-              <Route path="analytics" element={<Analytics />} />
+              <Route path="group-expenses" element={<GroupExpenses />} />
               <Route path="debts-credits" element={<DebtsCredits />} />
+              <Route path="goals" element={<Goals />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
         </Router>
