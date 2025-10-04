@@ -255,7 +255,7 @@ Expenses: ${formatCurrency(totalExpenses)}`
         return `Owe:\n${debtList}${debts.length > 3 ? `\n+${debts.length - 3} more` : ''}\nTotal: ${formatCurrency(totalDebt)}`
       }
 
-      if (['credit', 'credits', 'owes me', 'owe me', 'who owes', 'owes','paisa baki','lena'].some(q => lowerQuery.includes(q))) {
+      if (['credit', 'credits', 'owes me', 'owe me', 'who owes', 'owes','paisa baki','lena','Who owes me?'].some(q => lowerQuery.includes(q))) {
         const credits = debtsCredits.filter(d => d.type === 'credit' && !d.is_settled)
         if (credits.length === 0) {
           return 'No credits.'
@@ -399,7 +399,7 @@ Expenses: ${formatCurrency(totalExpenses)}`
       }
 
       // Goals queries (shortened)
-      if (['goals', 'goal', 'goals?', 'goal status', 'my goals', 'progress'].some(q => lowerQuery.includes(q))) {
+      if (['goals', 'goal', 'goals?', 'goal status', 'my goals', 'progress','saving','save'].some(q => lowerQuery.includes(q))) {
         if (goals.length === 0) {
           return 'No goals.'
         }
