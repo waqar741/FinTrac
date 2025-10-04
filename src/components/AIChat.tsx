@@ -244,7 +244,7 @@ Expenses: ${formatCurrency(totalExpenses)}`
       }
 
       // Debt and Credit queries (shortened)
-      if (['debt', 'debts', 'owe', 'owing', 'i owe','paisa dena','dena'].some(q => lowerQuery.includes(q))) {
+      if (['debt', 'debts', 'owing', 'i owe','paisa dena','dena'].some(q => lowerQuery.includes(q))) {
         const debts = debtsCredits.filter(d => d.type === 'debt' && !d.is_settled)
         if (debts.length === 0) {
           return 'No debts!'
@@ -255,7 +255,7 @@ Expenses: ${formatCurrency(totalExpenses)}`
         return `Owe:\n${debtList}${debts.length > 3 ? `\n+${debts.length - 3} more` : ''}\nTotal: ${formatCurrency(totalDebt)}`
       }
 
-      if (['credit', 'credits', 'owes me', 'owe me', 'who owes', 'owes','paisa baki','lena','Who owes me?'].some(q => lowerQuery.includes(q))) {
+      if (['credit', 'credits', 'owes me', 'owe me', 'who owes', 'owes','paisa baki','lena','who owes me'].some(q => lowerQuery.includes(q))) {
         const credits = debtsCredits.filter(d => d.type === 'credit' && !d.is_settled)
         if (credits.length === 0) {
           return 'No credits.'
@@ -267,7 +267,7 @@ Expenses: ${formatCurrency(totalExpenses)}`
       }
 
       // Debt/credit summary (shortened)
-      if (['debt summary', 'debt status', 'karza','udhar', 'loan', 'net debt', 'debt balance', 'who', 'all debts'].some(q => lowerQuery.includes(q))) {
+      if (['debt summary', 'debt status', 'karza','udhar', 'loan', 'net debt', 'debt balance', 'all debts'].some(q => lowerQuery.includes(q))) {
         return `I Owe: ${formatCurrency(totalDebt)}\nOwed: ${formatCurrency(totalCredit)}\nNet: ${formatCurrency(netDebtCredit)}`
       }
 
