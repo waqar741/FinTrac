@@ -42,8 +42,11 @@ export default function DebtsCredits() {
     handleSubmit,
     reset,
     formState: { errors },
-    setError
+    setError,
   } = useForm<DebtCreditForm>()
+
+  // Get today's date in YYYY-MM-DD format for the min attribute
+  const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     if (user) {
@@ -284,6 +287,17 @@ export default function DebtsCredits() {
       currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount)
+  }
+
+  // Function to validate date (not in the past)
+  const validateDate = (dateString: string | undefined) => {
+    if (!dateString) return true // Allow empty dates
+    
+    const selectedDate = new Date(dateString)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Set to beginning of day for accurate comparison
+    
+    return selectedDate >= today || 'Due date cannot be in the past'
   }
 
   const debts = debtsCredits.filter(item => item.type === 'debt' && !item.is_settled)
@@ -616,11 +630,17 @@ export default function DebtsCredits() {
                   Due Date
                 </label>
                 <input
-                  {...register('due_date')}
+                  {...register('due_date', {
+                    validate: validateDate
+                  })}
                   type="date"
+                  min={today} // This prevents selecting past dates in the date picker
                   defaultValue={format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+                {errors.due_date && (
+                  <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>
+                )}
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Default: 7 days from today
                 </p>
