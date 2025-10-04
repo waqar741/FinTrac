@@ -139,10 +139,10 @@ export default function AIChat() {
 
       // Balance queries (shortened)
       if (['balance', 'balance?', 'current balance', 'how much', 'money', 'what is my current balance','bal','balc','balan'].some(q => lowerQuery.includes(q.toLowerCase()))) {
-        return `Balance: ${formatCurrency(balance)}
-Accounts: ${formatCurrency(totalAccountBalance)}
-Income: ${formatCurrency(totalIncome)}
-Expenses: ${formatCurrency(totalExpenses)}`
+        return `Balance: ${formatCurrency(totalAccountBalance)}
+                Income: ${formatCurrency(totalIncome)}
+                Expenses: ${formatCurrency(totalExpenses)}
+                Difference: ${formatCurrency(balance)}`
       }
 
       // Last transactions query (shortened)
