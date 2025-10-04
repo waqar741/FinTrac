@@ -33,12 +33,13 @@ export default function Goals() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
   const [addAmount, setAddAmount] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setError
   } = useForm<GoalForm>()
 
@@ -104,6 +105,8 @@ export default function Goals() {
   const addMoneyToGoal = async () => {
     if (!selectedGoal || !addAmount) return
 
+    setIsAdding(true)
+
     try {
       const amount = parseFloat(addAmount)
 
@@ -126,6 +129,8 @@ export default function Goals() {
       setSelectedGoal(null)
     } catch (error) {
       console.error('Error adding money to goal:', error)
+    } finally {
+      setIsAdding(false)
     }
   }
 
@@ -432,9 +437,10 @@ export default function Goals() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                 >
-                  {editingGoal ? 'Update' : 'Create'}
+                  {isSubmitting ? 'Saving...' : (editingGoal ? 'Update' : 'Create')}
                 </button>
               </div>
             </form>
@@ -485,10 +491,10 @@ export default function Goals() {
                 </button>
                 <button
                   onClick={addMoneyToGoal}
-                  disabled={!addAmount || parseFloat(addAmount) <= 0}
+                  disabled={!addAmount || parseFloat(addAmount) <= 0 || isAdding}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"
                 >
-                  Add Contribution
+                  {isAdding ? 'Adding...' : 'Add Contribution'}
                 </button>
               </div>
             </div>

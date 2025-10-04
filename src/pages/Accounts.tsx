@@ -41,7 +41,7 @@ export default function Accounts() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setError
   } = useForm<AccountForm>()
 
@@ -49,7 +49,7 @@ export default function Accounts() {
     register: registerTransfer,
     handleSubmit: handleTransferSubmit,
     reset: resetTransfer,
-    formState: { errors: transferErrors },
+    formState: { errors: transferErrors, isSubmitting: transferIsSubmitting },
     setError: setTransferError
   } = useForm<TransferForm>()
 
@@ -114,6 +114,17 @@ export default function Accounts() {
 
   const onTransferSubmit = async (data: TransferForm) => {
     try {
+      if (data.from_account_id === data.to_account_id) {
+        setTransferError('root', { message: 'From and To accounts must be different' })
+        return
+      }
+
+      const fromAccount = accounts.find(a => a.id === data.from_account_id)
+      if (fromAccount && fromAccount.balance < data.amount) {
+        setTransferError('root', { message: 'Insufficient balance in from account' })
+        return
+      }
+
       const { error } = await supabase
         .from('transfers')
         .insert({
@@ -127,7 +138,6 @@ export default function Accounts() {
       if (error) throw error
 
       // Update account balances
-      const fromAccount = accounts.find(a => a.id === data.from_account_id)
       const toAccount = accounts.find(a => a.id === data.to_account_id)
 
       if (fromAccount && toAccount) {
@@ -440,9 +450,10 @@ export default function Accounts() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                 >
-                  {editingAccount ? 'Update' : 'Create'}
+                  {isSubmitting ? 'Saving...' : (editingAccount ? 'Update' : 'Create')}
                 </button>
               </div>
             </form>
@@ -553,9 +564,10 @@ export default function Accounts() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={transferIsSubmitting}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
                 >
-                  Transfer
+                  {transferIsSubmitting ? 'Transferring...' : 'Transfer'}
                 </button>
               </div>
             </form>

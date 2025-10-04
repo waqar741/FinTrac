@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, Calendar, DollarSign, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
+import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface DebtCredit {
@@ -33,6 +33,9 @@ export default function DebtsCredits() {
   const [editingItem, setEditingItem] = useState<DebtCredit | null>(null)
   const [duplicateMessage, setDuplicateMessage] = useState('')
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
+  
+  // ✨ FIX: Add a state to track form submission status
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const {
     register,
@@ -66,6 +69,9 @@ export default function DebtsCredits() {
   }
 
   const onSubmit = async (data: DebtCreditForm) => {
+    // ✨ FIX: Set submitting state to true to prevent multiple clicks
+    setIsSubmitting(true)
+    
     try {
       // Check for duplicates
       const { data: existingDebt } = await supabase
@@ -82,7 +88,7 @@ export default function DebtsCredits() {
       if (existingDebt && !editingItem) {
         setDuplicateMessage('This transaction already exists and has not been added again.')
         setTimeout(() => setDuplicateMessage(''), 5000)
-        return
+        return // Exit the function
       }
 
       if (editingItem) {
@@ -118,6 +124,9 @@ export default function DebtsCredits() {
       handleCloseModal()
     } catch (error: any) {
       setError('root', { message: error.message })
+    } finally {
+        // ✨ FIX: Reset submitting state in the finally block
+        setIsSubmitting(false)
     }
   }
 
@@ -631,11 +640,15 @@ export default function DebtsCredits() {
                 >
                   Cancel
                 </button>
+                {/* ✨ FIX: Disable button during submission and provide user feedback */}
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                 >
-                  {editingItem ? 'Update' : 'Add'}
+                  {isSubmitting 
+                    ? (editingItem ? 'Updating...' : 'Adding...')
+                    : (editingItem ? 'Update' : 'Add')}
                 </button>
               </div>
             </form>
