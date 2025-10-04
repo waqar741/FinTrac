@@ -221,7 +221,6 @@ import { useTheme } from '../contexts/ThemeContext'
 import { 
   Home,
   Wallet,
-  Users as GroupIcon,
   List,
   Users,
   Target,
