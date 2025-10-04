@@ -57,7 +57,7 @@ export default function Transactions() {
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setError
   } = useForm<TransactionForm>()
 
@@ -701,9 +701,10 @@ export default function Transactions() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                 >
-                  {editingTransaction ? 'Update' : 'Add'}
+                  {isSubmitting ? 'Saving...' : (editingTransaction ? 'Update' : 'Add')}
                 </button>
               </div>
             </form>
