@@ -686,7 +686,7 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Debts & Credits</h2>
-            <Link to="/debts-credits" className="text-green-600 hover:text-green-700 text-sm font-medium">
+            <Link to="/app/debts-credits" className="text-green-600 hover:text-green-700 text-sm font-medium">
               View All
             </Link>
           </div>
@@ -716,7 +716,7 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
-            <Link to="/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
+            <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
               View All
             </Link>
           </div>
@@ -763,7 +763,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Goals Progress</h2>
-            <Link to="/goals" className="text-green-600 hover:text-green-700 text-sm font-medium">
+            <Link to="/app/goals" className="text-green-600 hover:text-green-700 text-sm font-medium">
               View All
             </Link>
           </div>
@@ -806,7 +806,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Overview</h2>
-          <Link to="/accounts" className="text-green-600 hover:text-green-700 text-sm font-medium">
+          <Link to="/app/accounts" className="text-green-600 hover:text-green-700 text-sm font-medium">
             Manage
           </Link>
         </div>

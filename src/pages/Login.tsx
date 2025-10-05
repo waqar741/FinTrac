@@ -26,7 +26,7 @@ export default function Login() {
     setLoading(true)
     try {
       await signIn(data.email, data.password)
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch (error: any) {
       setError('root', {
         message: error.message || 'Failed to sign in'
@@ -50,7 +50,7 @@ export default function Login() {
             <div className="flex items-center justify-center mb-4">
               {/* Larger Wallet Icon SVG */}
               <svg
-                 className="w-16 h-16 text-teal-600" // increased from w-8 h-8
+                 className="w-16 h-16 text-green-600" // increased from w-8 h-8
                  fill="none"
                  stroke="currentColor"
                  strokeWidth="1.5"
@@ -64,9 +64,6 @@ export default function Login() {
                  />
               </svg>
              </div>
-
-
-
 
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to Fintrac</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">Track your expenses with ease</p>

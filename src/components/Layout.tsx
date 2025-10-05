@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useTheme } from '../contexts/ThemeContext'
+// import { useTheme } from '../contexts/ThemeContext'
 import { 
   Home,
   Wallet,
@@ -11,8 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  Moon,
-  Sun,
+  // Moon,
+  // Sun,
   ChevronDown,
   User,
   Settings
@@ -22,7 +22,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const { user, signOut, profile } = useAuth()
-  const { isDark, toggleTheme } = useTheme()
+  // const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
@@ -35,11 +35,11 @@ export default function Layout() {
   }
 
   const navItems = [
-    { to: '/dashboard', icon: Home, label: 'Dashboard' },
-    { to: '/accounts', icon: Wallet, label: 'Accounts' },
-    { to: '/transactions', icon: List, label: 'Transactions' },
-    { to: '/goals', icon: Target, label: 'Saving Goals' },
-    { to: '/debts-credits', icon: Users, label: 'Debts & Credits' },
+    { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
+    { to: '/app/accounts', icon: Wallet, label: 'Accounts' },
+    { to: '/app/transactions', icon: List, label: 'Transactions' },
+    { to: '/app/goals', icon: Target, label: 'Saving Goals' },
+    { to: '/app/debts-credits', icon: Users, label: 'Debts & Credits' },
   ]
 
   return (
@@ -65,7 +65,7 @@ export default function Layout() {
           <div className="flex items-center space-x-2">
             {/* New SVG for a wallet icon */}
             <svg
-              className="w-8 h-8 text-teal-600" // Changed color
+              className="w-8 h-8 text-green-600" // Changed color
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
@@ -127,7 +127,7 @@ export default function Layout() {
             </div>
           </div>
           <NavLink
-            to="/settings"
+            to="/app/settings"
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => `
               w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
@@ -157,12 +157,12 @@ export default function Layout() {
             
             <div className="flex-1 lg:flex-none lg:ml-auto">
               <div className="flex items-center justify-end space-x-4">
-                <button
+                {/* <button
                   onClick={toggleTheme}
                   className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   {isDark ? <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
-                </button>
+                </button> */}
                 
                 <div className="relative">
                   <button
