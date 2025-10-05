@@ -496,13 +496,13 @@ const HomePage = () => {
                 <div className="mt-20">
                   {/* Light Theme Image */}
                   <img 
-                    src="./src/image/image.png" 
+                    src="/image/image.png" 
                     alt="FinTrac Dashboard - Light Theme"
                     className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full dark:hidden"
                   />
                   {/* Dark Theme Image */}
                   <img 
-                    src="./src/image/dark.png" 
+                    src="/image/dark.png" 
                     alt="FinTrac Dashboard - Dark Theme"
                     className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full hidden dark:block"
                   />
