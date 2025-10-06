@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft } from 'lucide-react'
 
 interface LoginForm {
   email: string
@@ -36,34 +36,52 @@ export default function Login() {
     }
   }
 
+  const handleGoHome = () => {
+    navigate('/')
+  }
+
+  const handleGoBack = () => {
+    navigate(-1)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 px-4">
+      {/* Back Button - Top Left */}
+      <button
+        onClick={handleGoBack}
+        className="absolute top-4 left-4 flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="text-sm font-medium hidden sm:block">Back</span>
+      </button>
+
+      {/* Home Button - Top Right */}
+      <button
+        onClick={handleGoHome}
+        className="absolute top-4 right-4 flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+      >
+        <Home className="w-5 h-5" />
+        <span className="text-sm font-medium hidden sm:block">Home</span>
+      </button>
+
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          {/* <div className="flex items-center justify-center mb-4">
-            <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full">
-              <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-          </div> */}
-
-
-            <div className="flex items-center justify-center mb-4">
-              {/* Larger Wallet Icon SVG */}
-              <svg
-                 className="w-16 h-16 text-green-600" // increased from w-8 h-8
-                 fill="none"
-                 stroke="currentColor"
-                 strokeWidth="1.5"
-                 viewBox="0 0 24 24"
-                 xmlns="http://www.w3.org/2000/svg"
-                >
-                 <path
-                   strokeLinecap="round"
-                   strokeLinejoin="round"
-                   d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
-                 />
-              </svg>
-             </div>
+          <div className="flex items-center justify-center mb-4">
+            <svg
+              className="w-16 h-16 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
+              />
+            </svg>
+          </div>
 
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to Fintrac</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">Track your expenses with ease</p>
