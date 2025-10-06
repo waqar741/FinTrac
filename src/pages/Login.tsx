@@ -302,14 +302,18 @@ export default function Login() {
                   minLength: {
                     value: 8,
                     message: 'Password must be at least 8 characters'
-                  },
-                  validate: {
-                    hasUpperCase: (value) => /[A-Z]/.test(value) || 'Must include uppercase letter',
-                    hasLowerCase: (value) => /[a-z]/.test(value) || 'Must include lowercase letter',
-                    hasNumber: (value) => /[0-9]/.test(value) || 'Must include number',
-                    hasSpecialChar: (value) => /[@$!%*?&]/.test(value) || 'Must include special character (@$!%*?&)',
-                    noSpaces: (value) => !/\s/.test(value) || 'Password cannot contain spaces'
                   }
+                  // minLength: {
+                  //   value: 8,
+                  //   message: 'Password must be at least 8 characters'
+                  // },
+                  // validate: {
+                  //   hasUpperCase: (value) => /[A-Z]/.test(value) || 'Must include uppercase letter',
+                  //   hasLowerCase: (value) => /[a-z]/.test(value) || 'Must include lowercase letter',
+                  //   hasNumber: (value) => /[0-9]/.test(value) || 'Must include number',
+                  //   hasSpecialChar: (value) => /[@$!%*?&]/.test(value) || 'Must include special character (@$!%*?&)',
+                  //   noSpaces: (value) => !/\s/.test(value) || 'Password cannot contain spaces'
+                  // }
                 })}
                 type={showPassword ? 'text' : 'password'}
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
