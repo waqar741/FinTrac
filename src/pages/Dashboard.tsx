@@ -806,33 +806,51 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Overview</h2>
-          <Link to="/app/accounts" className="text-green-600 hover:text-green-700 text-sm font-medium">
+          <Link
+            to="/app/accounts"
+            className="text-green-600 hover:text-green-700 text-sm font-medium"
+          >
             Manage
           </Link>
         </div>
+      
         {accounts.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">No accounts created yet</p>
+          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+            No accounts created yet
+          </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {accounts.slice(0, 6).map((account) => (
-              <div key={account.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: account.color }}
-                    />
-                    <span className="font-medium text-gray-900 dark:text-white">{account.name}</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`text-2xl font-bold ${
-                    account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {formatCurrency(account.balance)}
+              <div
+                key={account.id}
+                className="relative bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all"
+              >
+                {/* Dynamic Color Dot */}
+                <div 
+                  className="absolute left w-7 h-7 rounded-full mt-5 m2-5"
+                  style={{ backgroundColor: account.color }}
+                ></div>
+      
+                {/* Account Info */}
+                <div className="mt-2 ml-10">
+                  <p className="text-gray-900 dark:text-white text-lg font-bold">{account.name}</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm capitalize">
+                    {account.type.replace('_', ' ')} Account
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">
-                    {account.type.replace('_', ' ')}
+                </div>
+      
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+      
+                {/* Balance Section */}
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">Available Balance</p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {formatCurrency(account.balance)}
                   </p>
                 </div>
               </div>
