@@ -8,41 +8,41 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
-      budgets: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          type: 'master' | 'sub'
-          parent_id: string | null
-          allocated_amount: number
-          current_balance: number
-          color: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          type?: 'master' | 'sub'
-          parent_id?: string | null
-          allocated_amount?: number
-          current_balance?: number
-          color?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          type?: 'master' | 'sub'
-          parent_id?: string | null
-          allocated_amount?: number
-          current_balance?: number
-          color?: string
-          created_at?: string
-        }
-      }
+      // budgets: {
+      //   Row: {
+      //     id: string
+      //     user_id: string
+      //     name: string
+      //     type: 'master' | 'sub'
+      //     parent_id: string | null
+      //     allocated_amount: number
+      //     current_balance: number
+      //     color: string
+      //     created_at: string
+      //   }
+      //   Insert: {
+      //     id?: string
+      //     user_id: string
+      //     name: string
+      //     type?: 'master' | 'sub'
+      //     parent_id?: string | null
+      //     allocated_amount?: number
+      //     current_balance?: number
+      //     color?: string
+      //     created_at?: string
+      //   }
+      //   Update: {
+      //     id?: string
+      //     user_id?: string
+      //     name?: string
+      //     type?: 'master' | 'sub'
+      //     parent_id?: string | null
+      //     allocated_amount?: number
+      //     current_balance?: number
+      //     color?: string
+      //     created_at?: string
+      //   }
+      // }
       transactions: {
         Row: {
           id: string
@@ -81,101 +81,101 @@ export type Database = {
           created_at?: string
         }
       }
-      groups: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          invite_code: string
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          invite_code: string
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          invite_code?: string
-          created_by?: string
-          created_at?: string
-        }
-      }
-      group_members: {
-        Row: {
-          id: string
-          group_id: string
-          user_id: string
-          joined_at: string
-        }
-        Insert: {
-          id?: string
-          group_id: string
-          user_id: string
-          joined_at?: string
-        }
-        Update: {
-          id?: string
-          group_id?: string
-          user_id?: string
-          joined_at?: string
-        }
-      }
-      group_expenses: {
-        Row: {
-          id: string
-          group_id: string
-          paid_by: string
-          amount: number
-          description: string
-          category: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          group_id: string
-          paid_by: string
-          amount: number
-          description: string
-          category?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          group_id?: string
-          paid_by?: string
-          amount?: number
-          description?: string
-          category?: string
-          created_at?: string
-        }
-      }
-      expense_splits: {
-        Row: {
-          id: string
-          expense_id: string
-          user_id: string
-          amount: number
-        }
-        Insert: {
-          id?: string
-          expense_id: string
-          user_id: string
-          amount: number
-        }
-        Update: {
-          id?: string
-          expense_id?: string
-          user_id?: string
-          amount?: number
-        }
-      }
+      // groups: {
+      //   Row: {
+      //     id: string
+      //     name: string
+      //     description: string | null
+      //     invite_code: string
+      //     created_by: string
+      //     created_at: string
+      //   }
+      //   Insert: {
+      //     id?: string
+      //     name: string
+      //     description?: string | null
+      //     invite_code: string
+      //     created_by: string
+      //     created_at?: string
+      //   }
+      //   Update: {
+      //     id?: string
+      //     name?: string
+      //     description?: string | null
+      //     invite_code?: string
+      //     created_by?: string
+      //     created_at?: string
+      //   }
+      // }
+      // group_members: {
+      //   Row: {
+      //     id: string
+      //     group_id: string
+      //     user_id: string
+      //     joined_at: string
+      //   }
+      //   Insert: {
+      //     id?: string
+      //     group_id: string
+      //     user_id: string
+      //     joined_at?: string
+      //   }
+      //   Update: {
+      //     id?: string
+      //     group_id?: string
+      //     user_id?: string
+      //     joined_at?: string
+      //   }
+      // }
+      // group_expenses: {
+      //   Row: {
+      //     id: string
+      //     group_id: string
+      //     paid_by: string
+      //     amount: number
+      //     description: string
+      //     category: string
+      //     created_at: string
+      //   }
+      //   Insert: {
+      //     id?: string
+      //     group_id: string
+      //     paid_by: string
+      //     amount: number
+      //     description: string
+      //     category?: string
+      //     created_at?: string
+      //   }
+      //   Update: {
+      //     id?: string
+      //     group_id?: string
+      //     paid_by?: string
+      //     amount?: number
+      //     description?: string
+      //     category?: string
+      //     created_at?: string
+      //   }
+      // }
+      // expense_splits: {
+      //   Row: {
+      //     id: string
+      //     expense_id: string
+      //     user_id: string
+      //     amount: number
+      //   }
+      //   Insert: {
+      //     id?: string
+      //     expense_id: string
+      //     user_id: string
+      //     amount: number
+      //   }
+      //   Update: {
+      //     id?: string
+      //     expense_id?: string
+      //     user_id?: string
+      //     amount?: number
+      //   }
+      // }
       savings_goals: {
         Row: {
           id: string

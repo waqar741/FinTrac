@@ -1136,7 +1136,7 @@ export default function Transactions() {
     }
   
     // Save the PDF
-    pdf.save(`transactions-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    pdf.save(`Transactions-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   }
 
   const formatCurrency = (amount: number) => {
@@ -1267,10 +1267,12 @@ export default function Transactions() {
       </div>
 
       {/* Transactions List */}
+
+
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         {filteredTransactions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
+           <div className="text-center py-12">
+             <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
             <button
               onClick={() => setShowModal(true)}
               className="mt-2 text-green-600 hover:text-green-700 font-medium"
@@ -1280,34 +1282,105 @@ export default function Transactions() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {filteredTransactions.map((transaction) => {
+             {filteredTransactions.map((transaction) => {
               const isOld = isTransactionOld(transaction.created_at)
-              return (
-                <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: transaction.accounts.color }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-gray-900 dark:text-white">{transaction.description}</h3>
-                          {isOld && (
-                            <span className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Archived
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          <span>{transaction.accounts.name}</span>
-                          <span>
-                            {transaction.category}
-                          </span>
+               return (
+                 <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                   {/* Mobile Layout */}
+                  <div className="block sm:hidden">
+                    <div className="flex items-start justify-between mb-3">
+                       <div className="flex items-center space-x-3 flex-1 min-w-0">
+                         <div
+                          className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                           style={{ backgroundColor: transaction.accounts.color }}
+                         />
+                         <div className="flex-1 min-w-0">
+                           <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                             {transaction.description}
+                           </h3>
+                           <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                               {transaction.accounts.name}
+                             </span>
+                             {isOld && (
+                               <span className="flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
+                                 <Clock className="w-3 h-3 mr-1" />
+                                 Archived
+                               </span>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                       
+                      <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                         <button
+                           onClick={() => handleEditTransaction(transaction)}
+                          disabled={isOld}
+                           className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                          title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
+                         >
+                           <Edit2 className="w-4 h-4" />
+                         </button>
+                         <button
+                          onClick={() => deleteTransaction(transaction.id)}
+                           disabled={isOld}
+                           className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                           title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
+                     </div>
+                     
+                     <div className="flex items-center justify-between">
+                       <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                         <div className="flex items-center space-x-2">
+                           <span className="capitalize">{transaction.category}</span>
+                           {transaction.is_recurring && (
+                             <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                               {transaction.recurring_frequency}
+                             </span>
+                           )}
+                         </div>
+                         <span className="text-xs">{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
+                       </div>
+                       
+                       <div className="text-right">
+                         <p className={`font-semibold text-sm ${
+                           transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                         }`}>
+                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                         </p>
+                         <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
+                       </div>
+                     </div>
+                   </div>
+      
+                   {/* Desktop Layout */}
+                   <div className="hidden sm:flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                       <div
+                         className="w-3 h-3 rounded-full flex-shrink-0"
+                         style={{ backgroundColor: transaction.accounts.color }}
+                       />
+                       <div className="flex-1 min-w-0">
+                         <div className="flex items-center space-x-2">
+                           <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                             {transaction.description}
+                           </h3>
+                           {isOld && (
+                            <span className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
+                               <Clock className="w-3 h-3 mr-1" />
+                               Archived
+                             </span>
+                           )}
+                         </div>
+                         <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                           <span className="truncate">{transaction.accounts.name}</span>
+                           <span className="truncate">{transaction.category}</span>
                           <span>{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
-                          {transaction.is_recurring && (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                           {transaction.is_recurring && (
+                             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex-shrink-0">
                               {transaction.recurring_frequency}
                             </span>
                           )}
@@ -1326,32 +1399,33 @@ export default function Transactions() {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEditTransaction(transaction)}
-                          disabled={isOld}
-                          className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteTransaction(transaction.id)}
-                          disabled={isOld}
-                          className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                         <button
+                           onClick={() => handleEditTransaction(transaction)}
+                           disabled={isOld}
+                           className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                           title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
+                         >
+                           <Edit2 className="w-4 h-4" />
+                         </button>
+                         <button
+                           onClick={() => deleteTransaction(transaction.id)}
+                           disabled={isOld}
+                           className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                           title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
+                     </div>
                   </div>
-                </div>
+                 </div>
               )
             })}
           </div>
         )}
       </div>
 
+      
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

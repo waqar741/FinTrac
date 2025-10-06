@@ -390,7 +390,6 @@ const HomePage = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">Features</a>
-            <a href="#why-free" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">Why Free</a>
             <a href="#about" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">About</a>
           </nav>
 
@@ -440,7 +439,6 @@ const HomePage = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden px-6 pb-4 space-y-4">
             <a href="#features" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2">Features</a>
-            <a href="#why-free" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2">Why Free</a>
             <a href="#about" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2">About</a>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
               {/* Mobile Theme Toggle */}
@@ -535,34 +533,6 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-
-        {/* Why We're Free Section */}
-        <section id="why-free" className="py-20 md:py-28 bg-gray-50 dark:bg-gray-900">
-          <div className="container mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Powerful Financial Tools, Free Forever.</h2>
-              <p className="mt-4 max-w-3xl mx-auto text-lg text-gray-600 dark:text-gray-400">
-                We believe everyone deserves access to tools for financial independence.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Our Philosophy: No Barriers</h3>
-                <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
-                  FinTrac offers all features completely free. No hidden fees, no premium tiers. 
-                  Your financial health shouldn't come with a price tag.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your Privacy is Our Priority</h3>
-                <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
-                  We never sell your personal data. Your information is protected with bank-level security. 
-                  Core financial tools will always remain free.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
         
         {/* About Us Section */}
         <section id="about" className="py-20 md:py-28">
@@ -601,34 +571,31 @@ const HomePage = () => {
       {/* Footer */}
       <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="container mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Product</h3>
-              <nav className="mt-4 space-y-2">
-                <a href="#features" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Features</a>
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Security</a>
-              </nav>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Company</h3>
-              <nav className="mt-4 space-y-2">
-                <a href="#about" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">About Us</a>
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Careers</a>
-              </nav>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Resources</h3>
-              <nav className="mt-4 space-y-2">
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Blog</a>
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Help Center</a>
-              </nav>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Legal</h3>
-              <nav className="mt-4 space-y-2">
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Privacy Policy</a>
-                <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500">Terms of Service</a>
-              </nav>
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 max-w-2xl">
+              <div className="text-center sm:text-left">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Product</h3>
+                <nav className="mt-4 space-y-3">
+                  <a href="#features" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-colors duration-200">
+                    Features
+                  </a>
+                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-colors duration-200">
+                    Security
+                  </a>
+                </nav>
+              </div>
+              
+              <div className="text-center sm:text-left">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Legal</h3>
+                <nav className="mt-4 space-y-3">
+                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-colors duration-200">
+                    Privacy Policy
+                  </a>
+                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-colors duration-200">
+                    Terms of Service
+                  </a>
+                </nav>
+              </div>
             </div>
           </div>
           
@@ -640,7 +607,7 @@ const HomePage = () => {
               {/* Social Media Links */}
               <div className="flex space-x-4 mt-4 md:mt-0">
                 <a 
-                  href="https://github.com/your-username/fintrac" 
+                  href="https://github.com/waqar741/fintrac" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
@@ -652,7 +619,7 @@ const HomePage = () => {
                 </a>
                 
                 <a 
-                  href="https://linkedin.com/in/your-profile" 
+                  href="https://linkedin.com/in/shaikh-waquar" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -668,7 +635,7 @@ const HomePage = () => {
             {/* Developer Credit */}
             <div className="mt-4 text-center md:text-left">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Developed with ❤️ by Your Name
+                Developed with ❤️ by Your Waqar Shaikh
               </p>
             </div>
           </div>
