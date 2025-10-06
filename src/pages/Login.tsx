@@ -317,7 +317,7 @@ export default function Login() {
                 })}
                 type={showPassword ? 'text' : 'password'}
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Create a strong password"
+                placeholder="Enter Password"
               />
               <button
                 type="button"
