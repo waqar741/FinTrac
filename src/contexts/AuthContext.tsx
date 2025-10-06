@@ -118,7 +118,7 @@
 
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
+import { User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 interface AuthContextType {
@@ -139,42 +139,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      // 🔑 Try refreshing session on app mount
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error || !data.session) {
+      try {
+        // 🔑 Try to get current session first
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Session error:', error)
+          await supabase.auth.signOut()
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
+        }
+
+        if (session) {
+          setUser(session.user ?? null)
+          if (session.user) {
+            await fetchProfile(session.user.id)
+          }
+        } else {
+          // 🔑 If no session, try to refresh
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+          
+          if (refreshError || !refreshData.session) {
+            await supabase.auth.signOut()
+            setUser(null)
+            setProfile(null)
+          } else {
+            setUser(refreshData.session.user ?? null)
+            if (refreshData.session.user) {
+              await fetchProfile(refreshData.session.user.id)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
         await supabase.auth.signOut()
         setUser(null)
         setProfile(null)
+      } finally {
         setLoading(false)
-        return
       }
-
-      setUser(data.session.user ?? null)
-      if (data.session.user) {
-        fetchProfile(data.session.user.id)
-      }
-      setLoading(false)
     }
 
     initAuth()
 
-    // 🔑 Listen for auth state changes
+    // 🔑 Listen for auth state changes with better error handling
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setUser(null)
-        // 🔑 Redirect when session is invalid
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login'
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event)
+      
+      try {
+        // Handle successful auth events
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            await fetchProfile(session.user.id)
+          }
+        } 
+        // Handle sign out and error events
+        else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          // Only redirect if not already on login page
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+            window.location.href = '/login'
+          }
         }
+        // Handle token refresh errors separately
+        else if (event === 'TOKEN_REFRESHED_ERROR' as AuthChangeEvent) {
+          console.error('Token refresh failed, signing out')
+          setUser(null)
+          setProfile(null)
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+            window.location.href = '/login'
+          }
+        }
+        // For other events, just update the session if available
+        else if (session) {
+          setUser(session.user ?? null)
+          if (session.user) {
+            await fetchProfile(session.user.id)
+          }
+        }
+      } catch (error) {
+        console.error('Auth state change error:', error)
+        setUser(null)
+        setProfile(null)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
