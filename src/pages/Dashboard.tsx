@@ -681,7 +681,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Debts & Credits Overview */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
@@ -713,49 +713,62 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
-            <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {transactions.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No transactions yet</p>
-            ) : (
-              transactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-full ${
-                      transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      {transaction.type === 'income' ? (
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-red-600" />
-                      )}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
+              <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+               </Link>
+             </div>
+             <div className="space-y-3">
+               {transactions.length === 0 ? (
+                 <p className="text-gray-500 dark:text-gray-400 text-center py-6">No transactions yet</p>
+               ) : (
+                 transactions.map((transaction) => (
+                   <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                     <div className="flex items-center space-x-3">
+                       <div className={`flex-shrink-0 p-2 rounded-full ${
+                        transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
+                       }`}>
+                         {transaction.type === 'income' ? (
+                          <ArrowUpRight className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <ArrowDownRight className="w-4 h-4 text-red-600" />
+                        )}
+                       </div>
+                       <div className="min-w-0 flex-1">
+                         <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                           {transaction.description}
+                         </p>
+                         <div className="flex items-center space-x-2 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                             {transaction.accounts?.name}
+                          </p>
+                           <span className="text-gray-300 dark:text-gray-600">•</span>
+                           <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            {format(new Date(transaction.created_at), 'MMM d')}
+                          </p>
+                         </div>
+                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                           {transaction.category}
+                         </p>
+                       </div>
+                     </div>
+                     <div className="text-right ml-3 flex-shrink-0">
+                       <p className={`font-semibold text-sm ${
+                        transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                       }`}>
+                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
+                       </p>
+                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 whitespace-nowrap">
+                         {transaction.type === 'income' ? 'Received' : 'Paid'}
+                       </p>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{transaction.description}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {transaction.accounts?.name} • {format(new Date(transaction.created_at), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.category}</p>
-                  </div>
-                </div>
-              ))
-            )}
+                   </div>
+                ))
+               )}
+             </div>
           </div>
-        </div>
       </div>
 
       {/* Goals Overview */}
