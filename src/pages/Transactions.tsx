@@ -2,13 +2,14 @@
 // import { useAuth } from '../contexts/AuthContext'
 // import { supabase } from '../lib/supabase'
 // import { useForm } from 'react-hook-form'
-// import { Plus, CreditCard as Edit2, Trash2, X, Search, Download } from 'lucide-react'
-// import { format } from 'date-fns'
+// import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock } from 'lucide-react'
+// import { format, subMonths, isBefore } from 'date-fns'
 // import * as XLSX from 'xlsx'
 // import jsPDF from 'jspdf'
 
 // interface Transaction {
 //   id: string
+//   user_id: string
 //   amount: number
 //   type: 'income' | 'expense'
 //   description: string
@@ -16,6 +17,8 @@
 //   is_recurring: boolean
 //   recurring_frequency: string | null
 //   created_at: string
+//   account_id: string
+//   goal_id: string | null
 //   accounts: {
 //     id: string
 //     name: string
@@ -29,6 +32,13 @@
 //   name: string
 //   color: string
 //   balance: number
+// }
+
+// interface Goal {
+//   id: string
+//   name: string
+//   current_amount: number
+//   target_amount: number
 // }
 
 // interface TransactionForm {
@@ -45,6 +55,7 @@
 //   const { user } = useAuth()
 //   const [transactions, setTransactions] = useState<Transaction[]>([])
 //   const [accounts, setAccounts] = useState<Account[]>([])
+//   const [goals, setGoals] = useState<Goal[]>([])
 //   const [loading, setLoading] = useState(true)
 //   const [showModal, setShowModal] = useState(false)
 //   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -80,7 +91,14 @@
 //         .eq('user_id', user?.id)
 //         .eq('is_active', true)
 
-//       // Fetch transactions
+//       // Fetch goals
+//       const { data: goalsData } = await supabase
+//         .from('goals')
+//         .select('id, name, current_amount, target_amount')
+//         .eq('user_id', user?.id)
+//         .eq('is_active', true)
+
+//       // Fetch transactions - including goal_id
 //       const { data: transactionsData } = await supabase
 //         .from('transactions')
 //         .select(`
@@ -96,7 +114,11 @@
 //         .order('created_at', { ascending: false })
 
 //       if (accountsData) setAccounts(accountsData)
-//       if (transactionsData) setTransactions(transactionsData)
+//       if (goalsData) setGoals(goalsData)
+//       if (transactionsData) {
+//         console.log('Fetched transactions:', transactionsData)
+//         setTransactions(transactionsData)
+//       }
 //     } catch (error) {
 //       console.error('Error fetching data:', error)
 //     } finally {
@@ -104,12 +126,22 @@
 //     }
 //   }
 
+//   // Check if transaction is older than 1 month
+//   const isTransactionOld = (transactionDate: string) => {
+//     const oneMonthAgo = subMonths(new Date(), 1)
+//     const transactionDateObj = new Date(transactionDate)
+//     return isBefore(transactionDateObj, oneMonthAgo)
+//   }
+
 //   const onSubmit = async (data: TransactionForm) => {
 //     try {
 //       if (editingTransaction) {
-//         // Handle editing transaction - more complex logic needed for balance updates
-//         // For now, just update the transaction without balance changes
-//         // In a real app, you'd want to handle balance adjustments when editing
+//         // Check if editing is allowed
+//         if (isTransactionOld(editingTransaction.created_at)) {
+//           setError('root', { message: 'Cannot edit transactions older than 1 month' })
+//           return
+//         }
+
 //         const { error } = await supabase
 //           .from('transactions')
 //           .update({
@@ -134,10 +166,11 @@
 
 //         if (accountError) throw accountError
 
-//         const currentBalance = accountData?.balance || 0
+//         const currentBalance = Number(accountData?.balance) || 0
+//         const transactionAmount = Number(data.amount)
         
 //         // Calculate new balance
-//         const balanceChange = data.type === 'income' ? data.amount : -data.amount
+//         const balanceChange = data.type === 'income' ? transactionAmount : -transactionAmount
 //         const newBalance = currentBalance + balanceChange
 
 //         // Insert the transaction
@@ -146,7 +179,7 @@
 //           .insert({
 //             user_id: user?.id,
 //             account_id: data.account_id,
-//             amount: data.amount,
+//             amount: transactionAmount,
 //             type: data.type,
 //             description: data.description,
 //             category: data.category,
@@ -156,7 +189,7 @@
 
 //         if (transactionError) throw transactionError
 
-//         // Update account balance with the calculated new balance
+//         // Update account balance
 //         const { error: updateError } = await supabase
 //           .from('accounts')
 //           .update({ balance: newBalance })
@@ -172,32 +205,64 @@
 //     }
 //   }
 
-//   const deleteTransaction = async (id: string) => {
+//   const deleteTransaction = async (transaction: Transaction) => {
 //     if (!confirm('Are you sure you want to delete this transaction?')) return
 
 //     try {
-//       // Get transaction details before deleting
-//       const transaction = transactions.find(t => t.id === id)
-//       if (!transaction) return
+//       // Check if deletion is allowed
+//       if (isTransactionOld(transaction.created_at)) {
+//         alert('Cannot delete transactions older than 1 month')
+//         return
+//       }
 
 //       // Get current account balance
 //       const { data: accountData, error: accountError } = await supabase
 //         .from('accounts')
 //         .select('balance')
-//         .eq('id', transaction.accounts.id)
+//         .eq('id', transaction.account_id)
 //         .single()
 
 //       if (accountError) throw accountError
 
-//       // Reverse the balance change
-//       const balanceChange = transaction.type === 'income' ? -transaction.amount : transaction.amount
-//       const newBalance = (accountData?.balance || 0) + balanceChange
+//       const currentBalance = Number(accountData?.balance) || 0
+//       const transactionAmount = Number(transaction.amount)
+
+//       // Handle goal transaction reversal
+//       if (transaction.goal_id) {
+//         try {
+//           const { data: goalData, error: goalFetchError } = await supabase
+//             .from('goals')
+//             .select('current_amount, name')
+//             .eq('id', transaction.goal_id)
+//             .single();
+
+//           if (goalFetchError) throw goalFetchError;
+
+//           const newGoalAmount = Math.max(0, goalData.current_amount - transactionAmount);
+          
+//           const { error: goalUpdateError } = await supabase
+//             .from('goals')
+//             .update({ current_amount: newGoalAmount })
+//             .eq('id', transaction.goal_id);
+
+//           if (goalUpdateError) throw goalUpdateError;
+          
+//           console.log(`Deducted ${transactionAmount} from goal ${goalData.name}`);
+//         } catch (goalError) {
+//           console.error('Error updating goal:', goalError);
+//           // Continue with transaction deletion even if goal update fails
+//         }
+//       }
+
+//       // Reverse the balance change for account
+//       const balanceChange = transaction.type === 'income' ? -transactionAmount : transactionAmount
+//       const newBalance = currentBalance + balanceChange
 
 //       // Delete the transaction
 //       const { error: deleteError } = await supabase
 //         .from('transactions')
 //         .delete()
-//         .eq('id', id)
+//         .eq('id', transaction.id)
 
 //       if (deleteError) throw deleteError
 
@@ -205,13 +270,20 @@
 //       const { error: updateError } = await supabase
 //         .from('accounts')
 //         .update({ balance: newBalance })
-//         .eq('id', transaction.accounts.id)
+//         .eq('id', transaction.account_id)
 
 //       if (updateError) throw updateError
 
 //       await fetchData()
-//     } catch (error) {
-//       console.error('Error deleting transaction:', error)
+      
+//       alert(transaction.goal_id 
+//         ? 'Transaction deleted successfully. Amount deducted from goal.' 
+//         : 'Transaction deleted successfully.'
+//       );
+      
+//     } catch (error: any) {
+//       console.error('Error deleting transaction:', error);
+//       alert(`Error deleting transaction: ${error.message}`);
 //     }
 //   }
 
@@ -222,9 +294,15 @@
 //   }
 
 //   const handleEditTransaction = (transaction: Transaction) => {
+//     // Check if editing is allowed
+//     if (isTransactionOld(transaction.created_at)) {
+//       alert('Cannot edit transactions older than 1 month')
+//       return
+//     }
+
 //     setEditingTransaction(transaction)
 //     reset({
-//       account_id: transaction.accounts.id,
+//       account_id: transaction.account_id,
 //       amount: transaction.amount,
 //       type: transaction.type,
 //       description: transaction.description,
@@ -242,132 +320,134 @@
 //       Amount: t.amount,
 //       Type: t.type,
 //       Category: t.category,
-//       Account: t.accounts.name
+//       Account: t.accounts.name,
+//       Goal: t.goal_id ? 'Yes' : 'No'
 //     }))
 
 //     const ws = XLSX.utils.json_to_sheet(exportData)
 //     const wb = XLSX.utils.book_new()
 //     XLSX.utils.book_append_sheet(wb, ws, 'Transactions')
-//     XLSX.writeFile(wb, `transactions-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+//     XLSX.writeFile(wb, `FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
 //   }
 
-//   const exportToPDF = () => {
-//     // Calculate totals
-//     let totalIncome = 0;
-//     let totalExpense = 0;
-//     filteredTransactions.forEach((t) => {
-//       if (t.type === 'income') {
-//         totalIncome += Number(t.amount);
-//       } else if (t.type === 'expense') {
-//         totalExpense += Number(t.amount);
-//       }
-//     });
-//     const balance = totalIncome - totalExpense;
-  
-//     // Initialize PDF
-//     const pdf = new jsPDF();
-//     const pageWidth = pdf.internal.pageSize.getWidth();
-//     const pageHeight = pdf.internal.pageSize.getHeight();
-  
-//     // Function to add header
-//     const addHeader = (currentPage: number) => {
-//       pdf.setFontSize(18);
-//       pdf.setFont('helvetica', 'bold');
-//       pdf.text('Transaction Report', pageWidth / 2, 20, { align: 'center' });
+// // Assuming 'filteredTransactions' is available in the scope.
+// // Example transaction structure: { type: 'income' | 'expense', amount: number, created_at: string, description?: string }
 
-//       pdf.setFontSize(10);
-//       pdf.setFont('helvetica', 'normal');
-//       pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 30);
-//       pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 35);
-//       pdf.text(`Page ${currentPage}`, pageWidth - 40, 30);
-//     };
-  
-//     // Function to add table header
-//     const addTableHeader = (yPos: number) => {
-//       pdf.setFontSize(10);
-//       pdf.setFont('helvetica', 'bold');
-//       pdf.text('Date', 20, yPos);
-//       pdf.text('Description', 50, yPos);
-//       pdf.text('Amount (₹)', 140, yPos);
-//       pdf.text('Type', 170, yPos);
-//       pdf.setFont('helvetica', 'normal');
+// const exportToPDF = () => {
+//   let totalIncome = 0;
+//   let totalExpense = 0;
 
-//       yPos += 5;
-//       pdf.setLineWidth(0.2);
-//       pdf.line(20, yPos, pageWidth - 20, yPos); // Horizontal line under header
-//       return yPos + 5;
-//     };
-  
-//     // Function to add footer
-//     const addFooter = (currentPage: number, totalPages: number) => {
-//       pdf.setFontSize(8);
-//       pdf.setTextColor(150);
-//       pdf.text(`Page ${currentPage} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-//       pdf.setTextColor(0);
-//     };
-  
-//     // Initialize variables
-//     let yPos = 50;
-//     let currentPage = 1;
-//     let totalPages = 1; // Placeholder, will calculate later
-  
-//     // Add initial header and table header
-//     addHeader(currentPage);
+//   filteredTransactions.forEach((t) => {
+//     if (t.type === 'income') {
+//       totalIncome += Number(t.amount);
+//     } else if (t.type === 'expense') {
+//       totalExpense += Number(t.amount);
+//     }
+//   });
+
+//   const balance = totalIncome - totalExpense;
+//   const pdf = new jsPDF();
+//   const pageWidth = pdf.internal.pageSize.getWidth();
+//   const pageHeight = pdf.internal.pageSize.getHeight();
+
+//   let currentPage = 1;
+//   const transactionPages = Math.ceil(filteredTransactions.length / 15);
+//   const totalPages = filteredTransactions.length > 0 ? transactionPages + 1 : 1;
+
+//   const addHeader = (pageNum: number, totalPages: number) => {
+//     pdf.setFontSize(18);
+//     pdf.setFont('helvetica', 'bold');
+//     pdf.text('FinTrac Report', pageWidth / 2, 20, { align: 'center' });
+
+//     pdf.setFontSize(10);
+//     pdf.setFont('helvetica', 'normal');
+//     pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 35);
+//     pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 42);
+//     pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 30, 35);
+//   };
+
+//   const addTableHeader = (yPos: number) => {
+//     pdf.setFontSize(10);
+//     pdf.setFont('helvetica', 'bold');
+//     pdf.text('Date', 20, yPos);
+//     pdf.text('Description', 50, yPos);
+//     pdf.text('Amount (INR)', 140, yPos); // Corrected header
+//     pdf.text('Type', 170, yPos);
+    
+//     yPos += 2;
+//     pdf.setLineWidth(0.2);
+//     pdf.line(20, yPos, pageWidth - 20, yPos);
+//     return yPos + 10;
+//   };
+
+//   let yPos = 60;
+
+//   // --- Transaction Pages ---
+//   if (filteredTransactions.length > 0) {
+//     addHeader(currentPage, totalPages);
 //     yPos = addTableHeader(yPos);
-  
-//     // Add transaction rows
-//     filteredTransactions.forEach((t) => {
-//       if (yPos > pageHeight - 30) { // Check for page break
-//         addFooter(currentPage, totalPages); // Temporary, will update later
+
+//     filteredTransactions.forEach((t, index) => {
+//       if (yPos > pageHeight - 30 && index < filteredTransactions.length - 1) {
 //         pdf.addPage();
 //         currentPage++;
-//         yPos = 20;
-//         addHeader(currentPage);
+//         yPos = 40;
+//         addHeader(currentPage, totalPages);
 //         yPos = addTableHeader(yPos);
 //       }
 
-//       pdf.setFontSize(10);
+//       pdf.setFontSize(9);
+//       pdf.setFont('helvetica', 'normal');
+      
 //       pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
-//       pdf.text(t.description || 'No description', 50, yPos);
+      
+//       let description = t.description || 'No description';
+//       if (description.length > 35) {
+//         description = description.substring(0, 32) + '...';
+//       }
+//       pdf.text(description, 50, yPos);
+      
 //       pdf.text(t.amount.toFixed(2), 140, yPos);
+      
 //       pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
-
-//       yPos += 10;
+      
+//       yPos += 7;
 //     });
-  
-//     // Add summary section
-//     if (yPos > pageHeight - 60) { // Check if enough space for summary
-//       addFooter(currentPage, totalPages); // Temporary
-//       pdf.addPage();
-//       currentPage++;
-//       yPos = 20;
-//       addHeader(currentPage);
-//     } else {
-//       yPos += 10;
-//       pdf.line(20, yPos, pageWidth - 20, yPos); // Separator line
-//       yPos += 10;
-//     }
-  
-//     pdf.setFont('helvetica', 'bold');
-//     pdf.text('Summary:', 20, yPos);
-//     pdf.setFont('helvetica', 'normal');
-//     yPos += 10;
-//     pdf.text(`Total Income: ₹${totalIncome.toFixed(2)}`, 20, yPos);
-//     yPos += 10;
-//     pdf.text(`Total Expenses: ₹${totalExpense.toFixed(2)}`, 20, yPos);
-//     yPos += 10;
-//     pdf.text(`Balance: ₹${balance.toFixed(2)}`, 20, yPos);
-  
-//     // Calculate total pages and update footers on all pages
-//     totalPages = currentPage;
-//     for (let i = 1; i <= totalPages; i++) {
-//       pdf.setPage(i);
-//       addFooter(i, totalPages);
-//     }
-  
-//     // Save the PDF
-//     pdf.save(`transactions-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 //   }
+
+//   // --- Summary Page ---
+//   if (filteredTransactions.length > 0) {
+//     pdf.addPage();
+//     currentPage++;
+//   }
+  
+//   addHeader(currentPage, totalPages);
+//   yPos = 60;
+
+//   pdf.setFontSize(16);
+//   pdf.setFont('helvetica', 'bold');
+//   pdf.text('SUMMARY', pageWidth / 2, yPos, { align: 'center' });
+//   yPos += 20;
+
+//   pdf.setLineWidth(0.5);
+//   pdf.line(20, yPos, pageWidth - 20, yPos);
+//   yPos += 15;
+
+//   pdf.setFontSize(12);
+//   pdf.setFont('helvetica', 'bold');
+//   pdf.text('Summary:', 30, yPos);
+//   yPos += 12;
+  
+//   pdf.setFont('helvetica', 'normal');
+//   // Corrected summary text
+//   pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
+//   yPos += 10;
+//   pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)}`, 30, yPos);
+//   yPos += 10;
+//   pdf.text(`Balance: INR ${balance.toFixed(2)}`, 30, yPos);
+
+//   pdf.save(`FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+// };
 
 //   const formatCurrency = (amount: number) => {
 //     return new Intl.NumberFormat('en-IN', {
@@ -383,7 +463,7 @@
 //                          transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
     
 //     const matchesType = filterType === 'all' || transaction.type === filterType
-//     const matchesAccount = filterAccount === 'all' || transaction.accounts.id === filterAccount
+//     const matchesAccount = filterAccount === 'all' || transaction.account_id === filterAccount
     
 //     const transactionDate = new Date(transaction.created_at)
 //     const matchesDateFrom = !dateFrom || transactionDate >= new Date(dateFrom)
@@ -499,8 +579,8 @@
 //       {/* Transactions List */}
 //       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
 //         {filteredTransactions.length === 0 ? (
-//           <div className="text-center py-12">
-//             <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
+//            <div className="text-center py-12">
+//              <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
 //             <button
 //               onClick={() => setShowModal(true)}
 //               className="mt-2 text-green-600 hover:text-green-700 font-medium"
@@ -510,61 +590,163 @@
 //           </div>
 //         ) : (
 //           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-//             {filteredTransactions.map((transaction) => (
-//               <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-//                 <div className="flex items-center justify-between">
-//                   <div className="flex items-center space-x-4">
-//                     <div
-//                       className="w-3 h-3 rounded-full"
-//                       style={{ backgroundColor: transaction.accounts.color }}
-//                     />
-//                     <div>
-//                       <h3 className="font-medium text-gray-900 dark:text-white">{transaction.description}</h3>
-//                       <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-//                         <span>{transaction.accounts.name}</span>
-//                         <span>{transaction.category}</span>
-//                         <span>{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
-//                         {transaction.is_recurring && (
-//                           <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-//                             {transaction.recurring_frequency}
-//                           </span>
-//                         )}
+//              {filteredTransactions.map((transaction) => {
+//               const isOld = isTransactionOld(transaction.created_at)
+//               const isGoalTransaction = !!transaction.goal_id
+//               const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
+              
+//                return (
+//                  <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+//                    {/* Mobile Layout */}
+//                   <div className="block sm:hidden">
+//                     <div className="flex items-start justify-between mb-3">
+//                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+//                          <div
+//                           className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+//                            style={{ backgroundColor: transaction.accounts.color }}
+//                          />
+//                          <div className="flex-1 min-w-0">
+//                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
+//                              {transaction.description}
+//                            </h3>
+//                            <div className="flex items-center space-x-2 mt-1">
+//                             <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+//                                {transaction.accounts.name}
+//                              </span>
+//                              {isGoalTransaction && (
+//                                <span className="flex items-center px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+//                                  {goal ? `Goal: ${goal.name}` : 'Goal'}
+//                                </span>
+//                              )}
+//                              {isOld && (
+//                                <span className="flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
+//                                  <Clock className="w-3 h-3 mr-1" />
+//                                  Archived
+//                                </span>
+//                              )}
+//                            </div>
+//                          </div>
+//                        </div>
+                       
+//                       <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+//                          <button
+//                            onClick={() => handleEditTransaction(transaction)}
+//                           disabled={isOld}
+//                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+//                           title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
+//                          >
+//                            <Edit2 className="w-4 h-4" />
+//                          </button>
+//                          <button
+//                           onClick={() => deleteTransaction(transaction)}
+//                            disabled={isOld}
+//                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+//                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+//                          >
+//                            <Trash2 className="w-4 h-4" />
+//                          </button>
+//                        </div>
+//                      </div>
+                     
+//                      <div className="flex items-center justify-between">
+//                        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+//                          <div className="flex items-center space-x-2">
+//                            <span className="capitalize">{transaction.category}</span>
+//                            {transaction.is_recurring && (
+//                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+//                                {transaction.recurring_frequency}
+//                              </span>
+//                            )}
+//                          </div>
+//                          <span className="text-xs">{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
+//                        </div>
+                       
+//                        <div className="text-right">
+//                          <p className={`font-semibold text-sm ${
+//                            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+//                          }`}>
+//                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+//                          </p>
+//                          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
+//                        </div>
+//                      </div>
+//                    </div>
+      
+//                    {/* Desktop Layout */}
+//                    <div className="hidden sm:flex items-center justify-between">
+//                     <div className="flex items-center space-x-4 flex-1">
+//                        <div
+//                          className="w-3 h-3 rounded-full flex-shrink-0"
+//                          style={{ backgroundColor: transaction.accounts.color }}
+//                        />
+//                        <div className="flex-1 min-w-0">
+//                          <div className="flex items-center space-x-2">
+//                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
+//                              {transaction.description}
+//                            </h3>
+//                            {isGoalTransaction && (
+//                              <span className="flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+//                                {goal ? `Goal: ${goal.name}` : 'Goal Contribution'}
+//                              </span>
+//                            )}
+//                            {isOld && (
+//                             <span className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
+//                                <Clock className="w-3 h-3 mr-1" />
+//                                Archived
+//                              </span>
+//                            )}
+//                          </div>
+//                          <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+//                            <span className="truncate">{transaction.accounts.name}</span>
+//                            <span className="truncate">{transaction.category}</span>
+//                           <span>{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
+//                            {transaction.is_recurring && (
+//                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex-shrink-0">
+//                               {transaction.recurring_frequency}
+//                             </span>
+//                           )}
+//                         </div>
 //                       </div>
 //                     </div>
-//                   </div>
-                  
-//                   <div className="flex items-center space-x-4">
-//                     <div className="text-right">
-//                       <p className={`font-semibold ${
-//                         transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-//                       }`}>
-//                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-//                       </p>
-//                       <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
-//                     </div>
                     
-//                     <div className="flex items-center space-x-2">
-//                       <button
-//                         onClick={() => handleEditTransaction(transaction)}
-//                         className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-//                       >
-//                         <Edit2 className="w-4 h-4" />
-//                       </button>
-//                       <button
-//                         onClick={() => deleteTransaction(transaction.id)}
-//                         className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600"
-//                       >
-//                         <Trash2 className="w-4 h-4" />
-//                       </button>
-//                     </div>
+//                     <div className="flex items-center space-x-4">
+//                       <div className="text-right">
+//                         <p className={`font-semibold ${
+//                           transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+//                         }`}>
+//                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+//                         </p>
+//                         <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
+//                       </div>
+                      
+//                       <div className="flex items-center space-x-2">
+//                          <button
+//                            onClick={() => handleEditTransaction(transaction)}
+//                            disabled={isOld}
+//                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+//                            title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
+//                          >
+//                            <Edit2 className="w-4 h-4" />
+//                          </button>
+//                          <button
+//                            onClick={() => deleteTransaction(transaction)}
+//                            disabled={isOld}
+//                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+//                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+//                          >
+//                            <Trash2 className="w-4 h-4" />
+//                          </button>
+//                        </div>
+//                      </div>
 //                   </div>
-//                 </div>
-//               </div>
-//             ))}
+//                  </div>
+//               )
+//             })}
 //           </div>
 //         )}
 //       </div>
 
+      
 //       {/* Modal */}
 //       {showModal && (
 //         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -737,17 +919,28 @@
 // }
 
 
+
+
+
+
+
+
+
+
+
+
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock } from 'lucide-react'
+import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock, Loader } from 'lucide-react'
 import { format, subMonths, isBefore } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 
 interface Transaction {
   id: string
+  user_id: string
   amount: number
   type: 'income' | 'expense'
   description: string
@@ -755,6 +948,8 @@ interface Transaction {
   is_recurring: boolean
   recurring_frequency: string | null
   created_at: string
+  account_id: string
+  goal_id: string | null
   accounts: {
     id: string
     name: string
@@ -768,6 +963,13 @@ interface Account {
   name: string
   color: string
   balance: number
+}
+
+interface Goal {
+  id: string
+  name: string
+  current_amount: number
+  target_amount: number
 }
 
 interface TransactionForm {
@@ -784,6 +986,7 @@ export default function Transactions() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -792,6 +995,7 @@ export default function Transactions() {
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null) // NEW: Track deleting state
 
   const {
     register,
@@ -819,7 +1023,14 @@ export default function Transactions() {
         .eq('user_id', user?.id)
         .eq('is_active', true)
 
-      // Fetch transactions
+      // Fetch goals
+      const { data: goalsData } = await supabase
+        .from('goals')
+        .select('id, name, current_amount, target_amount')
+        .eq('user_id', user?.id)
+        .eq('is_active', true)
+
+      // Fetch transactions - including goal_id
       const { data: transactionsData } = await supabase
         .from('transactions')
         .select(`
@@ -835,7 +1046,11 @@ export default function Transactions() {
         .order('created_at', { ascending: false })
 
       if (accountsData) setAccounts(accountsData)
-      if (transactionsData) setTransactions(transactionsData)
+      if (goalsData) setGoals(goalsData)
+      if (transactionsData) {
+        console.log('Fetched transactions:', transactionsData)
+        setTransactions(transactionsData)
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -859,9 +1074,6 @@ export default function Transactions() {
           return
         }
 
-        // Handle editing transaction - more complex logic needed for balance updates
-        // For now, just update the transaction without balance changes
-        // In a real app, you'd want to handle balance adjustments when editing
         const { error } = await supabase
           .from('transactions')
           .update({
@@ -886,7 +1098,6 @@ export default function Transactions() {
 
         if (accountError) throw accountError
 
-        // 🔥 FIX: Convert ALL values to numbers to prevent string concatenation
         const currentBalance = Number(accountData?.balance) || 0
         const transactionAmount = Number(data.amount)
         
@@ -910,7 +1121,7 @@ export default function Transactions() {
 
         if (transactionError) throw transactionError
 
-        // Update account balance with the calculated new balance
+        // Update account balance
         const { error: updateError } = await supabase
           .from('accounts')
           .update({ balance: newBalance })
@@ -926,17 +1137,22 @@ export default function Transactions() {
     }
   }
 
-  const deleteTransaction = async (id: string) => {
+  const deleteTransaction = async (transaction: Transaction) => {
+    // Prevent multiple clicks
+    if (deletingTransactionId === transaction.id) {
+      return; // Already deleting this transaction
+    }
+
     if (!confirm('Are you sure you want to delete this transaction?')) return
 
     try {
-      // Get transaction details before deleting
-      const transaction = transactions.find(t => t.id === id)
-      if (!transaction) return
+      // Set deleting state to prevent multiple clicks
+      setDeletingTransactionId(transaction.id);
 
       // Check if deletion is allowed
       if (isTransactionOld(transaction.created_at)) {
         alert('Cannot delete transactions older than 1 month')
+        setDeletingTransactionId(null); // Reset deleting state
         return
       }
 
@@ -944,16 +1160,42 @@ export default function Transactions() {
       const { data: accountData, error: accountError } = await supabase
         .from('accounts')
         .select('balance')
-        .eq('id', transaction.accounts.id)
+        .eq('id', transaction.account_id)
         .single()
 
       if (accountError) throw accountError
 
-      // 🔥 FIX: Convert ALL values to numbers to prevent string concatenation
       const currentBalance = Number(accountData?.balance) || 0
       const transactionAmount = Number(transaction.amount)
 
-      // Reverse the balance change
+      // Handle goal transaction reversal
+      if (transaction.goal_id) {
+        try {
+          const { data: goalData, error: goalFetchError } = await supabase
+            .from('goals')
+            .select('current_amount, name')
+            .eq('id', transaction.goal_id)
+            .single();
+
+          if (goalFetchError) throw goalFetchError;
+
+          const newGoalAmount = Math.max(0, goalData.current_amount - transactionAmount);
+          
+          const { error: goalUpdateError } = await supabase
+            .from('goals')
+            .update({ current_amount: newGoalAmount })
+            .eq('id', transaction.goal_id);
+
+          if (goalUpdateError) throw goalUpdateError;
+          
+          console.log(`Deducted ${transactionAmount} from goal ${goalData.name}`);
+        } catch (goalError) {
+          console.error('Error updating goal:', goalError);
+          // Continue with transaction deletion even if goal update fails
+        }
+      }
+
+      // Reverse the balance change for account
       const balanceChange = transaction.type === 'income' ? -transactionAmount : transactionAmount
       const newBalance = currentBalance + balanceChange
 
@@ -961,7 +1203,7 @@ export default function Transactions() {
       const { error: deleteError } = await supabase
         .from('transactions')
         .delete()
-        .eq('id', id)
+        .eq('id', transaction.id)
 
       if (deleteError) throw deleteError
 
@@ -969,13 +1211,23 @@ export default function Transactions() {
       const { error: updateError } = await supabase
         .from('accounts')
         .update({ balance: newBalance })
-        .eq('id', transaction.accounts.id)
+        .eq('id', transaction.account_id)
 
       if (updateError) throw updateError
 
       await fetchData()
-    } catch (error) {
-      console.error('Error deleting transaction:', error)
+      
+      alert(transaction.goal_id 
+        ? 'Transaction deleted successfully. Amount deducted from goal.' 
+        : 'Transaction deleted successfully.'
+      );
+      
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      alert(`Error deleting transaction: ${error.message}`);
+    } finally {
+      // Always reset deleting state, whether success or error
+      setDeletingTransactionId(null);
     }
   }
 
@@ -994,7 +1246,7 @@ export default function Transactions() {
 
     setEditingTransaction(transaction)
     reset({
-      account_id: transaction.accounts.id,
+      account_id: transaction.account_id,
       amount: transaction.amount,
       type: transaction.type,
       description: transaction.description,
@@ -1012,19 +1264,20 @@ export default function Transactions() {
       Amount: t.amount,
       Type: t.type,
       Category: t.category,
-      Account: t.accounts.name
+      Account: t.accounts.name,
+      Goal: t.goal_id ? 'Yes' : 'No'
     }))
 
     const ws = XLSX.utils.json_to_sheet(exportData)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Transactions')
-    XLSX.writeFile(wb, `transactions-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+    XLSX.writeFile(wb, `FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
   }
 
   const exportToPDF = () => {
-    // Calculate totals
     let totalIncome = 0;
     let totalExpense = 0;
+
     filteredTransactions.forEach((t) => {
       if (t.type === 'income') {
         totalIncome += Number(t.amount);
@@ -1032,112 +1285,109 @@ export default function Transactions() {
         totalExpense += Number(t.amount);
       }
     });
+
     const balance = totalIncome - totalExpense;
-  
-    // Initialize PDF
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-  
-    // Function to add header
-    const addHeader = (currentPage: number) => {
+
+    let currentPage = 1;
+    const transactionPages = Math.ceil(filteredTransactions.length / 15);
+    const totalPages = filteredTransactions.length > 0 ? transactionPages + 1 : 1;
+
+    const addHeader = (pageNum: number, totalPages: number) => {
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Transaction Report', pageWidth / 2, 20, { align: 'center' });
+      pdf.text('FinTrac Report', pageWidth / 2, 20, { align: 'center' });
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 30);
-      pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 35);
-      pdf.text(`Page ${currentPage}`, pageWidth - 40, 30);
+      pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 35);
+      pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 42);
+      pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 30, 35);
     };
-  
-    // Function to add table header
+
     const addTableHeader = (yPos: number) => {
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Date', 20, yPos);
       pdf.text('Description', 50, yPos);
-      pdf.text('Amount (₹)', 140, yPos);
+      pdf.text('Amount (INR)', 140, yPos);
       pdf.text('Type', 170, yPos);
-      pdf.setFont('helvetica', 'normal');
-
-      yPos += 5;
+      
+      yPos += 2;
       pdf.setLineWidth(0.2);
-      pdf.line(20, yPos, pageWidth - 20, yPos); // Horizontal line under header
-      return yPos + 5;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      return yPos + 10;
     };
-  
-    // Function to add footer
-    const addFooter = (currentPage: number, totalPages: number) => {
-      pdf.setFontSize(8);
-      pdf.setTextColor(150);
-      pdf.text(`Page ${currentPage} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-      pdf.setTextColor(0);
-    };
-  
-    // Initialize variables
-    let yPos = 50;
-    let currentPage = 1;
-    let totalPages = 1; // Placeholder, will calculate later
-  
-    // Add initial header and table header
-    addHeader(currentPage);
-    yPos = addTableHeader(yPos);
-  
-    // Add transaction rows
-    filteredTransactions.forEach((t) => {
-      if (yPos > pageHeight - 30) { // Check for page break
-        addFooter(currentPage, totalPages); // Temporary, will update later
-        pdf.addPage();
-        currentPage++;
-        yPos = 20;
-        addHeader(currentPage);
-        yPos = addTableHeader(yPos);
-      }
 
-      pdf.setFontSize(10);
-      pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
-      pdf.text(t.description || 'No description', 50, yPos);
-      pdf.text(t.amount.toFixed(2), 140, yPos);
-      pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
+    let yPos = 60;
 
-      yPos += 10;
-    });
-  
-    // Add summary section
-    if (yPos > pageHeight - 60) { // Check if enough space for summary
-      addFooter(currentPage, totalPages); // Temporary
+    // --- Transaction Pages ---
+    if (filteredTransactions.length > 0) {
+      addHeader(currentPage, totalPages);
+      yPos = addTableHeader(yPos);
+
+      filteredTransactions.forEach((t, index) => {
+        if (yPos > pageHeight - 30 && index < filteredTransactions.length - 1) {
+          pdf.addPage();
+          currentPage++;
+          yPos = 40;
+          addHeader(currentPage, totalPages);
+          yPos = addTableHeader(yPos);
+        }
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        
+        pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
+        
+        let description = t.description || 'No description';
+        if (description.length > 35) {
+          description = description.substring(0, 32) + '...';
+        }
+        pdf.text(description, 50, yPos);
+        
+        pdf.text(t.amount.toFixed(2), 140, yPos);
+        
+        pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
+        
+        yPos += 7;
+      });
+    }
+
+    // --- Summary Page ---
+    if (filteredTransactions.length > 0) {
       pdf.addPage();
       currentPage++;
-      yPos = 20;
-      addHeader(currentPage);
-    } else {
-      yPos += 10;
-      pdf.line(20, yPos, pageWidth - 20, yPos); // Separator line
-      yPos += 10;
     }
-  
+    
+    addHeader(currentPage, totalPages);
+    yPos = 60;
+
+    pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Summary:', 20, yPos);
+    pdf.text('SUMMARY', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 20;
+
+    pdf.setLineWidth(0.5);
+    pdf.line(20, yPos, pageWidth - 20, yPos);
+    yPos += 15;
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Summary:', 30, yPos);
+    yPos += 12;
+    
     pdf.setFont('helvetica', 'normal');
+    pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
     yPos += 10;
-    pdf.text(`Total Income: ₹${totalIncome.toFixed(2)}`, 20, yPos);
+    pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)}`, 30, yPos);
     yPos += 10;
-    pdf.text(`Total Expenses: ₹${totalExpense.toFixed(2)}`, 20, yPos);
-    yPos += 10;
-    pdf.text(`Balance: ₹${balance.toFixed(2)}`, 20, yPos);
-  
-    // Calculate total pages and update footers on all pages
-    totalPages = currentPage;
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      addFooter(i, totalPages);
-    }
-  
-    // Save the PDF
-    pdf.save(`Transactions-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-  }
+    pdf.text(`Balance: INR ${balance.toFixed(2)}`, 30, yPos);
+
+    pdf.save(`FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -1153,7 +1403,7 @@ export default function Transactions() {
                          transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesType = filterType === 'all' || transaction.type === filterType
-    const matchesAccount = filterAccount === 'all' || transaction.accounts.id === filterAccount
+    const matchesAccount = filterAccount === 'all' || transaction.account_id === filterAccount
     
     const transactionDate = new Date(transaction.created_at)
     const matchesDateFrom = !dateFrom || transactionDate >= new Date(dateFrom)
@@ -1267,8 +1517,6 @@ export default function Transactions() {
       </div>
 
       {/* Transactions List */}
-
-
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         {filteredTransactions.length === 0 ? (
            <div className="text-center py-12">
@@ -1284,6 +1532,10 @@ export default function Transactions() {
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
              {filteredTransactions.map((transaction) => {
               const isOld = isTransactionOld(transaction.created_at)
+              const isGoalTransaction = !!transaction.goal_id
+              const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
+              const isDeleting = deletingTransactionId === transaction.id // NEW: Check if this transaction is being deleted
+              
                return (
                  <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                    {/* Mobile Layout */}
@@ -1302,6 +1554,11 @@ export default function Transactions() {
                             <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                {transaction.accounts.name}
                              </span>
+                             {isGoalTransaction && (
+                               <span className="flex items-center px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+                                 {goal ? `Goal: ${goal.name}` : 'Goal'}
+                               </span>
+                             )}
                              {isOld && (
                                <span className="flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
                                  <Clock className="w-3 h-3 mr-1" />
@@ -1315,19 +1572,23 @@ export default function Transactions() {
                       <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
                          <button
                            onClick={() => handleEditTransaction(transaction)}
-                          disabled={isOld}
+                          disabled={isOld || isDeleting} // NEW: Disable when deleting
                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
                           title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
                          >
                            <Edit2 className="w-4 h-4" />
                          </button>
                          <button
-                          onClick={() => deleteTransaction(transaction.id)}
-                           disabled={isOld}
+                          onClick={() => deleteTransaction(transaction)}
+                           disabled={isOld || isDeleting} // NEW: Disable when already deleting
                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
                          >
-                           <Trash2 className="w-4 h-4" />
+                           {isDeleting ? ( // NEW: Show loader when deleting
+                             <Loader className="w-4 h-4 animate-spin" />
+                           ) : (
+                             <Trash2 className="w-4 h-4" />
+                           )}
                          </button>
                        </div>
                      </div>
@@ -1368,6 +1629,11 @@ export default function Transactions() {
                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
                              {transaction.description}
                            </h3>
+                           {isGoalTransaction && (
+                             <span className="flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+                               {goal ? `Goal: ${goal.name}` : 'Goal Contribution'}
+                             </span>
+                           )}
                            {isOld && (
                             <span className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
                                <Clock className="w-3 h-3 mr-1" />
@@ -1401,19 +1667,23 @@ export default function Transactions() {
                       <div className="flex items-center space-x-2">
                          <button
                            onClick={() => handleEditTransaction(transaction)}
-                           disabled={isOld}
+                           disabled={isOld || isDeleting} // NEW: Disable when deleting
                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
                            title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
                          >
                            <Edit2 className="w-4 h-4" />
                          </button>
                          <button
-                           onClick={() => deleteTransaction(transaction.id)}
-                           disabled={isOld}
+                           onClick={() => deleteTransaction(transaction)}
+                           disabled={isOld || isDeleting} // NEW: Disable when already deleting
                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
                          >
-                           <Trash2 className="w-4 h-4" />
+                           {isDeleting ? ( // NEW: Show loader when deleting
+                             <Loader className="w-4 h-4 animate-spin" />
+                           ) : (
+                             <Trash2 className="w-4 h-4" />
+                           )}
                          </button>
                        </div>
                      </div>

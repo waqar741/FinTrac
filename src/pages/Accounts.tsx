@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft } from 'lucide-react'
+import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader } from 'lucide-react'
 
 interface Account {
   id: string
@@ -36,6 +36,7 @@ export default function Accounts() {
   const [showModal, setShowModal] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null) // NEW: Track deleting state
 
   const {
     register,
@@ -162,9 +163,17 @@ export default function Accounts() {
   }
 
   const deleteAccount = async (id: string) => {
+    // Prevent multiple clicks
+    if (deletingAccountId === id) {
+      return; // Already deleting this account
+    }
+
     if (!confirm('Are you sure you want to delete this account? This will permanently delete the account and all associated transactions.')) return
 
     try {
+      // Set deleting state to prevent multiple clicks
+      setDeletingAccountId(id);
+
       // Hard delete
       const { error } = await supabase
         .from('accounts')
@@ -173,8 +182,12 @@ export default function Accounts() {
 
       if (error) throw error
       await fetchAccounts()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting account:', error)
+      alert(`Error deleting account: ${error.message}`)
+    } finally {
+      // Always reset deleting state, whether success or error
+      setDeletingAccountId(null);
     }
   }
 
@@ -295,6 +308,8 @@ export default function Accounts() {
         ) : (
           accounts.map((account) => {
             const IconComponent = getAccountIcon(account.type)
+            const isDeleting = deletingAccountId === account.id // NEW: Check if this account is being deleted
+            
             return (
               <div key={account.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
@@ -318,15 +333,23 @@ export default function Accounts() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEditAccount(account)}
-                      className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                      disabled={isDeleting} // NEW: Disable when deleting
+                      className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Edit account"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteAccount(account.id)}
-                      className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600"
+                      disabled={isDeleting} // NEW: Disable when already deleting
+                      className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Delete account"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {isDeleting ? ( // NEW: Show loader when deleting
+                        <Loader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
