@@ -197,16 +197,16 @@ export default function Accounts() {
     reset()
   }
 
-  const handleEditAccount = (account: Account) => {
-    setEditingAccount(account)
-    reset({
-      name: account.name,
-      type: account.type,
-      balance: account.balance,
-      color: account.color
-    })
-    setShowModal(true)
-  }
+  // const handleEditAccount = (account: Account) => {
+  //   setEditingAccount(account)
+  //   reset({
+  //     name: account.name,
+  //     type: account.type,
+  //     balance: account.balance,
+  //     color: account.color
+  //   })
+  //   setShowModal(true)
+  // }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -331,14 +331,14 @@ export default function Accounts() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button
+                    {/* <button
                       onClick={() => handleEditAccount(account)}
                       disabled={isDeleting} // NEW: Disable when deleting
                       className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Edit account"
                     >
                       <Edit2 className="w-4 h-4" />
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => deleteAccount(account.id)}
                       disabled={isDeleting} // NEW: Disable when already deleting
