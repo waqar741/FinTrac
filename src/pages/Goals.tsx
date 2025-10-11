@@ -1124,7 +1124,7 @@ export default function Goals() {
                 {!canDelete && (
                   <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-xs text-yellow-700 text-center">
-                      Complete this goal or withdraw money to delete
+                      Complete this goal or Edit this current Percentage
                     </p>
                   </div>
                 )}
