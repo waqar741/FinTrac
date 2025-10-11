@@ -1080,13 +1080,13 @@ export default function Accounts() {
                   </p>
                 </div>
 
-                {isDefaultAccount && (
+                {/* {isDefaultAccount && (
                   <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
                       This is your default account. It cannot be deleted.
                     </p>
                   </div>
-                )}
+                )} */}
               </div>
             )
           })
