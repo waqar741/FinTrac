@@ -2,7 +2,7 @@
 // import { useAuth } from '../contexts/AuthContext'
 // import { supabase } from '../lib/supabase'
 // import { useForm } from 'react-hook-form'
-// import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock } from 'lucide-react'
+// import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock, Loader } from 'lucide-react'
 // import { format, subMonths, isBefore } from 'date-fns'
 // import * as XLSX from 'xlsx'
 // import jsPDF from 'jspdf'
@@ -64,6 +64,7 @@
 //   const [filterAccount, setFilterAccount] = useState<string>('all')
 //   const [dateFrom, setDateFrom] = useState('')
 //   const [dateTo, setDateTo] = useState('')
+//   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null) // NEW: Track deleting state
 
 //   const {
 //     register,
@@ -206,12 +207,21 @@
 //   }
 
 //   const deleteTransaction = async (transaction: Transaction) => {
+//     // Prevent multiple clicks
+//     if (deletingTransactionId === transaction.id) {
+//       return; // Already deleting this transaction
+//     }
+
 //     if (!confirm('Are you sure you want to delete this transaction?')) return
 
 //     try {
+//       // Set deleting state to prevent multiple clicks
+//       setDeletingTransactionId(transaction.id);
+
 //       // Check if deletion is allowed
 //       if (isTransactionOld(transaction.created_at)) {
 //         alert('Cannot delete transactions older than 1 month')
+//         setDeletingTransactionId(null); // Reset deleting state
 //         return
 //       }
 
@@ -284,6 +294,9 @@
 //     } catch (error: any) {
 //       console.error('Error deleting transaction:', error);
 //       alert(`Error deleting transaction: ${error.message}`);
+//     } finally {
+//       // Always reset deleting state, whether success or error
+//       setDeletingTransactionId(null);
 //     }
 //   }
 
@@ -330,124 +343,120 @@
 //     XLSX.writeFile(wb, `FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
 //   }
 
-// // Assuming 'filteredTransactions' is available in the scope.
-// // Example transaction structure: { type: 'income' | 'expense', amount: number, created_at: string, description?: string }
+//   const exportToPDF = () => {
+//     let totalIncome = 0;
+//     let totalExpense = 0;
 
-// const exportToPDF = () => {
-//   let totalIncome = 0;
-//   let totalExpense = 0;
-
-//   filteredTransactions.forEach((t) => {
-//     if (t.type === 'income') {
-//       totalIncome += Number(t.amount);
-//     } else if (t.type === 'expense') {
-//       totalExpense += Number(t.amount);
-//     }
-//   });
-
-//   const balance = totalIncome - totalExpense;
-//   const pdf = new jsPDF();
-//   const pageWidth = pdf.internal.pageSize.getWidth();
-//   const pageHeight = pdf.internal.pageSize.getHeight();
-
-//   let currentPage = 1;
-//   const transactionPages = Math.ceil(filteredTransactions.length / 15);
-//   const totalPages = filteredTransactions.length > 0 ? transactionPages + 1 : 1;
-
-//   const addHeader = (pageNum: number, totalPages: number) => {
-//     pdf.setFontSize(18);
-//     pdf.setFont('helvetica', 'bold');
-//     pdf.text('FinTrac Report', pageWidth / 2, 20, { align: 'center' });
-
-//     pdf.setFontSize(10);
-//     pdf.setFont('helvetica', 'normal');
-//     pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 35);
-//     pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 42);
-//     pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 30, 35);
-//   };
-
-//   const addTableHeader = (yPos: number) => {
-//     pdf.setFontSize(10);
-//     pdf.setFont('helvetica', 'bold');
-//     pdf.text('Date', 20, yPos);
-//     pdf.text('Description', 50, yPos);
-//     pdf.text('Amount (INR)', 140, yPos); // Corrected header
-//     pdf.text('Type', 170, yPos);
-    
-//     yPos += 2;
-//     pdf.setLineWidth(0.2);
-//     pdf.line(20, yPos, pageWidth - 20, yPos);
-//     return yPos + 10;
-//   };
-
-//   let yPos = 60;
-
-//   // --- Transaction Pages ---
-//   if (filteredTransactions.length > 0) {
-//     addHeader(currentPage, totalPages);
-//     yPos = addTableHeader(yPos);
-
-//     filteredTransactions.forEach((t, index) => {
-//       if (yPos > pageHeight - 30 && index < filteredTransactions.length - 1) {
-//         pdf.addPage();
-//         currentPage++;
-//         yPos = 40;
-//         addHeader(currentPage, totalPages);
-//         yPos = addTableHeader(yPos);
+//     filteredTransactions.forEach((t) => {
+//       if (t.type === 'income') {
+//         totalIncome += Number(t.amount);
+//       } else if (t.type === 'expense') {
+//         totalExpense += Number(t.amount);
 //       }
-
-//       pdf.setFontSize(9);
-//       pdf.setFont('helvetica', 'normal');
-      
-//       pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
-      
-//       let description = t.description || 'No description';
-//       if (description.length > 35) {
-//         description = description.substring(0, 32) + '...';
-//       }
-//       pdf.text(description, 50, yPos);
-      
-//       pdf.text(t.amount.toFixed(2), 140, yPos);
-      
-//       pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
-      
-//       yPos += 7;
 //     });
-//   }
 
-//   // --- Summary Page ---
-//   if (filteredTransactions.length > 0) {
-//     pdf.addPage();
-//     currentPage++;
-//   }
-  
-//   addHeader(currentPage, totalPages);
-//   yPos = 60;
+//     const balance = totalIncome - totalExpense;
+//     const pdf = new jsPDF();
+//     const pageWidth = pdf.internal.pageSize.getWidth();
+//     const pageHeight = pdf.internal.pageSize.getHeight();
 
-//   pdf.setFontSize(16);
-//   pdf.setFont('helvetica', 'bold');
-//   pdf.text('SUMMARY', pageWidth / 2, yPos, { align: 'center' });
-//   yPos += 20;
+//     let currentPage = 1;
+//     const transactionPages = Math.ceil(filteredTransactions.length / 15);
+//     const totalPages = filteredTransactions.length > 0 ? transactionPages + 1 : 1;
 
-//   pdf.setLineWidth(0.5);
-//   pdf.line(20, yPos, pageWidth - 20, yPos);
-//   yPos += 15;
+//     const addHeader = (pageNum: number, totalPages: number) => {
+//       pdf.setFontSize(18);
+//       pdf.setFont('helvetica', 'bold');
+//       pdf.text('FinTrac Report', pageWidth / 2, 20, { align: 'center' });
 
-//   pdf.setFontSize(12);
-//   pdf.setFont('helvetica', 'bold');
-//   pdf.text('Summary:', 30, yPos);
-//   yPos += 12;
-  
-//   pdf.setFont('helvetica', 'normal');
-//   // Corrected summary text
-//   pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
-//   yPos += 10;
-//   pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)}`, 30, yPos);
-//   yPos += 10;
-//   pdf.text(`Balance: INR ${balance.toFixed(2)}`, 30, yPos);
+//       pdf.setFontSize(10);
+//       pdf.setFont('helvetica', 'normal');
+//       pdf.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd')}`, 20, 35);
+//       pdf.text(`Total Transactions: ${filteredTransactions.length}`, 20, 42);
+//       pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 30, 35);
+//     };
 
-//   pdf.save(`FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-// };
+//     const addTableHeader = (yPos: number) => {
+//       pdf.setFontSize(10);
+//       pdf.setFont('helvetica', 'bold');
+//       pdf.text('Date', 20, yPos);
+//       pdf.text('Description', 50, yPos);
+//       pdf.text('Amount (INR)', 140, yPos);
+//       pdf.text('Type', 170, yPos);
+      
+//       yPos += 2;
+//       pdf.setLineWidth(0.2);
+//       pdf.line(20, yPos, pageWidth - 20, yPos);
+//       return yPos + 10;
+//     };
+
+//     let yPos = 60;
+
+//     // --- Transaction Pages ---
+//     if (filteredTransactions.length > 0) {
+//       addHeader(currentPage, totalPages);
+//       yPos = addTableHeader(yPos);
+
+//       filteredTransactions.forEach((t, index) => {
+//         if (yPos > pageHeight - 30 && index < filteredTransactions.length - 1) {
+//           pdf.addPage();
+//           currentPage++;
+//           yPos = 40;
+//           addHeader(currentPage, totalPages);
+//           yPos = addTableHeader(yPos);
+//         }
+
+//         pdf.setFontSize(9);
+//         pdf.setFont('helvetica', 'normal');
+        
+//         pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
+        
+//         let description = t.description || 'No description';
+//         if (description.length > 35) {
+//           description = description.substring(0, 32) + '...';
+//         }
+//         pdf.text(description, 50, yPos);
+        
+//         pdf.text(t.amount.toFixed(2), 140, yPos);
+        
+//         pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
+        
+//         yPos += 7;
+//       });
+//     }
+
+//     // --- Summary Page ---
+//     if (filteredTransactions.length > 0) {
+//       pdf.addPage();
+//       currentPage++;
+//     }
+    
+//     addHeader(currentPage, totalPages);
+//     yPos = 60;
+
+//     pdf.setFontSize(16);
+//     pdf.setFont('helvetica', 'bold');
+//     pdf.text('SUMMARY', pageWidth / 2, yPos, { align: 'center' });
+//     yPos += 20;
+
+//     pdf.setLineWidth(0.5);
+//     pdf.line(20, yPos, pageWidth - 20, yPos);
+//     yPos += 15;
+
+//     pdf.setFontSize(12);
+//     pdf.setFont('helvetica', 'bold');
+//     pdf.text('Summary:', 30, yPos);
+//     yPos += 12;
+    
+//     pdf.setFont('helvetica', 'normal');
+//     pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
+//     yPos += 10;
+//     pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)}`, 30, yPos);
+//     yPos += 10;
+//     pdf.text(`Balance: INR ${balance.toFixed(2)}`, 30, yPos);
+
+//     pdf.save(`FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+//   };
 
 //   const formatCurrency = (amount: number) => {
 //     return new Intl.NumberFormat('en-IN', {
@@ -594,6 +603,7 @@
 //               const isOld = isTransactionOld(transaction.created_at)
 //               const isGoalTransaction = !!transaction.goal_id
 //               const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
+//               const isDeleting = deletingTransactionId === transaction.id // NEW: Check if this transaction is being deleted
               
 //                return (
 //                  <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -631,7 +641,7 @@
 //                       <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
 //                          <button
 //                            onClick={() => handleEditTransaction(transaction)}
-//                           disabled={isOld}
+//                           disabled={isOld || isDeleting} // NEW: Disable when deleting
 //                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
 //                           title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
 //                          >
@@ -639,11 +649,15 @@
 //                          </button>
 //                          <button
 //                           onClick={() => deleteTransaction(transaction)}
-//                            disabled={isOld}
+//                            disabled={isOld || isDeleting} // NEW: Disable when already deleting
 //                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
 //                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
 //                          >
-//                            <Trash2 className="w-4 h-4" />
+//                            {isDeleting ? ( // NEW: Show loader when deleting
+//                              <Loader className="w-4 h-4 animate-spin" />
+//                            ) : (
+//                              <Trash2 className="w-4 h-4" />
+//                            )}
 //                          </button>
 //                        </div>
 //                      </div>
@@ -720,21 +734,25 @@
 //                       </div>
                       
 //                       <div className="flex items-center space-x-2">
-//                          <button
+//                          {/* <button
 //                            onClick={() => handleEditTransaction(transaction)}
-//                            disabled={isOld}
+//                            disabled={isOld || isDeleting} // NEW: Disable when deleting
 //                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
 //                            title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
 //                          >
 //                            <Edit2 className="w-4 h-4" />
-//                          </button>
+//                          </button> */}
 //                          <button
 //                            onClick={() => deleteTransaction(transaction)}
-//                            disabled={isOld}
+//                            disabled={isOld || isDeleting} // NEW: Disable when already deleting
 //                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
 //                            title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
 //                          >
-//                            <Trash2 className="w-4 h-4" />
+//                            {isDeleting ? ( // NEW: Show loader when deleting
+//                              <Loader className="w-4 h-4 animate-spin" />
+//                            ) : (
+//                              <Trash2 className="w-4 h-4" />
+//                            )}
 //                          </button>
 //                        </div>
 //                      </div>
@@ -933,8 +951,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, CreditCard as Edit2, Trash2, X, Search, Download, Clock, Loader } from 'lucide-react'
-import { format, subMonths, isBefore } from 'date-fns'
+import { Plus, Trash2, X, Search, Download, FileText ,Clock, Loader } from 'lucide-react'
+import { format, subDays, isBefore } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 
@@ -995,7 +1013,7 @@ export default function Transactions() {
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null) // NEW: Track deleting state
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
 
   const {
     register,
@@ -1058,11 +1076,11 @@ export default function Transactions() {
     }
   }
 
-  // Check if transaction is older than 1 month
+  // Check if transaction is older than 7 days
   const isTransactionOld = (transactionDate: string) => {
-    const oneMonthAgo = subMonths(new Date(), 1)
+    const sevenDaysAgo = subDays(new Date(), 7)
     const transactionDateObj = new Date(transactionDate)
-    return isBefore(transactionDateObj, oneMonthAgo)
+    return isBefore(transactionDateObj, sevenDaysAgo)
   }
 
   const onSubmit = async (data: TransactionForm) => {
@@ -1070,7 +1088,7 @@ export default function Transactions() {
       if (editingTransaction) {
         // Check if editing is allowed
         if (isTransactionOld(editingTransaction.created_at)) {
-          setError('root', { message: 'Cannot edit transactions older than 1 month' })
+          setError('root', { message: 'Cannot edit transactions older than 7 days' })
           return
         }
 
@@ -1151,7 +1169,7 @@ export default function Transactions() {
 
       // Check if deletion is allowed
       if (isTransactionOld(transaction.created_at)) {
-        alert('Cannot delete transactions older than 1 month')
+        alert('Cannot delete transactions older than 7 days')
         setDeletingTransactionId(null); // Reset deleting state
         return
       }
@@ -1240,7 +1258,7 @@ export default function Transactions() {
   const handleEditTransaction = (transaction: Transaction) => {
     // Check if editing is allowed
     if (isTransactionOld(transaction.created_at)) {
-      alert('Cannot edit transactions older than 1 month')
+      alert('Cannot edit transactions older than 7 days')
       return
     }
 
@@ -1431,90 +1449,165 @@ export default function Transactions() {
   
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Track your income and expenses</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mt-4 sm:mt-0"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Transaction
-        </button>
-      </div>
+ {/* Header */}
+<div className="flex items-center justify-between">
+  <div>
+    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+    {/* <p className="text-gray-600 dark:text-gray-400 mt-1">Income & Expenses</p> */}
+  </div>
+  <button
+    onClick={() => setShowModal(true)}
+    className="flex items-center px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+  >
+    <Plus className="w-4 h-4 mr-2" />
+    Add Transaction
+  </button>
+</div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search transactions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
+{/* Filters */}
+<div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+  {/* Mobile View */}
+  <div className="block sm:hidden space-y-4">
+    {/* Search Input */}
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+      <input
+        type="text"
+        placeholder="Search transactions..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+    </div>
 
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
+    <select
+      value={filterType}
+      onChange={(e) => setFilterType(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+    >
+      <option value="all">All Types</option>
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+    </select>
 
-          <select
-            value={filterAccount}
-            onChange={(e) => setFilterAccount(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">All Accounts</option>
-            {accounts.map(account => (
-              <option key={account.id} value={account.id}>{account.name}</option>
-            ))}
-          </select>
+    <select
+      value={filterAccount}
+      onChange={(e) => setFilterAccount(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+    >
+      <option value="all">All Accounts</option>
+      {accounts.map(account => (
+        <option key={account.id} value={account.id}>{account.name}</option>
+      ))}
+    </select>
 
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="From date"
-          />
+    {/* Date Inputs */}
+    <div className="grid grid-cols-2 gap-3">
+      <input
+        type="date"
+        value={dateFrom}
+        onChange={(e) => setDateFrom(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        placeholder="dd-mm-yyyy"
+      />
+      <input
+        type="date"
+        value={dateTo}
+        onChange={(e) => setDateTo(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        placeholder="dd-mm-yyyy"
+      />
+    </div>
 
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="To date"
-          />
-        </div>
+    {/* Export Buttons */}
+    <div className="flex gap-2">
+      <button
+        onClick={exportToExcel}
+        className="flex items-center justify-center flex-1 px-3 py-2 text-sm bg-green-100 text-green-700 border border-green-200 rounded-lg hover:bg-green-200 transition-colors"
+      >
+        <Download className="w-4 h-4 mr-1" />
+        Excel
+      </button>
+      <button
+        onClick={exportToPDF}
+        className="flex items-center justify-center flex-1 px-3 py-2 text-sm bg-red-100 text-red-700 border border-red-200 rounded-lg hover:bg-red-200 transition-colors"
+      >
+        <FileText className="w-4 h-4 mr-1" />
+        PDF
+      </button>
+    </div>
+  </div>
 
-        <div className="flex items-center space-x-2 mt-4">
-          <button
-            onClick={exportToExcel}
-            className="flex items-center px-3 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            Excel
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="flex items-center px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            PDF
-          </button>
-        </div>
-      </div>
+  {/* Desktop View */}
+  <div className="hidden sm:flex flex-wrap items-center gap-4">
+    {/* Search Input */}
+    <div className="relative flex-1 min-w-[200px]">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+      <input
+        type="text"
+        placeholder="Search transactions..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+    </div>
+
+    <select
+      value={filterType}
+      onChange={(e) => setFilterType(e.target.value)}
+      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[120px]"
+    >
+      <option value="all">All Types</option>
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+    </select>
+
+    <select
+      value={filterAccount}
+      onChange={(e) => setFilterAccount(e.target.value)}
+      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[120px]"
+    >
+      <option value="all">All Accounts</option>
+      {accounts.map(account => (
+        <option key={account.id} value={account.id}>{account.name}</option>
+      ))}
+    </select>
+
+    <input
+      type="date"
+      value={dateFrom}
+      onChange={(e) => setDateFrom(e.target.value)}
+      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+      placeholder="dd-mm-yyyy"
+    />
+
+    <input
+      type="date"
+      value={dateTo}
+      onChange={(e) => setDateTo(e.target.value)}
+      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+      placeholder="dd-mm-yyyy"
+    />
+
+    {/* Export Buttons */}
+    <div className="flex items-center gap-2">
+      <button
+        onClick={exportToExcel}
+        className="flex items-center px-3 py-2 text-sm bg-green-100 text-green-700 border border-green-200 rounded-lg hover:bg-green-200 transition-colors"
+      >
+        <Download className="w-4 h-4 mr-1" />
+        Excel
+      </button>
+      <button
+        onClick={exportToPDF}
+        className="flex items-center px-3 py-2 text-sm bg-red-100 text-red-700 border border-red-200 rounded-lg hover:bg-red-200 transition-colors"
+      >
+        <FileText className="w-4 h-4 mr-1" />
+        PDF
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* Transactions List */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -1534,7 +1627,7 @@ export default function Transactions() {
               const isOld = isTransactionOld(transaction.created_at)
               const isGoalTransaction = !!transaction.goal_id
               const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
-              const isDeleting = deletingTransactionId === transaction.id // NEW: Check if this transaction is being deleted
+              const isDeleting = deletingTransactionId === transaction.id
               
                return (
                  <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -1571,20 +1664,12 @@ export default function Transactions() {
                        
                       <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
                          <button
-                           onClick={() => handleEditTransaction(transaction)}
-                          disabled={isOld || isDeleting} // NEW: Disable when deleting
-                           className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                          title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
-                         >
-                           <Edit2 className="w-4 h-4" />
-                         </button>
-                         <button
                           onClick={() => deleteTransaction(transaction)}
-                           disabled={isOld || isDeleting} // NEW: Disable when already deleting
+                           disabled={isOld || isDeleting}
                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                           title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+                           title={isOld ? "Cannot delete transactions older than 7 days" : "Delete transaction"}
                          >
-                           {isDeleting ? ( // NEW: Show loader when deleting
+                           {isDeleting ? (
                              <Loader className="w-4 h-4 animate-spin" />
                            ) : (
                              <Trash2 className="w-4 h-4" />
@@ -1666,20 +1751,12 @@ export default function Transactions() {
                       
                       <div className="flex items-center space-x-2">
                          <button
-                           onClick={() => handleEditTransaction(transaction)}
-                           disabled={isOld || isDeleting} // NEW: Disable when deleting
-                           className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                           title={isOld ? "Cannot edit transactions older than 1 month" : "Edit transaction"}
-                         >
-                           <Edit2 className="w-4 h-4" />
-                         </button>
-                         <button
                            onClick={() => deleteTransaction(transaction)}
-                           disabled={isOld || isDeleting} // NEW: Disable when already deleting
+                           disabled={isOld || isDeleting}
                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                           title={isOld ? "Cannot delete transactions older than 1 month" : "Delete transaction"}
+                           title={isOld ? "Cannot delete transactions older than 7 days" : "Delete transaction"}
                          >
-                           {isDeleting ? ( // NEW: Show loader when deleting
+                           {isDeleting ? (
                              <Loader className="w-4 h-4 animate-spin" />
                            ) : (
                              <Trash2 className="w-4 h-4" />

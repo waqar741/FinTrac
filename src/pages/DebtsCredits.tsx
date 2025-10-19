@@ -2,7 +2,7 @@
 // import { useAuth } from '../contexts/AuthContext'
 // import { supabase } from '../lib/supabase'
 // import { useForm } from 'react-hook-form'
-// import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
+// import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet } from 'lucide-react'
 // import { format } from 'date-fns'
 
 // interface DebtCredit {
@@ -15,6 +15,14 @@
 //   is_settled: boolean
 //   created_at: string
 //   settlement_transaction_id: string | null
+//   settlement_account_id: string | null
+// }
+
+// interface Account {
+//   id: string
+//   name: string
+//   balance: number
+//   is_active: boolean
 // }
 
 // interface DebtCreditForm {
@@ -28,13 +36,15 @@
 // export default function DebtsCredits() {
 //   const { user } = useAuth()
 //   const [debtsCredits, setDebtsCredits] = useState<DebtCredit[]>([])
+//   const [accounts, setAccounts] = useState<Account[]>([])
 //   const [loading, setLoading] = useState(true)
 //   const [showModal, setShowModal] = useState(false)
 //   const [editingItem, setEditingItem] = useState<DebtCredit | null>(null)
 //   const [duplicateMessage, setDuplicateMessage] = useState('')
 //   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
+//   const [showAccountSelection, setShowAccountSelection] = useState(false)
+//   const [pendingSettlementItem, setPendingSettlementItem] = useState<DebtCredit | null>(null)
   
-//   // ✨ FIX: Add a state to track form submission status
 //   const [isSubmitting, setIsSubmitting] = useState(false)
 
 //   const {
@@ -43,7 +53,10 @@
 //     reset,
 //     formState: { errors },
 //     setError,
+//     watch
 //   } = useForm<DebtCreditForm>()
+
+//   const watchType = watch('type', 'debt')
 
 //   // Get today's date in YYYY-MM-DD format for the min attribute
 //   const today = new Date().toISOString().split('T')[0]
@@ -51,6 +64,7 @@
 //   useEffect(() => {
 //     if (user) {
 //       fetchDebtsCredits()
+//       fetchAccounts()
 //     }
 //   }, [user])
 
@@ -71,8 +85,23 @@
 //     }
 //   }
 
+//   const fetchAccounts = async () => {
+//     try {
+//       const { data, error } = await supabase
+//         .from('accounts')
+//         .select('*')
+//         .eq('user_id', user?.id)
+//         .eq('is_active', true)
+//         .order('created_at', { ascending: true })
+
+//       if (error) throw error
+//       if (data) setAccounts(data)
+//     } catch (error) {
+//       console.error('Error fetching accounts:', error)
+//     }
+//   }
+
 //   const onSubmit = async (data: DebtCreditForm) => {
-//     // ✨ FIX: Set submitting state to true to prevent multiple clicks
 //     setIsSubmitting(true)
     
 //     try {
@@ -91,7 +120,7 @@
 //       if (existingDebt && !editingItem) {
 //         setDuplicateMessage('This transaction already exists and has not been added again.')
 //         setTimeout(() => setDuplicateMessage(''), 5000)
-//         return // Exit the function
+//         return
 //       }
 
 //       if (editingItem) {
@@ -128,12 +157,35 @@
 //     } catch (error: any) {
 //       setError('root', { message: error.message })
 //     } finally {
-//         // ✨ FIX: Reset submitting state in the finally block
-//         setIsSubmitting(false)
+//       setIsSubmitting(false)
 //     }
 //   }
 
-//   const toggleSettled = async (id: string, currentStatus: boolean) => {
+//   const initiateSettlement = async (id: string, currentStatus: boolean) => {
+//     if (processingIds.has(id)) return
+
+//     const item = debtsCredits.find(dc => dc.id === id)
+//     if (!item) return
+
+//     if (currentStatus) {
+//       // If already settled, just toggle back without account selection
+//       await toggleSettled(id, currentStatus, null)
+//     } else {
+//       // If not settled, check if we need account selection
+//       if (accounts.length > 1) {
+//         // Show account selection modal
+//         setPendingSettlementItem(item)
+//         setShowAccountSelection(true)
+//       } else if (accounts.length === 1) {
+//         // Only one account, use it directly
+//         await toggleSettled(id, currentStatus, accounts[0].id)
+//       } else {
+//         alert('No active accounts found. Please create an account first.')
+//       }
+//     }
+//   }
+
+//   const toggleSettled = async (id: string, currentStatus: boolean, accountId: string | null) => {
 //     if (processingIds.has(id)) return
 //     setProcessingIds(prev => new Set(prev).add(id))
 
@@ -150,17 +202,16 @@
 
 //       if (!currentStatus) {
 //         // Marking as settled - create settlement transaction
-//         // Find user's first account (chronologically)
-//         const { data: firstAccount } = await supabase
-//           .from('accounts')
-//           .select('*')
-//           .eq('user_id', user?.id)
-//           .eq('is_active', true)
-//           .order('created_at', { ascending: true })
-//           .limit(1)
-//           .single()
+//         let settlementAccount: Account | null = null
 
-//         if (!firstAccount) {
+//         if (accountId) {
+//           settlementAccount = accounts.find(acc => acc.id === accountId) || null
+//         } else {
+//           // Fallback to first account
+//           settlementAccount = accounts[0] || null
+//         }
+
+//         if (!settlementAccount) {
 //           alert('No account found. Please create an account first.')
 //           return
 //         }
@@ -170,11 +221,12 @@
 //           ? `Received payment from ${item.person_name}: ${item.description}`
 //           : `Paid ${item.person_name}: ${item.description}`
 
+//         // Create settlement transaction - REMOVED date field
 //         const { data: newTransaction, error: txError } = await supabase
 //           .from('transactions')
 //           .insert({
 //             user_id: user?.id,
-//             account_id: firstAccount.id,
+//             account_id: settlementAccount.id,
 //             amount: item.amount,
 //             type: transactionType,
 //             description: description,
@@ -187,36 +239,61 @@
 
 //         // Update account balance
 //         const balanceChange = item.type === 'credit' ? item.amount : -item.amount
-//         const newBalance = firstAccount.balance + balanceChange
+//         const newBalance = settlementAccount.balance + balanceChange
         
-//         await supabase
+//         const { error: balanceError } = await supabase
 //           .from('accounts')
 //           .update({ 
 //             balance: newBalance
 //           })
-//           .eq('id', firstAccount.id)
+//           .eq('id', settlementAccount.id)
+
+//         if (balanceError) throw balanceError
 
 //         // Update debt/credit with settlement info
-//         await supabase
+//         const { error: updateError } = await supabase
 //           .from('debts_credits')
 //           .update({ 
 //             is_settled: true,
 //             settlement_transaction_id: newTransaction.id,
-//             settlement_account_id: firstAccount.id
+//             settlement_account_id: settlementAccount.id
 //           })
 //           .eq('id', id)
+
+//         if (updateError) throw updateError
+
 //       } else {
 //         // Marking as unsettled - remove settlement transaction
 //         if (item.settlement_transaction_id) {
+//           // Get the settlement account to reverse the balance
+//           const settlementAccount = accounts.find(acc => acc.id === item.settlement_account_id)
+          
+//           if (settlementAccount) {
+//             // Reverse the balance change
+//             const balanceChange = item.type === 'credit' ? -item.amount : item.amount
+//             const newBalance = settlementAccount.balance + balanceChange
+            
+//             const { error: balanceError } = await supabase
+//               .from('accounts')
+//               .update({ 
+//                 balance: newBalance
+//               })
+//               .eq('id', settlementAccount.id)
+
+//             if (balanceError) throw balanceError
+//           }
+
 //           // Delete the settlement transaction
-//           await supabase
+//           const { error: deleteError } = await supabase
 //             .from('transactions')
 //             .delete()
 //             .eq('id', item.settlement_transaction_id)
+
+//           if (deleteError) throw deleteError
 //         }
         
 //         // Update debt/credit status
-//         await supabase
+//         const { error: updateError } = await supabase
 //           .from('debts_credits')
 //           .update({ 
 //             is_settled: false,
@@ -224,11 +301,15 @@
 //             settlement_account_id: null
 //           })
 //           .eq('id', id)
+
+//         if (updateError) throw updateError
 //       }
 
 //       await fetchDebtsCredits()
-//     } catch (error) {
+//       await fetchAccounts() // Refresh accounts to get updated balances
+//     } catch (error: any) {
 //       console.error('Error updating settlement status:', error)
+//       alert(`Error: ${error.message || 'Failed to update settlement status'}`)
 //     } finally {
 //       setProcessingIds(prev => {
 //         const next = new Set(prev)
@@ -236,6 +317,14 @@
 //         return next
 //       })
 //     }
+//   }
+
+//   const handleAccountSelection = async (accountId: string) => {
+//     if (pendingSettlementItem) {
+//       await toggleSettled(pendingSettlementItem.id, pendingSettlementItem.is_settled, accountId)
+//     }
+//     setShowAccountSelection(false)
+//     setPendingSettlementItem(null)
 //   }
 
 //   const deleteItem = async (id: string) => {
@@ -324,131 +413,190 @@
 
 //   return (
 //     <div className="p-6 space-y-6">
-//       {/* Header */}
-//       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-//         <div>
-//           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
-//           <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p>
-//         </div>
-//         <button
-//           onClick={() => setShowModal(true)}
-//           className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mt-4 sm:mt-0"
-//         >
-//           <Plus className="w-4 h-4 mr-2" />
-//           Add Entry
-//         </button>
+//   {/* Header - Updated for mobile */}
+//   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+//     <div className="flex items-center justify-between w-full sm:w-auto">
+//       <div>
+//         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
+//         {/* <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p> */}
 //       </div>
+//       <button
+//         onClick={() => setShowModal(true)}
+//         className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors sm:hidden ml-4"
+//       >
+//         <Plus className="w-4 h-4 mr-2" />
+//         Add Entry
+//       </button>
+//     </div>
+//     <button
+//       onClick={() => setShowModal(true)}
+//       className="hidden sm:flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+//     >
+//       <Plus className="w-4 h-4 mr-2" />
+//       Add Entry
+//     </button>
+//   </div>
 
-//       {/* Summary Cards */}
-//       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-//         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <p className="text-gray-600 dark:text-gray-300 text-sm">You Owe</p>
-//               <p className="text-2xl font-bold text-red-600 mt-1">
-//                 {formatCurrency(totalDebt)}
-//               </p>
-//               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{debts.length} people</p>
-//             </div>
-//             <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
-//               <DollarSign className="w-6 h-6 text-red-600" />
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <p className="text-gray-600 dark:text-gray-300 text-sm">Others Owe You</p>
-//               <p className="text-2xl font-bold text-green-600 mt-1">
-//                 {formatCurrency(totalCredit)}
-//               </p>
-//               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{credits.length} people</p>
-//             </div>
-//             <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-//               <DollarSign className="w-6 h-6 text-green-600" />
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <p className="text-gray-600 dark:text-gray-300 text-sm">Net Balance</p>
-//               <p className={`text-2xl font-bold mt-1 ${
-//                 totalCredit - totalDebt >= 0 ? 'text-green-600' : 'text-red-600'
-//               }`}>
-//                 {formatCurrency(totalCredit - totalDebt)}
-//               </p>
-//               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-//                 {totalCredit >= totalDebt ? 'In your favor' : 'You owe more'}
-//               </p>
-//             </div>
-//             <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
-//               <User className="w-6 h-6 text-blue-600" />
-//             </div>
-//           </div>
+//   {/* Summary Cards - Updated for single line layout */}
+//   <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+//     <div className="grid grid-cols-3 gap-4 sm:gap-6">
+//       {/* You Owe */}
+//       <div className="text-center">
+//         <div className="flex flex-col items-center">
+//           <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">You Owe</p>
+//           <p className="text-xl sm:text-2xl font-bold text-red-600 mt-2">
+//             {formatCurrency(totalDebt)}
+//           </p>
+//           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{debts.length} people</p>
 //         </div>
 //       </div>
 
-//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//         {/* You Owe (Debts) */}
-//         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-//           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">You Owe</h2>
-//           <div className="space-y-3">
-//             {debts.length === 0 ? (
-//               <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding debts</p>
-//             ) : (
-//               debts.map((debt) => (
-//                 <div key={debt.id} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
-//                   <div className="flex items-center justify-between mb-2">
-//                     <h3 className="font-medium text-gray-900 dark:text-white">{debt.person_name}</h3>
-//                     <span className="text-lg font-bold text-red-600">{formatCurrency(debt.amount)}</span>
-//                   </div>
-//                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{debt.description}</p>
-//                   {debt.due_date && (
-//                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-//                       Due: {format(new Date(debt.due_date), 'MMM d, yyyy')}
-//                     </p>
+//       {/* Others Owe You */}
+//       <div className="text-center">
+//         <div className="flex flex-col items-center">
+//           <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Others Owe You</p>
+//           <p className="text-xl sm:text-2xl font-bold text-green-600 mt-2">
+//             {formatCurrency(totalCredit)}
+//           </p>
+//           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{credits.length} people</p>
+//         </div>
+//       </div>
+
+//       {/* Net Balance */}
+//       <div className="text-center">
+//         <div className="flex flex-col items-center">
+//           <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Net Balance</p>
+//           <p className={`text-xl sm:text-2xl font-bold mt-2 ${
+//             totalCredit - totalDebt >= 0 ? 'text-green-600' : 'text-red-600'
+//           }`}>
+//             {formatCurrency(totalCredit - totalDebt)}
+//           </p>
+//           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+//             {totalCredit >= totalDebt ? 'In your favor' : 'You owe more'}
+//           </p>
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+
+//   {/* Rest of your existing code remains the same... */}
+//   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//     {/* You Owe (Debts) */}
+//     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+//       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">You Owe</h2>
+//       <div className="space-y-3">
+//         {debts.length === 0 ? (
+//           <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding debts</p>
+//         ) : (
+//           debts.map((debt) => (
+//             <div key={debt.id} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
+//               <div className="flex items-center justify-between mb-2">
+//                 <h3 className="font-medium text-gray-900 dark:text-white">{debt.person_name}</h3>
+//                 <span className="text-lg font-bold text-red-600">{formatCurrency(debt.amount)}</span>
+//               </div>
+//               <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{debt.description}</p>
+//               {debt.due_date && (
+//                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+//                   Due: {format(new Date(debt.due_date), 'MMM d, yyyy')}
+//                 </p>
+//               )}
+//               <div className="flex items-center space-x-2">
+//                 <button
+//                   onClick={() => initiateSettlement(debt.id, debt.is_settled)}
+//                   disabled={processingIds.has(debt.id)}
+//                   className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   {debt.is_settled ? (
+//                     <>
+//                       <ToggleRight className="w-3 h-3 mr-1" />
+//                       Settled
+//                     </>
+//                   ) : (
+//                     <>
+//                       <ToggleLeft className="w-3 h-3 mr-1" />
+//                       {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
+//                     </>
 //                   )}
-//                   <div className="flex items-center space-x-2">
-//                     <button
-//                       onClick={() => toggleSettled(debt.id, debt.is_settled)}
-//                       disabled={processingIds.has(debt.id)}
-//                       className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-//                     >
-//                       {debt.is_settled ? (
-//                         <>
-//                           <ToggleRight className="w-3 h-3 mr-1" />
-//                           Settled
-//                         </>
-//                       ) : (
-//                         <>
-//                           <ToggleLeft className="w-3 h-3 mr-1" />
-//                           {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
-//                         </>
-//                       )}
-//                     </button>
-//                     <button
-//                       onClick={() => handleEditItem(debt)}
-//                       disabled={processingIds.has(debt.id)}
-//                       className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-//                     >
-//                       Edit
-//                     </button>
-//                     <button
-//                       onClick={() => deleteItem(debt.id)}
-//                       disabled={processingIds.has(debt.id)}
-//                       className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-//                     >
-//                       Delete
-//                     </button>
-//                   </div>
-//                 </div>
-//               ))
-//             )}
-//           </div>
-//         </div>
+//                 </button>
+//                 <button
+//                   onClick={() => handleEditItem(debt)}
+//                   disabled={processingIds.has(debt.id)}
+//                   className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   Edit
+//                 </button>
+//                 <button
+//                   onClick={() => deleteItem(debt.id)}
+//                   disabled={processingIds.has(debt.id)}
+//                   className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   Delete
+//                 </button>
+//               </div>
+//             </div>
+//           ))
+//         )}
+//       </div>
+//     </div>
+
+//     {/* Others Owe You (Credits) */}
+//     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+//       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Others Owe You</h2>
+//       <div className="space-y-3">
+//         {credits.length === 0 ? (
+//           <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding credits</p>
+//         ) : (
+//           credits.map((credit) => (
+//             <div key={credit.id} className="p-4 border border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/10">
+//               <div className="flex items-center justify-between mb-2">
+//                 <h3 className="font-medium text-gray-900 dark:text-white">{credit.person_name}</h3>
+//                 <span className="text-lg font-bold text-green-600">{formatCurrency(credit.amount)}</span>
+//               </div>
+//               <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{credit.description}</p>
+//               {credit.due_date && (
+//                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+//                   Due: {format(new Date(credit.due_date), 'MMM d, yyyy')}
+//                 </p>
+//               )}
+//               <div className="flex items-center space-x-2">
+//                 <button
+//                   onClick={() => initiateSettlement(credit.id, credit.is_settled)}
+//                   disabled={processingIds.has(credit.id)}
+//                   className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   {credit.is_settled ? (
+//                     <>
+//                       <ToggleRight className="w-3 h-3 mr-1" />
+//                       Settled
+//                     </>
+//                   ) : (
+//                     <>
+//                       <ToggleLeft className="w-3 h-3 mr-1" />
+//                       {processingIds.has(credit.id) ? 'Processing...' : 'Mark Received'}
+//                     </>
+//                   )}
+//                 </button>
+//                 <button
+//                   onClick={() => handleEditItem(credit)}
+//                   disabled={processingIds.has(credit.id)}
+//                   className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   Edit
+//                 </button>
+//                 <button
+//                   onClick={() => deleteItem(credit.id)}
+//                   disabled={processingIds.has(credit.id)}
+//                   className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                 >
+//                   Delete
+//                 </button>
+//               </div>
+//             </div>
+//           ))
+//         )}
+//       </div>
+//     </div>
+ 
 
 //         {/* Others Owe You (Credits) */}
 //         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -471,7 +619,7 @@
 //                   )}
 //                   <div className="flex items-center space-x-2">
 //                     <button
-//                       onClick={() => toggleSettled(credit.id, credit.is_settled)}
+//                       onClick={() => initiateSettlement(credit.id, credit.is_settled)}
 //                       disabled={processingIds.has(credit.id)}
 //                       className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 //                     >
@@ -514,33 +662,106 @@
 //         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
 //           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Settled ({settled.length})</h2>
 //           <div className="space-y-3">
-//             {settled.map((item) => (
-//               <div key={item.id} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 opacity-75">
-//                 <div className="flex items-center justify-between mb-2">
-//                   <h3 className="font-medium text-gray-900 dark:text-white">{item.person_name}</h3>
-//                   <span className="text-lg font-bold text-gray-600 dark:text-gray-300">{formatCurrency(item.amount)}</span>
+//             {settled.map((item) => {
+//               const settlementAccount = accounts.find(acc => acc.id === item.settlement_account_id)
+//               return (
+//                 <div key={item.id} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 opacity-75">
+//                   <div className="flex items-center justify-between mb-2">
+//                     <h3 className="font-medium text-gray-900 dark:text-white">{item.person_name}</h3>
+//                     <span className="text-lg font-bold text-gray-600 dark:text-gray-300">{formatCurrency(item.amount)}</span>
+//                   </div>
+//                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{item.description}</p>
+//                   {settlementAccount && (
+//                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+//                       Settled via: {settlementAccount.name}
+//                     </p>
+//                   )}
+//                   <div className="flex items-center justify-between">
+//                     <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+//                       ✓ Settled
+//                     </span>
+//                     <div className="flex space-x-2">
+//                       <button
+//                         onClick={() => deleteItem(item.id)}
+//                         disabled={processingIds.has(item.id)}
+//                         className="flex items-center px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+//                       >
+//                         <Trash2 className="w-3 h-3 mr-1" />
+//                         {processingIds.has(item.id) ? 'Removing...' : 'Remove'}
+//                       </button>
+//                     </div>
+//                   </div>
 //                 </div>
-//                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{item.description}</p>
-//                 <div className="flex items-center justify-between">
-//                   <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-//                     ✓ Settled
-//                   </span>
-//                   <button
-//                     onClick={() => deleteItem(item.id)}
-//                     disabled={processingIds.has(item.id)}
-//                     className="flex items-center px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-//                   >
-//                     <Trash2 className="w-3 h-3 mr-1" />
-//                     {processingIds.has(item.id) ? 'Removing...' : 'Remove'}
-//                   </button>
-//                 </div>
-//               </div>
-//             ))}
+//               )
+//             })}
 //           </div>
 //         </div>
 //       )}
 
-//       {/* Modal */}
+//       {/* Account Selection Modal */}
+//       {showAccountSelection && pendingSettlementItem && (
+//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+//           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+//             <div className="flex items-center justify-between mb-6">
+//               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+//                 Select Account
+//               </h2>
+//               <button
+//                 onClick={() => {
+//                   setShowAccountSelection(false)
+//                   setPendingSettlementItem(null)
+//                   setProcessingIds(prev => {
+//                     const next = new Set(prev)
+//                     next.delete(pendingSettlementItem.id)
+//                     return next
+//                   })
+//                 }}
+//                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+//               >
+//                 <X className="w-5 h-5" />
+//               </button>
+//             </div>
+
+//             <div className="space-y-4">
+//               <p className="text-gray-600 dark:text-gray-300">
+//                 {pendingSettlementItem.type === 'credit' 
+//                   ? `Select the account where you received payment from ${pendingSettlementItem.person_name}:`
+//                   : `Select the account from which you paid ${pendingSettlementItem.person_name}:`}
+//               </p>
+              
+//               <div className="space-y-3 max-h-96 overflow-y-auto">
+//                 {accounts.map((account) => (
+//                   <button
+//                     key={account.id}
+//                     onClick={() => handleAccountSelection(account.id)}
+//                     className="w-full p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+//                   >
+//                     <div className="flex items-center justify-between">
+//                       <div className="flex items-center space-x-3">
+//                         <Wallet className="w-5 h-5 text-gray-400" />
+//                         <div>
+//                           <h3 className="font-medium text-gray-900 dark:text-white">{account.name}</h3>
+//                           <p className="text-sm text-gray-500 dark:text-gray-400">
+//                             Balance: {formatCurrency(account.balance)}
+//                           </p>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   </button>
+//                 ))}
+//               </div>
+
+//               {accounts.length === 0 && (
+//                 <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+//                   No active accounts found. Please create an account first.
+//                 </p>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Add/Edit Modal */}
 //       {showModal && (
 //         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
 //           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
@@ -634,7 +855,7 @@
 //                     validate: validateDate
 //                   })}
 //                   type="date"
-//                   min={today} // This prevents selecting past dates in the date picker
+//                   min={today}
 //                   defaultValue={format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
 //                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
 //                 />
@@ -660,7 +881,6 @@
 //                 >
 //                   Cancel
 //                 </button>
-//                 {/* ✨ FIX: Disable button during submission and provide user feedback */}
 //                 <button
 //                   type="submit"
 //                   disabled={isSubmitting}
@@ -678,12 +898,6 @@
 //     </div>
 //   )
 // }
-
-
-
-
-
-
 
 
 
@@ -1114,22 +1328,22 @@ export default function DebtsCredits() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p>
+          {/* <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p> */}
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mt-4 sm:mt-0"
+          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Entry
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Desktop View - Colored Cards */}
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
@@ -1179,6 +1393,56 @@ export default function DebtsCredits() {
           </div>
         </div>
       </div>
+
+      {/* --- START: Edited Mobile-Optimized Code --- */}
+
+{/* Mobile View - Light Colored Cards Layout */}
+<div className="sm:hidden">
+  <div className="grid grid-cols-3 gap-3">
+    
+    {/* You Owe Card (Light Red) */}
+    <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-3 text-center shadow-sm border border-red-100 dark:border-red-800">
+      <div className="flex flex-col items-center">
+        <p className="font-medium text-sm text-red-700 dark:text-red-300">You Owe</p>
+        <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-2">
+          {formatCurrency(totalDebt)}
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-400 mt-1">{debts.length} people</p>
+      </div>
+    </div>
+
+    {/* Others Owe You Card (Light Green) */}
+    <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-3 text-center shadow-sm border border-green-100 dark:border-green-800">
+      <div className="flex flex-col items-center">
+        <p className="font-medium text-sm text-green-700 dark:text-green-300">Others Owe</p>
+        <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-2">
+          {formatCurrency(totalCredit)}
+        </p>
+        <p className="text-xs text-green-500 dark:text-green-400 mt-1">{credits.length} people</p>
+      </div>
+    </div>
+
+    {/* Net Balance Card (Light Blue) */}
+    <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 text-center shadow-sm border border-blue-100 dark:border-blue-800">
+      <div className="flex flex-col items-center">
+        <p className="font-medium text-sm text-blue-700 dark:text-blue-300">Net Balance</p>
+        <p className={`text-xl font-bold mt-2 ${
+            totalCredit - totalDebt >= 0 
+            ? 'text-blue-600 dark:text-blue-400' 
+            : 'text-red-600 dark:text-red-400'
+        }`}>
+          {formatCurrency(totalCredit - totalDebt)}
+        </p>
+        <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+          {totalCredit >= totalDebt ? 'In favor' : 'You owe'}
+        </p>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+{/* --- END: Edited Mobile-Optimized Code --- */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* You Owe (Debts) */}
@@ -1322,14 +1586,6 @@ export default function DebtsCredits() {
                       ✓ Settled
                     </span>
                     <div className="flex space-x-2">
-                      {/* <button
-                        onClick={() => initiateSettlement(item.id, item.is_settled)}
-                        disabled={processingIds.has(item.id)}
-                        className="flex items-center px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ToggleLeft className="w-3 h-3 mr-1" />
-                        {processingIds.has(item.id) ? 'Processing...' : 'Unsettle'}
-                      </button> */}
                       <button
                         onClick={() => deleteItem(item.id)}
                         disabled={processingIds.has(item.id)}

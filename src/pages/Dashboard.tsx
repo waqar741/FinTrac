@@ -34,6 +34,8 @@
 //   type: string
 //   balance: number
 //   color: string
+//   is_default: boolean
+//   created_at: string
 // }
 
 // interface Transaction {
@@ -239,6 +241,8 @@
 //         .select('*')
 //         .eq('user_id', userId)
 //         .eq('is_active', true)
+//         .order('is_default', { ascending: false }) // Default accounts first
+//         .order('created_at', { ascending: false }) // Then newest first
 
 //       const allTransactionsPromise = supabase
 //         .from('transactions')
@@ -274,7 +278,15 @@
 
 //       const fetchedAccountsData = accountsData || []
 //       const fetchedTransactionsData = transactionsData || []
-//       setAccounts(fetchedAccountsData)
+      
+//       // Client-side sorting as fallback
+//       const sortedAccounts = [...fetchedAccountsData].sort((a, b) => {
+//         if (a.is_default && !b.is_default) return -1
+//         if (!a.is_default && b.is_default) return 1
+//         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+//       })
+
+//       setAccounts(sortedAccounts)
 //       setAllTransactions(fetchedTransactionsData)
 //       setDebtsCredits(debtsCreditsData || [])
 //       setGoals(goalsData || [])
@@ -569,7 +581,7 @@
 //       </div>
          
 
-//      {/* Account Cards - STATIC */}
+//      {/* Account Cards - SORTED: Default first, then newest first */}
 //       <div className="space-y-6">
 //         <div className="flex items-center justify-between">
 //           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Overview</h2>
@@ -590,22 +602,36 @@
 //             {accounts.slice(0, 6).map((account) => (
 //               <div
 //                 key={account.id}
-//                 className="relative bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all"
+//                 className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border shadow-sm hover:shadow-md transition-all ${
+//                   account.is_default 
+//                     ? 'border-blue-300 dark:border-blue-700' 
+//                     : 'border-gray-200 dark:border-gray-700'
+//                 }`}
 //               >
-//                 <div 
-//                   className="absolute left w-7 h-7 rounded-full mt-5 m2-5"
-//                   style={{ backgroundColor: account.color }}
-//                 ></div>
-      
-//                 <div className="mt-2 ml-10">
-//                   <p className="text-gray-900 dark:text-white text-lg font-bold">{account.name}</p>
-//                   <p className="text-gray-500 dark:text-gray-400 text-sm capitalize">
-//                     {account.type.replace('_', ' ')} Account
-//                   </p>
+//                 {account.is_default && (
+//                   <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+//                     Default
+//                   </div>
+//                 )}
+                
+//                 <div className="flex items-center space-x-3">
+//                   <div 
+//                     className="w-8 h-8 rounded-full flex-shrink-0"
+//                     style={{ backgroundColor: account.color }}
+//                   ></div>
+                  
+//                   <div className="flex-1 min-w-0">
+//                     <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
+//                       {account.name}
+//                     </p>
+//                     <p className="text-gray-500 dark:text-gray-400 text-sm capitalize">
+//                       {account.type.replace('_', ' ')} Account
+//                     </p>
+//                   </div>
 //                 </div>
-      
+
 //                 <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
-      
+
 //                 <div className="flex items-center justify-between">
 //                   <p className="text-gray-500 dark:text-gray-400 text-sm">Available Balance</p>
 //                   <p
@@ -667,9 +693,6 @@
 //         )}
 //       </div>
 
-
-
-
 //       {/* Goals Overview - STATIC */}
 //       {goals.length > 0 && (
 //         <div className="space-y-6">
@@ -716,6 +739,7 @@
 //     </div>
 //   )
 // }
+
 
 
 
@@ -814,6 +838,7 @@ export default function Dashboard() {
     totalCredit: 0
   })
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+  const [showMobileFilterDropdown, setShowMobileFilterDropdown] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -833,11 +858,14 @@ export default function Dashboard() {
       if (showFilterDropdown && !target.closest('.filter-dropdown-container')) {
         setShowFilterDropdown(false)
       }
+      if (showMobileFilterDropdown && !target.closest('.mobile-filter-dropdown-container')) {
+        setShowMobileFilterDropdown(false)
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showFilterDropdown])
+  }, [showFilterDropdown, showMobileFilterDropdown])
 
   const getDateRange = () => {
     const now = new Date()
@@ -1076,391 +1104,708 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Your financial dashboard is ready.</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Last Updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
-          </p>
-        </div>
-        
-        {/* Time Filter Dropdown */}
-        <div className="relative mt-4 sm:mt-0 filter-dropdown-container">
-          <button
-            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {getFilterLabel(timeFilter)}
-            </span>
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Mobile View */}
+      <div className="block md:hidden">
+        <div className="p-4 space-y-6">
+          {/* Header with Filter */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            </div>
+            
+            {/* Mobile Time Filter Dropdown */}
+            <div className="relative mobile-filter-dropdown-container">
+              <button
+                onClick={() => setShowMobileFilterDropdown(!showMobileFilterDropdown)}
+                className="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {getFilterLabel(timeFilter)}
+                </span>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-          {showFilterDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
-              <div className="p-2">
-                <div className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Custom Range
+              {showMobileFilterDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                  <div className="p-2">
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                      Time Range
+                    </div>
+                    {([
+                      'today', 
+                      'yesterday',
+                      'last_7_days',
+                      'last_30_days',
+                      'week',
+                      'last_week',
+                      'month',
+                      'last_month',
+                      'year',
+                      'all'
+                    ] as TimeFilter[]).map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => {
+                          setTimeFilter(filter)
+                          setShowMobileFilterDropdown(false)
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          timeFilter === filter
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {getFilterLabel(filter)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {([
-                  'all',
-                  'today', 
-                  'yesterday',
-                  'last_7_days',
-                  'last_30_days',
-                  'week',
-                  'last_week',
-                  'month',
-                  'last_month',
-                  'year'
-                ] as TimeFilter[]).map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => {
-                      setTimeFilter(filter)
-                      setShowFilterDropdown(false)
-                    }}
-                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      timeFilter === filter
-                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              )}
+            </div>
+          </div>
+
+          {/* --- START: Edited Mobile-Optimized Code --- */}
+
+          <div>
+            {/* 1. Total Balance Card (Hero Element) */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
+              <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Total Balance</p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2 tracking-tight">
+                {formatCurrency(stats.balance)}
+              </p>
+            </div>
+
+            {/* 2. Income & Expenses Grid */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {/* Income Card */}
+              <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-xl border border-green-100 dark:border-green-800">
+                <p className="text-center text-gray-600 dark:text-gray-300 text-sm">Income</p>
+                <p className="text-center text-xl font-bold text-green-600 dark:text-green-400 mt-1">
+                  {formatCurrency(filteredStats.totalIncome)}
+                </p>
+              </div>
+
+              {/* Expense Card */}
+              <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl border border-red-100 dark:border-red-800">
+                <p className="text-center text-gray-600 dark:text-gray-300 text-sm">Expenses</p>
+                <p className="text-center text-xl font-bold text-red-600 dark:text-red-400 mt-1">
+                  {formatCurrency(filteredStats.totalExpenses)}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
+              {getFilterLabel(timeFilter)}
+            </p>
+          </div>
+
+
+          {/* Debts & Credits - Colored backgrounds like desktop */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Debts & Credits</h2>
+              <Link to="/app/debts-credits" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">You Owe</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    ({debtsCredits.filter(d => d.type === 'debt' && !d.is_settled).length} person)
+                  </p>
+                </div>
+                <p className="text-lg font-bold text-red-600">{formatCurrency(stats.totalDebt)}</p>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">Others Owe You</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    ({debtsCredits.filter(d => d.type === 'credit' && !d.is_settled).length} people)
+                  </p>
+                </div>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(stats.totalCredit)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Transactions */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
+              <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {filteredTransactions.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No transactions for {getFilterLabel(timeFilter).toLowerCase()}</p>
+              ) : (
+                filteredTransactions.slice(0, 3).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between py-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                        transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
+                      }`}>
+                        {transaction.type === 'income' ? (
+                          <ArrowUpRight className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ArrowDownRight className="w-5 h-5 text-red-600" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                          {transaction.description}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {format(new Date(transaction.created_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right ml-3 flex-shrink-0">
+                      <p className={`font-semibold text-sm ${
+                        transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Your Accounts - Default account with blue outline */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Accounts</h2>
+              <Link
+                to="/app/accounts"
+                className="text-green-600 hover:text-green-700 text-sm font-medium"
+              >
+                Manage
+              </Link>
+            </div>
+            
+            {accounts.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                No accounts created yet
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {accounts.slice(0, 2).map((account) => (
+                  <div
+                    key={account.id}
+                    className={`flex items-center justify-between p-4 border rounded-lg ${
+                      account.is_default 
+                        ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-gray-200 dark:border-gray-700'
                     }`}
                   >
-                    {getFilterLabel(filter)}
-                  </button>
+                    <div className="flex items-center space-x-3">
+                      <div 
+                        className="w-8 h-8 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: account.color }}
+                      ></div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 dark:text-white text-sm font-medium truncate">
+                          {account.name}
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-400 text-xs capitalize">
+                          {account.type.replace('_', ' ')} Account
+                          {account.is_default && <span className="text-blue-500 ml-1">• Default</span>}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p
+                        className={`text-sm font-bold ${
+                          account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {formatCurrency(account.balance)}
+                      </p>
+                    </div>
+                  </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Spending by Category */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Spending by Category</h2>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {getFilterLabel(timeFilter)}
+              </span>
+            </div>
+            
+            {categorySpending.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                No spending recorded for {getFilterLabel(timeFilter).toLowerCase()}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {categorySpending.slice(0, 2).map((item, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                        {item.category}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3">
+                      <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full bg-red-500 transition-all duration-300"
+                          style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                        />
+                      </div>
+                      
+                      <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
+                        {item.percentage.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Goals Progress */}
+          {goals.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Goals Progress</h2>
+                <Link to="/app/goals" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                  View All
+                </Link>
+              </div>
+              <div className="space-y-4">
+                {goals.slice(0, 1).map((goal) => {
+                  const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
+                  return (
+                    <div key={goal.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-gray-900 dark:text-white text-sm">{goal.name}</h3>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                          {progress.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${progress}%`,
+                            backgroundColor: progress >= 100 ? '#10B981' : goal.color
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-300">
+                          {formatCurrency(goal.current_amount)}
+                        </span>
+                        <span className="text-gray-600 dark:text-gray-300">
+                          {formatCurrency(goal.target_amount)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Stats Cards - Income and Expenses are now DYNAMIC */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Balance - STATIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Total Balance</p>
-              <p className={`text-2xl font-bold mt-1 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(stats.balance)}
-              </p>
-            </div>
-            <div className={`p-3 rounded-full ${stats.balance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              <Wallet className={`w-6 h-6 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            </div>
+      {/* Desktop View - EXACTLY AS BEFORE, NO CHANGES */}
+      <div className="hidden md:block p-6 space-y-6">
+        {/* Your existing desktop code remains exactly the same */}
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">Your financial dashboard is ready.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Last Updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
+            </p>
           </div>
-        </div>
-
-        {/* Total Income - DYNAMIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Total Income</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
-                {formatCurrency(filteredStats.totalIncome)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          
+          {/* Time Filter Dropdown */}
+          <div className="relative mt-4 sm:mt-0 filter-dropdown-container">
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {getFilterLabel(timeFilter)}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
+              </span>
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showFilterDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                <div className="p-2">
+                  <div className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Custom Range
+                  </div>
+                  {([
+                    'all',
+                    'today', 
+                    'yesterday',
+                    'last_7_days',
+                    'last_30_days',
+                    'week',
+                    'last_week',
+                    'month',
+                    'last_month',
+                    'year'
+                  ] as TimeFilter[]).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => {
+                        setTimeFilter(filter)
+                        setShowFilterDropdown(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        timeFilter === filter
+                          ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {getFilterLabel(filter)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Total Expenses - DYNAMIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Total Expenses</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
-                {formatCurrency(filteredStats.totalExpenses)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {getFilterLabel(timeFilter)}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <TrendingDown className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Active Accounts - STATIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Active Accounts</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
-                {stats.totalAccounts}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <PlusCircle className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Rest of your components remain the same */}
-      {/* Rest of your components... */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Debts & Credits Overview - STATIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Debts & Credits</h2>
-            <Link to="/app/debts-credits" className="text-green-600 hover:text-green-700 text-sm font-medium">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total Balance */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">You Owe</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {debtsCredits.filter(d => d.type === 'debt').length} {debtsCredits.filter(d => d.type === 'debt').length === 1 ? 'person' : 'people'}
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Total Balance</p>
+                <p className={`text-2xl font-bold mt-1 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(stats.balance)}
                 </p>
               </div>
-              <p className="text-lg font-bold text-red-600">{formatCurrency(stats.totalDebt)}</p>
+              <div className={`p-3 rounded-full ${stats.balance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                <Wallet className={`w-6 h-6 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              </div>
             </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          </div>
+
+          {/* Total Income */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">Others Owe You</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {debtsCredits.filter(d => d.type === 'credit').length} {debtsCredits.filter(d => d.type === 'credit').length === 1 ? 'person' : 'people'}
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Total Income</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">
+                  {formatCurrency(filteredStats.totalIncome)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {getFilterLabel(timeFilter)}
                 </p>
               </div>
-              <p className="text-lg font-bold text-green-600">{formatCurrency(stats.totalCredit)}</p>
+              <div className="p-3 bg-green-100 rounded-full">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Total Expenses */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Total Expenses</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">
+                  {formatCurrency(filteredStats.totalExpenses)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {getFilterLabel(timeFilter)}
+                </p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <TrendingDown className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Active Accounts */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Active Accounts</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">
+                  {stats.totalAccounts}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <PlusCircle className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Recent Transactions - DYNAMIC */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
-            <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
-              View All
-            </Link>
+        {/* Middle Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Debts & Credits Overview */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Debts & Credits</h2>
+              <Link to="/app/debts-credits" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">You Owe</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {debtsCredits.filter(d => d.type === 'debt').length} {debtsCredits.filter(d => d.type === 'debt').length === 1 ? 'person' : 'people'}
+                  </p>
+                </div>
+                <p className="text-lg font-bold text-red-600">{formatCurrency(stats.totalDebt)}</p>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">Others Owe You</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {debtsCredits.filter(d => d.type === 'credit').length} {debtsCredits.filter(d => d.type === 'credit').length === 1 ? 'person' : 'people'}
+                  </p>
+                </div>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(stats.totalCredit)}</p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-3 sm:space-y-4">
-            {filteredTransactions.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-6 sm:py-8">No transactions for this period</p>
-            ) : (
-              filteredTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <div className={`flex-shrink-0 p-2 rounded-full ${
-                      transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
-                    }`}>
-                      {transaction.type === 'income' ? (
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-red-600" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                        {transaction.description}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {transaction.accounts?.name}
-                        </p>
-                        <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">•</span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap hidden sm:block">
-                          {format(new Date(transaction.created_at), 'MMM d, yyyy')}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap sm:hidden">
-                          {format(new Date(transaction.created_at), 'MMM d')}
-                        </p>
+
+          {/* Recent Transactions */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
+              <Link to="/app/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {filteredTransactions.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">No transactions for this period</p>
+              ) : (
+                filteredTransactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className={`flex-shrink-0 p-2 rounded-full ${
+                        transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
+                      }`}>
+                        {transaction.type === 'income' ? (
+                          <ArrowUpRight className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <ArrowDownRight className="w-4 h-4 text-red-600" />
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                          {transaction.description}
+                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {transaction.accounts?.name}
+                          </p>
+                          <span className="text-gray-300 dark:text-gray-600">•</span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            {format(new Date(transaction.created_at), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right ml-3 flex-shrink-0">
+                      <p className={`font-semibold ${
+                        transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {transaction.category}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right ml-3 flex-shrink-0">
-                    <p className={`font-semibold text-sm sm:text-base ${
-                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">
-                      {transaction.category}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
-         
 
-     {/* Account Cards - SORTED: Default first, then newest first */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Overview</h2>
-          <Link
-            to="/app/accounts"
-            className="text-green-600 hover:text-green-700 text-sm font-medium"
-          >
-            Manage
-          </Link>
-        </div>
-      
-        {accounts.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No accounts created yet
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {accounts.slice(0, 6).map((account) => (
-              <div
-                key={account.id}
-                className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border shadow-sm hover:shadow-md transition-all ${
-                  account.is_default 
-                    ? 'border-blue-300 dark:border-blue-700' 
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                {account.is_default && (
-                  <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                    Default
-                  </div>
-                )}
-                
-                <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-8 h-8 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: account.color }}
-                  ></div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
-                      {account.name}
-                    </p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm capitalize">
-                      {account.type.replace('_', ' ')} Account
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">Available Balance</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    {formatCurrency(account.balance)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Spending by Category Table - DYNAMIC */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Spending by Category</h2>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {getFilterLabel(timeFilter)}
-          </span>
-        </div>
-        
-        {categorySpending.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No spending recorded for this period
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {categorySpending.map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                    {item.category}
-                  </p>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <p className="text-sm font-semibold text-red-600 whitespace-nowrap">
-                    {formatCurrency(item.amount)}
-                  </p>
-                  
-                  <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full bg-red-500 transition-all duration-300"
-                      style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                    />
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
-                    {item.percentage.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Goals Overview - STATIC */}
-      {goals.length > 0 && (
+        {/* Account Cards */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Goals Progress</h2>
-            <Link to="/app/goals" className="text-green-600 hover:text-green-700 text-sm font-medium">
-              View All
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Overview</h2>
+            <Link
+              to="/app/accounts"
+              className="text-green-600 hover:text-green-700 text-sm font-medium"
+            >
+              Manage
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {goals.map((goal) => {
-              const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
-              return (
-                <div key={goal.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white">{goal.name}</h3>
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {progress.toFixed(1)}%
-                    </span>
+        
+          {accounts.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+              No accounts created yet
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {accounts.slice(0, 6).map((account) => (
+                <div
+                  key={account.id}
+                  className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border shadow-sm hover:shadow-md transition-all ${
+                    account.is_default 
+                      ? 'border-blue-300 dark:border-blue-700' 
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  {account.is_default && (
+                    <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      Default
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center space-x-3">
+                    <div 
+                      className="w-8 h-8 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: account.color }}
+                    ></div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
+                        {account.name}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm capitalize">
+                        {account.type.replace('_', ' ')} Account
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
-                    <div
-                      className="h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${progress}%`,
-                        backgroundColor: progress >= 100 ? '#10B981' : goal.color
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {formatCurrency(goal.current_amount)}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {formatCurrency(goal.target_amount)}
-                    </span>
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+
+                  <div className="flex items-center justify-between">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Available Balance</p>
+                    <p
+                      className={`text-2xl font-bold ${
+                        account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {formatCurrency(account.balance)}
+                    </p>
                   </div>
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Spending by Category Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Spending by Category</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {getFilterLabel(timeFilter)}
+            </span>
+          </div>
+          
+          {categorySpending.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+              No spending recorded for this period
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {categorySpending.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white truncate">
+                      {item.category}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <p className="text-sm font-semibold text-red-600 whitespace-nowrap">
+                      {formatCurrency(item.amount)}
+                    </p>
+                    
+                    <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full bg-red-500 transition-all duration-300"
+                        style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                      />
+                    </div>
+                    
+                    <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
+                      {item.percentage.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Goals Overview */}
+        {goals.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Goals Progress</h2>
+              <Link to="/app/goals" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {goals.map((goal) => {
+                const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
+                return (
+                  <div key={goal.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium text-gray-900 dark:text-white">{goal.name}</h3>
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        {progress.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                      <div
+                        className="h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${progress}%`,
+                          backgroundColor: progress >= 100 ? '#10B981' : goal.color
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {formatCurrency(goal.current_amount)}
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {formatCurrency(goal.target_amount)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
