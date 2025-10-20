@@ -1396,44 +1396,67 @@ export default function DebtsCredits() {
 
       {/* --- START: Edited Mobile-Optimized Code --- */}
 
+{/* --- START: Edited & Corrected Mobile Code --- */}
+
 {/* Mobile View - Light Colored Cards Layout */}
 <div className="sm:hidden">
   <div className="grid grid-cols-3 gap-3">
     
     {/* You Owe Card (Light Red) */}
     <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-3 text-center shadow-sm border border-red-100 dark:border-red-800">
-      <div className="flex flex-col items-center">
-        <p className="font-medium text-sm text-red-700 dark:text-red-300">You Owe</p>
-        <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-2">
-          {formatCurrency(totalDebt)}
+      <div className="flex flex-col h-full">
+        {/* FIX: Title has a fixed height and its content is centered */}
+        <p className="font-medium text-sm text-red-700 dark:text-red-300 flex items-center justify-center min-h-[2.5rem]">
+          You Owe
         </p>
-        <p className="text-xs text-red-500 dark:text-red-400 mt-1">{debts.length} people</p>
+        
+        <div className="flex-grow flex items-center justify-center my-1">
+          <p className="text-xl font-bold text-red-600 dark:text-red-400">
+            {formatCurrency(totalDebt)}
+          </p>
+        </div>
+
+        <p className="text-xs text-red-500 dark:text-red-400 mt-auto">{debts.length} people</p>
       </div>
     </div>
 
     {/* Others Owe You Card (Light Green) */}
     <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-3 text-center shadow-sm border border-green-100 dark:border-green-800">
-      <div className="flex flex-col items-center">
-        <p className="font-medium text-sm text-green-700 dark:text-green-300">Others Owe</p>
-        <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-2">
-          {formatCurrency(totalCredit)}
+      <div className="flex flex-col h-full">
+        {/* FIX: Title has a fixed height and its content is centered */}
+        <p className="font-medium text-sm text-green-700 dark:text-green-300 flex items-center justify-center min-h-[2.5rem]">
+          Others Owe
         </p>
-        <p className="text-xs text-green-500 dark:text-green-400 mt-1">{credits.length} people</p>
+
+        <div className="flex-grow flex items-center justify-center my-1">
+          <p className="text-xl font-bold text-green-600 dark:text-green-400">
+            {formatCurrency(totalCredit)}
+          </p>
+        </div>
+
+        <p className="text-xs text-green-500 dark:text-green-400 mt-auto">{credits.length} people</p>
       </div>
     </div>
 
     {/* Net Balance Card (Light Blue) */}
     <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 text-center shadow-sm border border-blue-100 dark:border-blue-800">
-      <div className="flex flex-col items-center">
-        <p className="font-medium text-sm text-blue-700 dark:text-blue-300">Net Balance</p>
-        <p className={`text-xl font-bold mt-2 ${
-            totalCredit - totalDebt >= 0 
-            ? 'text-blue-600 dark:text-blue-400' 
-            : 'text-red-600 dark:text-red-400'
-        }`}>
-          {formatCurrency(totalCredit - totalDebt)}
+      <div className="flex flex-col h-full">
+        {/* FIX: Title has a fixed height and its content is centered */}
+        <p className="font-medium text-sm text-blue-700 dark:text-blue-300 flex items-center justify-center min-h-[2.5rem]">
+          Net Balance
         </p>
-        <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+
+        <div className="flex-grow flex items-center justify-center my-1">
+          <p className={`text-xl font-bold ${
+              totalCredit - totalDebt >= 0 
+              ? 'text-blue-600 dark:text-blue-400' 
+              : 'text-red-600 dark:text-red-400'
+          }`}>
+            {formatCurrency(totalCredit - totalDebt)}
+          </p>
+        </div>
+
+        <p className="text-xs text-blue-500 dark:text-blue-400 mt-auto">
           {totalCredit >= totalDebt ? 'In favor' : 'You owe'}
         </p>
       </div>
@@ -1442,7 +1465,7 @@ export default function DebtsCredits() {
   </div>
 </div>
 
-{/* --- END: Edited Mobile-Optimized Code --- */}
+{/* --- END: Edited & Corrected Mobile Code --- */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* You Owe (Debts) */}

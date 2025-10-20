@@ -1246,7 +1246,7 @@ export default function Dashboard() {
               {filteredTransactions.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-4">No transactions for {getFilterLabel(timeFilter).toLowerCase()}</p>
               ) : (
-                filteredTransactions.slice(0, 3).map((transaction) => (
+                filteredTransactions.slice(0, 4).map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
@@ -1298,7 +1298,7 @@ export default function Dashboard() {
               </p>
             ) : (
               <div className="space-y-4">
-                {accounts.slice(0, 2).map((account) => (
+                {accounts.slice(0, 6).map((account) => (
                   <div
                     key={account.id}
                     className={`flex items-center justify-between p-4 border rounded-lg ${
@@ -1354,7 +1354,7 @@ export default function Dashboard() {
               </p>
             ) : (
               <div className="space-y-4">
-                {categorySpending.slice(0, 2).map((item, index) => (
+                {categorySpending.slice(0, 20).map((item, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
@@ -1390,7 +1390,7 @@ export default function Dashboard() {
                 </Link>
               </div>
               <div className="space-y-4">
-                {goals.slice(0, 1).map((goal) => {
+                {goals.slice(0, 2).map((goal) => {
                   const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
                   return (
                     <div key={goal.id} className="space-y-3">
