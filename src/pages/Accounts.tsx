@@ -2,7 +2,7 @@
 // import { useAuth } from '../contexts/AuthContext'
 // import { supabase } from '../lib/supabase'
 // import { useForm } from 'react-hook-form'
-// import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader } from 'lucide-react'
+// import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader, Shield } from 'lucide-react'
 
 // interface Account {
 //   id: string
@@ -13,6 +13,7 @@
 //   color: string
 //   is_active: boolean
 //   created_at: string
+//   is_default: boolean
 // }
 
 // interface AccountForm {
@@ -67,10 +68,19 @@
 //         .select('*')
 //         .eq('user_id', user?.id)
 //         .eq('is_active', true)
+//         .order('is_default', { ascending: false }) // NEW: Default accounts first
 //         .order('created_at', { ascending: false })
 
 //       if (error) throw error
-//       if (data) setAccounts(data)
+      
+//       if (data) {
+//         setAccounts(data)
+        
+//         // Auto-create default account if no accounts exist
+//         if (data.length === 0) {
+//           await createDefaultAccount()
+//         }
+//       }
 //     } catch (error) {
 //       console.error('Error fetching accounts:', error)
 //     } finally {
@@ -78,17 +88,43 @@
 //     }
 //   }
 
+//   const createDefaultAccount = async () => {
+//     try {
+//       const { data, error } = await supabase
+//         .from('accounts')
+//         .insert({
+//           user_id: user?.id,
+//           name: 'Main Account',
+//           type: 'bank',
+//           balance: 0,
+//           currency: 'INR',
+//           color: '#3B82F6',
+//           is_active: true,
+//           is_default: true
+//         })
+//         .select()
+
+//       if (error) throw error
+      
+//       // Refetch accounts after creation
+//       await fetchAccounts()
+//       console.log('Default account created successfully')
+      
+//     } catch (error) {
+//       console.error('Error creating default account:', error)
+//     }
+//   }
+
 //   const onSubmit = async (data: AccountForm) => {
 //     try {
 //       if (editingAccount) {
-//         // Enhanced: Allow name, type, color changes but protect balance if transactions exist
 //         const updateData: any = {
 //           name: data.name,
 //           type: data.type,
 //           color: data.color
 //         }
         
-//         // Only update balance if it's a new account or no transactions exist
+//         // Only update balance if no transactions exist
 //         const { data: transactions } = await supabase
 //           .from('transactions')
 //           .select('id')
@@ -118,7 +154,9 @@
 //             name: data.name,
 //             type: data.type,
 //             balance: data.balance,
-//             color: data.color
+//             color: data.color,
+//             is_active: true,
+//             is_default: false // New accounts are not default
 //           })
 
 //         if (error) throw error
@@ -181,18 +219,23 @@
 //   }
 
 //   const deleteAccount = async (id: string) => {
-//     // Prevent multiple clicks
 //     if (deletingAccountId === id) {
-//       return; // Already deleting this account
+//       return;
+//     }
+
+//     const accountToDelete = accounts.find(acc => acc.id === id)
+    
+//     // Prevent deletion of default account
+//     if (accountToDelete?.is_default) {
+//       alert('Cannot delete the default account. This account is required for the application to function properly.')
+//       return
 //     }
 
 //     if (!confirm('Are you sure you want to delete this account? This will permanently delete the account and all associated transactions.')) return
 
 //     try {
-//       // Set deleting state to prevent multiple clicks
 //       setDeletingAccountId(id);
 
-//       // Hard delete
 //       const { error } = await supabase
 //         .from('accounts')
 //         .delete()
@@ -204,7 +247,6 @@
 //       console.error('Error deleting account:', error)
 //       alert(`Error deleting account: ${error.message}`)
 //     } finally {
-//       // Always reset deleting state, whether success or error
 //       setDeletingAccountId(null);
 //     }
 //   }
@@ -262,6 +304,13 @@
 
 //   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
 
+//   // NEW: Sort accounts with default account first (client-side fallback)
+//   const sortedAccounts = [...accounts].sort((a, b) => {
+//     if (a.is_default && !b.is_default) return -1
+//     if (!a.is_default && b.is_default) return 1
+//     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+//   })
+
 //   if (loading) {
 //     return (
 //       <div className="p-6">
@@ -312,24 +361,29 @@
 
 //       {/* Accounts Grid */}
 //       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//         {accounts.length === 0 ? (
+//         {sortedAccounts.length === 0 ? (
 //           <div className="col-span-full text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
 //             <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-//             <p className="text-gray-500 dark:text-gray-400">No accounts created yet</p>
-//             <button
-//               onClick={() => setShowModal(true)}
-//               className="mt-2 text-green-600 hover:text-green-700 font-medium"
-//             >
-//               Create your first account
-//             </button>
+//             <p className="text-gray-500 dark:text-gray-400">Setting up your account...</p>
 //           </div>
 //         ) : (
-//           accounts.map((account) => {
+//           sortedAccounts.map((account) => {
 //             const IconComponent = getAccountIcon(account.type)
 //             const isDeleting = deletingAccountId === account.id
+//             const isDefaultAccount = account.is_default
             
 //             return (
-//               <div key={account.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+//               <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border ${
+//                 isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
+//               } relative`}>
+                
+//                 {isDefaultAccount && (
+//                   <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+//                     <Shield className="w-3 h-3 mr-1" />
+//                     Default
+//                   </div>
+//                 )}
+                
 //                 <div className="flex items-center justify-between mb-4">
 //                   <div className="flex items-center space-x-3">
 //                     <div
@@ -359,9 +413,9 @@
 //                     </button>
 //                     <button
 //                       onClick={() => deleteAccount(account.id)}
-//                       disabled={isDeleting}
+//                       disabled={isDeleting || isDefaultAccount}
 //                       className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-//                       title="Delete account"
+//                       title={isDefaultAccount ? "Default account cannot be deleted" : "Delete account"}
 //                     >
 //                       {isDeleting ? (
 //                         <Loader className="w-4 h-4 animate-spin" />
@@ -382,6 +436,14 @@
 //                     {account.currency}
 //                   </p>
 //                 </div>
+
+//                 {/* {isDefaultAccount && (
+//                   <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+//                     <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
+//                       This is your default account. It cannot be deleted.
+//                     </p>
+//                   </div>
+//                 )} */}
 //               </div>
 //             )
 //           })
@@ -484,7 +546,6 @@
 //                 </div>
 //               </div>
 
-//               {/* Enhanced: Warning message for editing accounts */}
 //               {editingAccount && (
 //                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
 //                   <p className="text-yellow-700 dark:text-yellow-400 text-sm">
@@ -544,9 +605,9 @@
 //                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
 //                 >
 //                   <option value="">Select account</option>
-//                   {accounts.map(account => (
+//                   {sortedAccounts.map((account) => (
 //                     <option key={account.id} value={account.id}>
-//                       {account.name} ({formatCurrency(account.balance)})
+//                       {account.name} {account.is_default && '(Default)'} ({formatCurrency(account.balance)})
 //                     </option>
 //                   ))}
 //                 </select>
@@ -564,9 +625,9 @@
 //                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
 //                 >
 //                   <option value="">Select account</option>
-//                   {accounts.map(account => (
+//                   {sortedAccounts.map((account) => (
 //                     <option key={account.id} value={account.id}>
-//                       {account.name} ({formatCurrency(account.balance)})
+//                       {account.name} {account.is_default && '(Default)'} ({formatCurrency(account.balance)})
 //                     </option>
 //                   ))}
 //                 </select>
@@ -711,7 +772,7 @@ export default function Accounts() {
         .select('*')
         .eq('user_id', user?.id)
         .eq('is_active', true)
-        .order('is_default', { ascending: false }) // NEW: Default accounts first
+        .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -719,7 +780,6 @@ export default function Accounts() {
       if (data) {
         setAccounts(data)
         
-        // Auto-create default account if no accounts exist
         if (data.length === 0) {
           await createDefaultAccount()
         }
@@ -749,7 +809,6 @@ export default function Accounts() {
 
       if (error) throw error
       
-      // Refetch accounts after creation
       await fetchAccounts()
       console.log('Default account created successfully')
       
@@ -767,7 +826,6 @@ export default function Accounts() {
           color: data.color
         }
         
-        // Only update balance if no transactions exist
         const { data: transactions } = await supabase
           .from('transactions')
           .select('id')
@@ -799,7 +857,7 @@ export default function Accounts() {
             balance: data.balance,
             color: data.color,
             is_active: true,
-            is_default: false // New accounts are not default
+            is_default: false
           })
 
         if (error) throw error
@@ -837,7 +895,6 @@ export default function Accounts() {
 
       if (error) throw error
 
-      // Update account balances
       const toAccount = accounts.find(a => a.id === data.to_account_id)
 
       if (fromAccount && toAccount) {
@@ -868,7 +925,6 @@ export default function Accounts() {
 
     const accountToDelete = accounts.find(acc => acc.id === id)
     
-    // Prevent deletion of default account
     if (accountToDelete?.is_default) {
       alert('Cannot delete the default account. This account is required for the application to function properly.')
       return
@@ -947,7 +1003,6 @@ export default function Accounts() {
 
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
 
-  // NEW: Sort accounts with default account first (client-side fallback)
   const sortedAccounts = [...accounts].sort((a, b) => {
     if (a.is_default && !b.is_default) return -1
     if (!a.is_default && b.is_default) return 1
@@ -970,9 +1025,9 @@ export default function Accounts() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Desktop Header - Your original code */}
+      <div className="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your money sources and balances</p>
@@ -995,15 +1050,64 @@ export default function Accounts() {
         </div>
       </div>
 
-      {/* Total Balance Card */}
-      <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-6 text-white">
+      {/* Mobile Header */}
+      <div className="sm:hidden flex items-center justify-between mb-2">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage your money sources</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowTransferModal(true)}
+            className="flex items-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            title="Transfer"
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            title="Add Account"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Total Balance - Your original code */}
+      <div className="hidden sm:block bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-6 text-white">
         <h2 className="text-lg font-medium opacity-90">Total Balance</h2>
         <p className="text-3xl font-bold mt-2">{formatCurrency(totalBalance)}</p>
         <p className="text-sm opacity-75 mt-1">{accounts.length} active accounts</p>
       </div>
 
-      {/* Accounts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Mobile Total Balance */}
+{/* --- START: Edited Mobile-Optimized Code --- */}
+
+{/* Mobile View - Structured Total Balance Card */}
+<div className="sm:hidden bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+  <div className="flex items-center justify-between">
+    {/* Text content on the left for clear hierarchy */}
+    <div>
+      <h2 className="text-base font-medium opacity-90">Total Balance</h2>
+      <p className="text-3xl font-bold tracking-tight mt-1">{formatCurrency(totalBalance)}</p>
+      <p className="text-xs opacity-80 mt-2">{accounts.length} accounts</p>
+    </div>
+    
+    {/* Icon on the right as a visual anchor */}
+    <div className="flex-shrink-0">
+      {/* Assuming you are using lucide-react or a similar icon library */}
+      {/* Replace <WalletIcon> with your actual icon component */}
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+      </svg>
+    </div>
+  </div>
+</div>
+
+{/* --- END: Edited Mobile-Optimized Code --- */}
+      {/* Desktop Accounts Grid - Your original code */}
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedAccounts.length === 0 ? (
           <div className="col-span-full text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
             <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -1079,14 +1183,86 @@ export default function Accounts() {
                     {account.currency}
                   </p>
                 </div>
+              </div>
+            )
+          })
+        )}
+      </div>
 
-                {/* {isDefaultAccount && (
-                  <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
-                      This is your default account. It cannot be deleted.
-                    </p>
+      {/* Mobile Accounts Grid */}
+      <div className="sm:hidden grid grid-cols-1 gap-4">
+        {sortedAccounts.length === 0 ? (
+          <div className="col-span-full text-center py-8 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+            <Wallet className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Setting up your account...</p>
+          </div>
+        ) : (
+          sortedAccounts.map((account) => {
+            const IconComponent = getAccountIcon(account.type)
+            const isDeleting = deletingAccountId === account.id
+            const isDefaultAccount = account.is_default
+            
+            return (
+              <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border ${
+                isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
+              } relative`}>
+                
+                {isDefaultAccount && (
+                  <div className="absolute -top-1 -left-1 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <Shield className="w-2 h-2 mr-1" />
+                    Default
                   </div>
-                )} */}
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div
+                      className="p-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: account.color + '20' }}
+                    >
+                      <IconComponent 
+                        className="w-5 h-5"
+                        style={{ color: account.color }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.name}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
+                        {accountTypes.find(t => t.value === account.type)?.label || account.type}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end ml-3">
+                    <p className={`text-lg font-bold ${
+                      account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(account.balance)}
+                    </p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <button
+                        onClick={() => handleEditAccount(account)}
+                        disabled={isDeleting}
+                        className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Edit account"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => deleteAccount(account.id)}
+                        disabled={isDeleting || isDefaultAccount}
+                        className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={isDefaultAccount ? "Default account cannot be deleted" : "Delete account"}
+                      >
+                        {isDeleting ? (
+                          <Loader className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )
           })
