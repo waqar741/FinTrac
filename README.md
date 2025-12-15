@@ -88,7 +88,7 @@ Contributions are welcome!
 
 ## 📄 License
 
-This project is open source. [Add License Type here, e.g., MIT]
+This project is open source. License MIT.
 
 ---
 
