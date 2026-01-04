@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MessageCircle, X, Send } from 'lucide-react'
+import { MessageCircle, X, Send, Cpu, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -18,8 +18,8 @@ export default function AIChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
-  
-  // Start with just the welcome message
+  const [useModel, setUseModel] = useState(true)
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -27,43 +27,30 @@ export default function AIChat() {
       content: 'Hello! I am Fintrac AI. How can I help?',
       timestamp: new Date(),
       quickReplies: [
-        'Balance?',
-        'This month?',
-        'Inc vs exp?',
-        'I owe?',
-        'Goals?',
-        'Recent?',
-        'Who owes me?',
-        'Budget status?',
-        'Categories?'
+        'Balance?', 'This month?', 'Inc vs exp?', 
+        'I owe?', 'Goals?', 'Recent?', 
+        'Who owes me?', 'Budget status?', 'Categories?'
       ]
     }
   ])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
-  // --- AI State ---
+  // --- AI Context State ---
   const [systemContext, setSystemContext] = useState('')
-  const [isOnline, setIsOnline] = useState(false) // State for Red/Green dot
   const [onlineModelId, setOnlineModelId] = useState('')
+  const [isBackendReachable, setIsBackendReachable] = useState(false)
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isOpen, loading])
-
-  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [messages, isOpen, loading])
 
   // --- 1. INITIALIZATION ---
   useEffect(() => {
     if (!user) return
 
     const initAI = async () => {
-      // A. Build Context (Hidden)
       await refreshFinancialContext()
-
-      // B. Check Connectivity (For Red/Green Dot)
       try {
         const res = await fetch(`${API_URL}/models`)
         if (res.ok) {
@@ -71,83 +58,108 @@ export default function AIChat() {
           const models = data.data || []
           if (models.length > 0) {
             setOnlineModelId(models[0].id)
-            setIsOnline(true) // Green Dot
+            setIsBackendReachable(true)
           }
-        } else {
-          setIsOnline(false) // Red Dot
         }
       } catch (e) {
-        setIsOnline(false) // Red Dot
+        setIsBackendReachable(false)
       }
     }
 
     initAI()
-  }, [user])
+  }, [user, isOpen])
 
-  // Helpers
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount)
   
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
-  // --- 2. DATA BUILDER ---
+  // --- 2. DATA BUILDER (Now includes Names for AI) ---
   const refreshFinancialContext = async () => {
     try {
-      const [transactionsRes, accountsRes, debtsRes, goalsRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }).limit(30),
+      const [trRes, acRes, dcRes, glRes] = await Promise.all([
+        supabase.from('transactions').select('*, accounts(name)').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('accounts').select('*').eq('user_id', user?.id),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
-        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
+        supabase.from('savings_goals').select('*').eq('user_id', user?.id)
       ])
 
-      const transactions = transactionsRes.data || []
-      const accounts = accountsRes.data || []
-      const debts = debtsRes.data || []
-      const goals = goalsRes.data || []
+      const transactions = trRes.data || []
+      const accounts = acRes.data || []
+      const debtsCredits = dcRes.data || []
+      const goals = glRes.data || []
 
       // Totals
       const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
-      const totalDebt = debts.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
-      const totalCredit = debts.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+      const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+      const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
 
-      // Recent Transactions String
-      const recentTxText = transactions.slice(0, 10).map(t => 
-        `- ${t.created_at.split('T')[0]}: ${t.description || 'Unknown'} (${formatCurrency(t.amount)} ${t.type} ${t.category ? `for ${t.category}` : ''})`
+      // Month Stats
+      const now = new Date()
+      const currentMonthTxns = transactions.filter(t => {
+        const d = new Date(t.created_at || t.transaction_date)
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      })
+      const monthIncome = currentMonthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+      const monthExpense = currentMonthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+      
+      // Debts & Credits Strings (Added Names Here)
+      const debtList = debtsCredits
+        .filter(d => d.type === 'debt')
+        .map(d => `${d.counterpart_name}: ${formatCurrency(d.amount)}`)
+        .join(', ')
+      const creditList = debtsCredits
+        .filter(d => d.type === 'credit')
+        .map(c => `${c.counterpart_name}: ${formatCurrency(c.amount)}`)
+        .join(', ')
+      
+      const iOweTotal = debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
+      const owedTotal = debtsCredits.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+
+      const recentTxText = transactions.slice(0, 5).map(t => 
+        `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description || 'Unknown'} (${formatCurrency(t.amount)})`
       ).join('\n')
 
-      // Category Summary (Pre-calculated for the AI)
-      const expenses = transactions.filter(t => t.type === 'expense')
-      const catTotals = expenses.reduce((acc, t) => {
-        const c = t.category || 'Other'
-        acc[c] = (acc[c] || 0) + Number(t.amount)
-        return acc
+      const catTotals = currentMonthTxns.filter(t => t.type === 'expense').reduce((acc, t) => {
+         const c = t.category || 'Other'
+         acc[c] = (acc[c] || 0) + Number(t.amount)
+         return acc
       }, {} as Record<string, number>)
       const topCats = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([k,v]) => `${k}: ${formatCurrency(v)}`).join(', ')
 
       const context = `
-      USER FINANCIAL SNAPSHOT:
-      - Total Balance: ${formatCurrency(totalBalance)}
-      - Total Debt (I Owe): ${formatCurrency(totalDebt)}
-      - Total Credit (Owed to Me): ${formatCurrency(totalCredit)}
-      - Top Expense Categories: ${topCats}
-      - Active Goals: ${goals.map(g => g.name).join(', ')}
+      You are Fintrac AI. Answer strictly based on the provided data.
       
-      RECENT TRANSACTIONS LOG:
-      ${recentTxText}
+      **RULES:**
+      1. Be Concise (Max 4 lines).
+      2. Use Emojis & Newlines for structure.
+      3. If asked for Debts/Credits, LIST THE NAMES and amounts.
 
-      INSTRUCTIONS:
-      You are Fintrac AI. Answer strictly based on the snapshot above.
-      - If asked for "Categories", ONLY list Expense categories, do not list income sources.
-      - Keep answers short (under 40 words).
+      **DATA:**
+      - Total Balance: ${formatCurrency(totalBalance)}
+      - Income (All time): ${formatCurrency(totalIncome)}
+      - Expenses (All time): ${formatCurrency(totalExpenses)}
+      - THIS MONTH Income: ${formatCurrency(monthIncome)}
+      - THIS MONTH Expenses: ${formatCurrency(monthExpense)}
+      - Net Savings (Month): ${formatCurrency(monthIncome - monthExpense)}
+      
+      - DEBTS (I Owe): Total ${formatCurrency(iOweTotal)}. Details: [${debtList || 'None'}]
+      - CREDITS (Owes Me): Total ${formatCurrency(owedTotal)}. Details: [${creditList || 'None'}]
+      
+      - Goals: ${goals.map(g => `${g.name} (${formatCurrency(g.current_amount || 0)}/${formatCurrency(g.target_amount)})`).join(', ') || 'None'}
+      - Top Categories (Month): ${topCats || 'None'}
+
+      **RECENT TRANSACTIONS:**
+      ${recentTxText}
       `
       setSystemContext(context)
     } catch (e) {
-      console.error(e)
+      console.error("Context build error", e)
     }
   }
 
-  // --- 3. ONLINE ENGINE (Streaming) ---
+  // --- 3. ONLINE ENGINE ---
   const processOnline = async (query: string, messageId: string) => {
     let responseText = ''
     try {
@@ -160,7 +172,9 @@ export default function AIChat() {
             { role: 'system', content: systemContext },
             { role: 'user', content: query }
           ],
-          stream: true
+          stream: true,
+          temperature: 0.1,
+          max_tokens: 200
         })
       })
 
@@ -184,73 +198,126 @@ export default function AIChat() {
               const content = data.choices[0]?.delta?.content || ''
               if (content) {
                 responseText += content
-                setMessages(prev => prev.map(m => 
-                  m.id === messageId ? { ...m, content: responseText } : m
-                ))
+                setMessages(prev => 
+                  prev.map(m => m.id === messageId ? { ...m, content: responseText } : m)
+                )
               }
             } catch (e) { console.error(e) }
           }
         }
       }
     } catch (e) {
-      // Fallback to offline if online fails
       const fallback = await processOffline(query)
-      setMessages(prev => prev.map(m => 
-        m.id === messageId ? { ...m, content: fallback } : m
-      ))
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fallback } : m))
     }
   }
 
-  // --- 4. OFFLINE ENGINE (Rule Based) ---
+  // --- 4. OFFLINE ENGINE ---
   const processOffline = async (query: string): Promise<string> => {
-    const lowerQuery = query.toLowerCase()
-    
+    const lowerQuery = query.toLowerCase().trim()
+
     try {
-      // Refetch data for accuracy
       const [trRes, acRes, dcRes, glRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user?.id),
+        supabase.from('transactions').select('*, accounts(name)').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('accounts').select('*').eq('user_id', user?.id),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
-        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
+        supabase.from('savings_goals').select('*').eq('user_id', user?.id)
       ])
-      
+
       const transactions = trRes.data || []
       const accounts = acRes.data || []
-      
-      // Calculate
-      const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
-      const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-      const balance = accounts.reduce((s, a) => s + (a.balance || 0), 0)
+      const debtsCredits = dcRes.data || []
+      const goals = glRes.data || []
 
-      if (lowerQuery.includes('balance') || lowerQuery.includes('bal')) {
-        return `Current Balance: ${formatCurrency(balance)}\n(Inc: ${formatCurrency(income)}, Exp: ${formatCurrency(expense)})`
+      const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+      const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+      const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0)
+      const totalDebt = debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
+      const totalCredit = debtsCredits.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+
+      if (['balance', 'bal', 'money'].some(q => lowerQuery.includes(q))) {
+        return `💰 BALANCE STATUS
+──────────────
+Current: ${formatCurrency(totalBalance)}
+
+📊 Totals:
+• Income: ${formatCurrency(totalIncome)}
+• Expense: ${formatCurrency(totalExpenses)}`
       }
 
-      if (lowerQuery.includes('categor') || lowerQuery.includes('spending')) {
-        // STRICTLY Filter Expenses Only
+      if (['recent', 'last', 'latest'].some(q => lowerQuery.includes(q))) {
+        const recent = transactions.slice(0, 5).map(t => 
+            `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)})`
+        ).join('\n')
+        return recent ? `🕒 RECENT ACTIVITY\n──────────────\n${recent}` : 'No recent transactions.'
+      }
+
+      if (['month', 'monthly'].some(q => lowerQuery.includes(q))) {
+        const now = new Date()
+        const monthTxns = transactions.filter(t => {
+            const d = new Date(t.created_at || t.transaction_date)
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+        })
+        const inc = monthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+        const exp = monthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+        return `📅 THIS MONTH
+──────────────
+📈 Income:  ${formatCurrency(inc)}
+📉 Expense: ${formatCurrency(exp)}
+💰 Net:     ${formatCurrency(inc - exp)}`
+      }
+
+      // Fixed: Explicitly lists names for Debts
+      if (['owe', 'debt', 'payable'].some(q => lowerQuery.includes(q)) && !lowerQuery.includes('me')) {
+        const debts = debtsCredits.filter(d => d.type === 'debt')
+        if (debts.length === 0) return '✅ No active debts!'
+        const list = debts.map(d => `• ${d.counterpart_name}: ${formatCurrency(d.amount)}`).join('\n')
+        return `💸 YOU OWE
+──────────────
+${list}
+──────────────
+Total: ${formatCurrency(totalDebt)}`
+      }
+
+      // Fixed: Explicitly lists names for Credits
+      if (['owes me', 'credit', 'receivable'].some(q => lowerQuery.includes(q))) {
+        const credits = debtsCredits.filter(d => d.type === 'credit')
+        if (credits.length === 0) return '✅ No one owes you money.'
+        const list = credits.map(c => `• ${c.counterpart_name}: ${formatCurrency(c.amount)}`).join('\n')
+        return `💰 OWED TO YOU
+──────────────
+${list}
+──────────────
+Total: ${formatCurrency(totalCredit)}`
+      }
+
+      if (['goal', 'target', 'save'].some(q => lowerQuery.includes(q))) {
+        if (goals.length === 0) return '🎯 No active goals.'
+        return `🎯 GOALS PROGRESS
+──────────────
+` + goals.map(g => 
+          `• ${g.name}: ${formatCurrency(g.current_amount || 0)} / ${formatCurrency(g.target_amount)}`
+        ).join('\n')
+      }
+
+      if (['category', 'categories', 'spending'].some(q => lowerQuery.includes(q))) {
         const expenses = transactions.filter(t => t.type === 'expense')
-        if (expenses.length === 0) return 'No expenses recorded yet.'
-        
         const catMap = expenses.reduce((acc, t) => {
-            const c = t.category || 'Uncategorized'
-            acc[c] = (acc[c] || 0) + Number(t.amount)
-            return acc
+             const c = t.category || 'Other'
+             acc[c] = (acc[c] || 0) + Number(t.amount)
+             return acc
         }, {} as Record<string, number>)
-        
-        const top = Object.entries(catMap)
-            .sort((a,b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([k,v]) => `${k}: ${formatCurrency(v)}`)
-            .join('\n')
-            
-        return `Top Spending:\n${top}`
+        const top = Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 4)
+          .map(([k,v]) => `• ${k}: ${formatCurrency(v)}`).join('\n')
+        return `📊 TOP SPENDING
+──────────────
+${top}`
       }
 
-      // Default fallback
-      return "I can help with Balance, Categories, Recent transactions, or Debts."
-      
+      return "💡 Try asking: Balance?, Month?, Debts? or Goals?"
+
     } catch (e) {
-      return "Error checking your records."
+      return "⚠️ Error accessing records."
     }
   }
 
@@ -259,7 +326,6 @@ export default function AIChat() {
     const query = msg || inputValue
     if (!query.trim() || loading) return
 
-    // Add User Message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -270,21 +336,19 @@ export default function AIChat() {
     setInputValue('')
     setLoading(true)
 
-    // Add Assistant Placeholder (Empty content initially)
     const assistantId = (Date.now() + 1).toString()
     setMessages(prev => [...prev, {
       id: assistantId,
       type: 'assistant',
-      content: '', // Start empty to avoid ghost bubble
+      content: '', 
       timestamp: new Date(),
-      quickReplies: ['Balance?', 'Categories?', 'Recent?']
+      quickReplies: ['Balance?', 'This month?', 'Debts?', 'Goals?']
     }])
 
     try {
-      if (isOnline) {
+      if (useModel && isBackendReachable) {
         await processOnline(query, assistantId)
       } else {
-        // Simulate thinking delay for offline
         setTimeout(async () => {
           const response = await processOffline(query)
           setMessages(prev => prev.map(m => 
@@ -293,9 +357,9 @@ export default function AIChat() {
         }, 600)
       }
     } catch (e) {
-        setMessages(prev => prev.map(m => 
-            m.id === assistantId ? { ...m, content: "Error processing request." } : m
-        ))
+      setMessages(prev => prev.map(m => 
+        m.id === assistantId ? { ...m, content: "Error processing request." } : m
+      ))
     } finally {
       setLoading(false)
     }
@@ -310,65 +374,54 @@ export default function AIChat() {
         <MessageCircle className="w-6 h-6" />
       </button>
 
-      <div className={`fixed bottom-6 right-6 w-80 h-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 flex flex-col ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+      <div className={`fixed bottom-6 right-6 w-80 h-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 flex flex-col ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-xl">
           <div className="flex items-center space-x-3">
-             {/* Logo */}
-            {/* <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
-               <MessageCircle className="w-5 h-5" />
-            </div> */}
-
-
-              {/* LOGO ADDED HERE */}
-            <svg
-              className="w-8 h-8 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
-              />
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
             </svg>
-
-
 
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Fintrac AI</h3>
-              {/* STATUS INDICATOR (Red/Green Dot) */}
-              <div className="flex items-center space-x-1.5">
-                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`}></span>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                    {isOnline ? 'Online (Model)' : 'Offline (Rules)'}
-                </span>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isBackendReachable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                        {useModel && isBackendReachable ? 'Model' : 'Rules'}
+                    </span>
+                </div>
               </div>
             </div>
           </div>
-          <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
-          </button>
+
+          <div className="flex items-center space-x-2">
+            <button
+                onClick={() => setUseModel(!useModel)}
+                className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}
+                title={useModel ? "Switch to Rule-Based" : "Switch to AI Model"}
+            >
+                {useModel ? <Cpu className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+            </button>
+            <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors">
+                <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
         <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white dark:bg-gray-800">
           {messages.map((m) => (
-            // FIX: Only render the bubble if content exists!
             (m.content) ? (
                 <div key={m.id} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-line shadow-sm ${m.type === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none'}`}>
+                <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-line shadow-sm font-medium ${m.type === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none'}`}>
                     {m.content}
                 </div>
                 </div>
             ) : null
           ))}
           
-          {/* Loading Animation (Only shows when loading is TRUE) */}
           {loading && (
             <div className="flex justify-start">
               <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg rounded-bl-none">
@@ -382,7 +435,7 @@ export default function AIChat() {
           )}
           <div ref={messagesEndRef} />
           
-          {/* Quick Replies (Only for last message if not loading) */}
+          {/* Quick Replies */}
           {!loading && messages[messages.length - 1]?.quickReplies && (
             <div className="flex flex-wrap gap-2 pt-1">
               {messages[messages.length - 1].quickReplies!.map((q, i) => (
@@ -406,7 +459,7 @@ export default function AIChat() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              placeholder="Ask finances..."
+              placeholder={useModel ? "Ask AI..." : "Command..."}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-1 focus:ring-green-500 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
               disabled={loading}
             />
