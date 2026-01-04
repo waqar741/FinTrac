@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -11,14 +11,20 @@ interface Message {
   quickReplies?: string[]
 }
 
+const API_URL = import.meta.env.VITE_AI_API_URL
+
 export default function AIChat() {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const [inputValue, setInputValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  
+  // Start with just the welcome message
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'assistant',
-      content: 'Hello! How can I help with your finances?',
+      content: 'Hello! I am Fintrac AI. How can I help?',
       timestamp: new Date(),
       quickReplies: [
         'Balance?',
@@ -33,492 +39,227 @@ export default function AIChat() {
       ]
     }
   ])
-  const [inputValue, setInputValue] = useState('')
-  const [loading, setLoading] = useState(false)
 
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // --- AI State ---
+  const [systemContext, setSystemContext] = useState('')
+  const [isOnline, setIsOnline] = useState(false) // State for Red/Green dot
+  const [onlineModelId, setOnlineModelId] = useState('')
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, isOpen, loading])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // --- 1. INITIALIZATION ---
+  useEffect(() => {
+    if (!user) return
+
+    const initAI = async () => {
+      // A. Build Context (Hidden)
+      await refreshFinancialContext()
+
+      // B. Check Connectivity (For Red/Green Dot)
+      try {
+        const res = await fetch(`${API_URL}/models`)
+        if (res.ok) {
+          const data = await res.json()
+          const models = data.data || []
+          if (models.length > 0) {
+            setOnlineModelId(models[0].id)
+            setIsOnline(true) // Green Dot
+          }
+        } else {
+          setIsOnline(false) // Red Dot
+        }
+      } catch (e) {
+        setIsOnline(false) // Red Dot
+      }
+    }
+
+    initAI()
+  }, [user])
+
+  // Helpers
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount)
+  
   const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
+    new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
-  const processQuery = async (query: string): Promise<string> => {
-    const lowerQuery = query.toLowerCase().trim()
-
-    // Settlement confirmations (shortened)
-    if (lowerQuery.includes('settled') || lowerQuery.includes('paid') || lowerQuery.includes('received')) {
-      return 'Records updated. See balance?'
-    }
-
-    // Short-form greetings
-    if (['hi', 'hello', 'hey', 'yo'].some(greet => lowerQuery === greet)) {
-      return 'Hi! How can I help?'
-    }
-
-    // Thank you responses
-    if (['thanks', 'thank you', 'thx', 'ty'].some(thank => lowerQuery === thank)) {
-      return 'You\'re welcome!'
-    }
-
-    // Short help command
-    if (lowerQuery === 'help' || lowerQuery === '?') {
-      return `Commands:
-- Balance?
-- This month?
-- Recent?
-- Who owes me?
-- Inc vs exp?
-- I owe?
-- Goals?
-- Categories?
-- Account status?`
-    }
-
+  // --- 2. DATA BUILDER ---
+  const refreshFinancialContext = async () => {
     try {
-      // Fetch user data including debts/credits and budgets
-      const [transactionsResponse, accountsResponse, debtsCreditsResponse] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select(`
-            *,
-            accounts (name, color, type)
-          `)
-          .eq('user_id', user?.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('accounts')
-          .select('*')
-          .eq('user_id', user?.id),
-        supabase
-          .from('debts_credits')
-          .select('*')
-          .eq('user_id', user?.id)
-          .eq('is_settled', false),
+      const [transactionsRes, accountsRes, debtsRes, goalsRes] = await Promise.all([
+        supabase.from('transactions').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }).limit(30),
+        supabase.from('accounts').select('*').eq('user_id', user?.id),
+        supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
+        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
       ])
 
-      // Fetch goals
-      const { data: goalsData } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('is_active', true)
+      const transactions = transactionsRes.data || []
+      const accounts = accountsRes.data || []
+      const debts = debtsRes.data || []
+      const goals = goalsRes.data || []
 
-      const transactions = transactionsResponse.data || []
-      const accounts = accountsResponse.data || []
-      const debtsCredits = debtsCreditsResponse.data || []
-      const goals = goalsData || []
+      // Totals
+      const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+      const totalDebt = debts.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
+      const totalCredit = debts.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
 
-      // Calculate basic metrics
-      const totalIncome = transactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Number(t.amount), 0)
-      const totalExpenses = transactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Number(t.amount), 0)
-      const balance = totalIncome - totalExpenses
+      // Recent Transactions String
+      const recentTxText = transactions.slice(0, 10).map(t => 
+        `- ${t.created_at.split('T')[0]}: ${t.description || 'Unknown'} (${formatCurrency(t.amount)} ${t.type} ${t.category ? `for ${t.category}` : ''})`
+      ).join('\n')
 
-      // Calculate total account balance
-      const totalAccountBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+      // Category Summary (Pre-calculated for the AI)
+      const expenses = transactions.filter(t => t.type === 'expense')
+      const catTotals = expenses.reduce((acc, t) => {
+        const c = t.category || 'Other'
+        acc[c] = (acc[c] || 0) + Number(t.amount)
+        return acc
+      }, {} as Record<string, number>)
+      const topCats = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([k,v]) => `${k}: ${formatCurrency(v)}`).join(', ')
 
-      // Calculate debt/credit metrics
-      const totalDebt = debtsCredits
-        .filter(d => d.type === 'debt' && !d.is_settled)
-        .reduce((sum, d) => sum + Number(d.amount), 0)
-      const totalCredit = debtsCredits
-        .filter(d => d.type === 'credit' && !d.is_settled)
-        .reduce((sum, d) => sum + Number(d.amount), 0)
-      const netDebtCredit = totalCredit - totalDebt
-
-      // Balance queries (shortened)
-      if (['balance', 'balance?', 'current balance', 'how much', 'money', 'what is my current balance','bal','balc','balan'].some(q => lowerQuery.includes(q.toLowerCase()))) {
-        return `Balance: ${formatCurrency(totalAccountBalance)}
-                Income: ${formatCurrency(totalIncome)}
-                Expenses: ${formatCurrency(totalExpenses)}
-                Difference: ${formatCurrency(balance)}`
-      }
-
-      // Last transactions query (shortened)
-      if (['last 5 transactions', 'recent transactions', 'show my last 5 transactions', 'latest transactions','kharcha','karca','kharca','kharcha'].some(q => lowerQuery.includes(q.toLowerCase()))) {
-        const recentTransactions = transactions.slice(0, 5)
-        
-        if (recentTransactions.length === 0) {
-          return 'No recent transactions.'
-        }
-        
-        const transactionsList = recentTransactions.map((t, index) => 
-          `${index + 1}. ${formatDate(t.created_at)}: ${t.description || 'No desc'} - ${formatCurrency(t.amount)} (${t.type})`
-        ).join('\n')
-        
-        return `Last 5:\n${transactionsList}`
-      }
-
-      // Weekly spending query (shortened)
-      if (['this week', 'week spending', 'how much did i spend this week', 'weekly spending','week','hafta'].some(q => lowerQuery.includes(q.toLowerCase()))) {
-        const oneWeekAgo = new Date()
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-        
-        const weeklyTransactions = transactions.filter(t => 
-          new Date(t.created_at) >= oneWeekAgo
-        )
-        
-        const weeklyExpenses = weeklyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        const weeklyIncome = weeklyTransactions
-          .filter(t => t.type === 'income')
-          .reduce((s, t) => s + Number(t.amount), 0)
-
-        // Top spending categories this week
-        const weeklyCategories = weeklyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => {
-            const cat = t.category || 'Other'
-            acc[cat] = (acc[cat] || 0) + Number(t.amount)
-            return acc
-          }, {} as Record<string, number>)
-        
-        const topWeeklyCategories = Object.entries(weeklyCategories)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
-          .slice(0, 3)
-          .map(([cat, amt]) => `${cat}: ${formatCurrency(amt as number)}`)
-          .join('\n')
-
-        return `Week: Expenses ${formatCurrency(weeklyExpenses)}, Income ${formatCurrency(weeklyIncome)}, Net ${formatCurrency(weeklyIncome - weeklyExpenses)}\nTop: ${topWeeklyCategories || 'None'}`
-      }
-
-      // Monthly spending query (shortened)
-      if (['this month', 'month spending', 'how much did i spend this month', 'monthly spending','month','mahina','mon'].some(q => lowerQuery.includes(q.toLowerCase()))) {
-        const now = new Date()
-        const currentMonth = now.getMonth()
-        const currentYear = now.getFullYear()
-        
-        const monthlyTransactions = transactions.filter(t => {
-          const d = new Date(t.created_at)
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-        })
-        
-        const monthlyExpenses = monthlyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        const monthlyIncome = monthlyTransactions
-          .filter(t => t.type === 'income')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        
-        // Top categories this month
-        const categorySpending = monthlyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => {
-            const cat = t.category || 'Other'
-            acc[cat] = (acc[cat] || 0) + Number(t.amount)
-            return acc
-          }, {} as Record<string, number>)
-        
-        const topCategories = Object.entries(categorySpending)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
-          .slice(0, 3)
-          .map(([cat, amt]) => `${cat}: ${formatCurrency(amt as number)}`)
-          .join('\n')
-
-        const monthName = now.toLocaleString('default', { month: 'short' })
-        const netSavings = monthlyIncome - monthlyExpenses
-
-        return `${monthName}: Expenses ${formatCurrency(monthlyExpenses)}, Income ${formatCurrency(monthlyIncome)}, Net ${formatCurrency(netSavings)}\nTop: ${topCategories || 'None'}`
-      }
-
-      // Short-form total spending
-      if (['total', 'total spend', 'spent', 'expenses', 'spending'].some(q => lowerQuery === q)) {
-        return `Expenses: ${formatCurrency(totalExpenses)} (${transactions.filter(t => t.type === 'expense').length} txns)`
-      }
-
-      // Short-form income
-      if (['income', 'earned', 'earnings', 'total income','kamai'].some(q => lowerQuery === q)) {
-        return `Income: ${formatCurrency(totalIncome)} (${transactions.filter(t => t.type === 'income').length} sources)`
-      }
-
-      // Debt and Credit queries (shortened)
-      if (['debt', 'debts', 'owing', 'i owe','paisa dena','dena'].some(q => lowerQuery.includes(q))) {
-        const debts = debtsCredits.filter(d => d.type === 'debt' && !d.is_settled)
-        if (debts.length === 0) {
-          return 'No debts!'
-        }
-        const debtList = debts.slice(0, 3).map(d => 
-          `${d.person_name}: ${formatCurrency(d.amount)}`
-        ).join('\n')
-        return `Owe:\n${debtList}${debts.length > 3 ? `\n+${debts.length - 3} more` : ''}\nTotal: ${formatCurrency(totalDebt)}`
-      }
-
-      if (['credit', 'credits', 'owes me', 'owe me', 'who owes', 'owes','paisa baki','lena','who owes me'].some(q => lowerQuery.includes(q))) {
-        const credits = debtsCredits.filter(d => d.type === 'credit' && !d.is_settled)
-        if (credits.length === 0) {
-          return 'No credits.'
-        }
-        const creditList = credits.slice(0, 3).map(c => 
-          `${c.person_name}: ${formatCurrency(c.amount)}`
-        ).join('\n')
-        return `Owed:\n${creditList}${credits.length > 3 ? `\n+${credits.length - 3} more` : ''}\nTotal: ${formatCurrency(totalCredit)}`
-      }
-
-      // Debt/credit summary (shortened)
-      if (['debt summary', 'debt status', 'karza','udhar', 'loan', 'net debt', 'debt balance', 'all debts'].some(q => lowerQuery.includes(q))) {
-        return `I Owe: ${formatCurrency(totalDebt)}\nOwed: ${formatCurrency(totalCredit)}\nNet: ${formatCurrency(netDebtCredit)}`
-      }
-
-      // Monthly Summary (shortened)
-      if (['month', 'this month', 'monthly', 'month?', 'this month?'].some(q => lowerQuery === q)) {
-        const now = new Date()
-        const currentMonth = now.getMonth()
-        const currentYear = now.getFullYear()
-        
-        const monthlyTransactions = transactions.filter(t => {
-          const d = new Date(t.created_at)
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-        })
-        
-        const monthlyExpenses = monthlyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        const monthlyIncome = monthlyTransactions
-          .filter(t => t.type === 'income')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        
-        // Top categories this month
-        const categorySpending = monthlyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => {
-            const cat = t.category || 'Other'
-            acc[cat] = (acc[cat] || 0) + Number(t.amount)
-            return acc
-          }, {} as Record<string, number>)
-        
-        const topCategories = Object.entries(categorySpending)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
-          .slice(0, 3)
-          .map(([cat, amt]) => `${cat}: ${formatCurrency(amt as number)}`)
-          .join('\n')
-
-        const monthName = now.toLocaleString('default', { month: 'short' })
-        const netSavings = monthlyIncome - monthlyExpenses
-
-        return `${monthName}: Income ${formatCurrency(monthlyIncome)}, Expenses ${formatCurrency(monthlyExpenses)}, Net ${formatCurrency(netSavings)}\nTop: ${topCategories || 'None'}`
-      }
-
-      // Weekly Summary (shortened)
-      if (['week', 'weekly', 'last week', 'week?', '7 days'].some(q => lowerQuery === q)) {
-        const oneWeekAgo = new Date()
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-        
-        const weeklyTransactions = transactions.filter(t => 
-          new Date(t.created_at) >= oneWeekAgo
-        )
-        
-        const weeklyExpenses = weeklyTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        const weeklyIncome = weeklyTransactions
-          .filter(t => t.type === 'income')
-          .reduce((s, t) => s + Number(t.amount), 0)
-
-        return `Week: Income ${formatCurrency(weeklyIncome)}, Expenses ${formatCurrency(weeklyExpenses)}, Net ${formatCurrency(weeklyIncome - weeklyExpenses)}`
-      }
-
-      // Today's Summary (shortened)
-      if (['today', 'today?', 'daily'].some(q => lowerQuery === q)) {
-        const today = new Date().toDateString()
-        const todayTransactions = transactions.filter(t => 
-          new Date(t.created_at).toDateString() === today
-        )
-        
-        const todayExpenses = todayTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((s, t) => s + Number(t.amount), 0)
-        const todayIncome = todayTransactions
-          .filter(t => t.type === 'income')
-          .reduce((s, t) => s + Number(t.amount), 0)
-
-        return `Today: Income ${formatCurrency(todayIncome)}, Expenses ${formatCurrency(todayExpenses)}, Net ${formatCurrency(todayIncome - todayExpenses)}`
-      }
-
-      // Recent Transactions (shortened)
-      if (['recent', 'latest', 'last', 'recent?', 'transactions'].some(q => lowerQuery === q)) {
-        const recentTransactions = transactions.slice(0, 5)
-        
-        if (recentTransactions.length === 0) {
-          return 'No recent txns.'
-        }
-        
-        const transactionsList = recentTransactions.map(t => 
-          `${t.type}: ${formatCurrency(t.amount)} - ${t.description || 'No desc'}`
-        ).join('\n')
-        
-        return `Recent:\n${transactionsList}`
-      }
-
-      // Budget queries (shortened)
-      if (['account', 'accounts', 'account?', 'account status','acc','ac', 'my accounts'].some(q => lowerQuery.includes(q))) {
-        if (accounts.length === 0) {
-          return 'No accounts.'
-        }
-        
-        const accountStatus = accounts.slice(0, 4).map(a => {
-          const typeLabel = a.type.replace('_', ' ')
-          return `${a.name} (${typeLabel}): ${formatCurrency(a.balance)}`
-        }).join('\n')
-        
-        return `Accounts:\n${accountStatus}${accounts.length > 4 ? `\n+${accounts.length - 4} more` : ''}`
-      }
-
-      // Category queries (shortened)
-      if (['categories', 'category', 'categories?', 'top categories', 'spending by category'].some(q => lowerQuery.includes(q))) {
-        const categorySpending = transactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => {
-            const cat = t.category || 'Other'
-            acc[cat] = (acc[cat] || 0) + Number(t.amount)
-            return acc
-          }, {} as Record<string, number>)
-        
-        if (Object.keys(categorySpending).length === 0) {
-          return 'No categories.'
-        }
-        
-        const topCategories = Object.entries(categorySpending)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
-          .slice(0, 5)
-          .map(([cat, amt]) => `${cat}: ${formatCurrency(amt as number)}`)
-          .join('\n')
-        
-        return `Top:\n${topCategories}`
-      }
-
-      // Goals queries (shortened)
-      if (['goals', 'goal', 'goals?', 'goal status', 'my goals', 'progress','saving','save'].some(q => lowerQuery.includes(q))) {
-        if (goals.length === 0) {
-          return 'No goals.'
-        }
-        
-        const goalStatus = goals.slice(0, 4).map(g => {
-          const progress = Math.min((g.current_amount / g.target_amount) * 100, 100)
-          return `${g.name}: ${formatCurrency(g.current_amount)}/${formatCurrency(g.target_amount)} (${progress.toFixed(0)}%)`
-        }).join('\n')
-        
-        return `Goals:\n${goalStatus}${goals.length > 4 ? `\n+${goals.length - 4} more` : ''}`
-      }
-
-      // Transaction Search by Amount (shortened)
-      const amountMatch = lowerQuery.match(/(\d+)/)
-      if (amountMatch) {
-        const targetAmount = Number(amountMatch[0])
-        const matchedTxns = transactions.filter(
-          t => Number(t.amount) === targetAmount
-        )
-        
-        if (matchedTxns.length > 0) {
-          const txnList = matchedTxns.slice(0, 3).map(t =>
-            `${formatDate(t.created_at)}: ${t.description || 'No desc'}`
-          ).join('\n')
-          
-          return `${matchedTxns.length} for ${formatCurrency(targetAmount)}:\n${txnList}`
-        }
-        
-        return `No txns for ${formatCurrency(targetAmount)}.`
-      }
-
-      // Category-specific queries (shortened)
-      const commonCategories = ['food', 'groceries', 'rent', 'shopping', 'entertainment', 'transport', 'bills', 'utilities', 'health', 'education', 'travel', 'dining']
-      const matchedCategory = commonCategories.find(cat => lowerQuery.includes(cat))
+      const context = `
+      USER FINANCIAL SNAPSHOT:
+      - Total Balance: ${formatCurrency(totalBalance)}
+      - Total Debt (I Owe): ${formatCurrency(totalDebt)}
+      - Total Credit (Owed to Me): ${formatCurrency(totalCredit)}
+      - Top Expense Categories: ${topCats}
+      - Active Goals: ${goals.map(g => g.name).join(', ')}
       
-      if (matchedCategory) {
-        const categoryTransactions = transactions.filter(t => 
-          t.type === 'expense' && 
-          (t.category?.toLowerCase().includes(matchedCategory) || 
-           t.description?.toLowerCase().includes(matchedCategory))
-        )
-        
-        const categoryTotal = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
-        const thisMonth = categoryTransactions.filter(t => {
-          const d = new Date(t.created_at)
-          return d.getMonth() === new Date().getMonth()
-        })
-        const monthlyTotal = thisMonth.reduce((sum, t) => sum + Number(t.amount), 0)
-        
-        return `${matchedCategory}: Total ${formatCurrency(categoryTotal)}, Month ${formatCurrency(monthlyTotal)}`
-      }
+      RECENT TRANSACTIONS LOG:
+      ${recentTxText}
 
-      // Transaction Search by Description/Keyword (shortened)
-      if (lowerQuery.includes('spent on') || lowerQuery.includes('where did') || lowerQuery.includes('what did')) {
-        const keywords = lowerQuery.replace(/spent on|where did|what did|i|spend|money/gi, '').trim().split(/\s+/).filter(k => k.length > 2)
-        
-        if (keywords.length > 0) {
-          const matchedTxns = transactions.filter(t =>
-            keywords.some(keyword =>
-              t.description?.toLowerCase().includes(keyword) ||
-              t.category?.toLowerCase().includes(keyword)
-            )
-          )
-          
-          if (matchedTxns.length > 0) {
-            const total = matchedTxns.reduce((sum, t) => sum + Number(t.amount), 0)
-            return `${matchedTxns.length} for "${keywords[0]}": Total ${formatCurrency(total)}`
-          }
-          return `No txns for "${keywords[0]}".`
-        }
-      }
-
-      // Income vs Expenses comparison (shortened)
-      if (['compare', 'vs', 'difference', 'in vs ex','income vs expenses'].some(q => lowerQuery.includes(q))) {
-        const ratio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0
-        const savings = totalIncome - totalExpenses
-        
-        return `Income ${formatCurrency(totalIncome)}, Expenses ${formatCurrency(totalExpenses)}, Savings ${formatCurrency(savings)} (Ratio ${ratio.toFixed(0)}%)`
-      }
-
-      // Financial health check (shortened)
-      if (['health', 'financial health', 'how am i doing', 'status', 'overview'].some(q => lowerQuery.includes(q))) {
-        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0
-        
-        let advice = 'Good!'
-        if (savingsRate < 10) {
-          advice = 'Reduce expenses'
-        } else if (savingsRate < 20) {
-          advice = 'Room to improve'
-        }
-        
-        return `Balance ${formatCurrency(balance)}, Savings rate ${savingsRate.toFixed(0)}%, Advice: ${advice}`
-      }
-
-      // Default response (shortened)
-      const suggestions = [
-        'Balance?',
-        'This month?',
-        'Inc vs exp?',
-        'I owe?',
-        'Goals?',
-        'Recent?',
-        'Who owes me?',
-        'Budget status?',
-        'Categories?'
-      ]
-
-      return `Unrecognized: "${query}".\nTry:\n${suggestions.map(s => `${s}`).join('\n')}`
-
-    } catch (err) {
-      console.error('Query error:', err)
-      return 'Error occurred.'
+      INSTRUCTIONS:
+      You are Fintrac AI. Answer strictly based on the snapshot above.
+      - If asked for "Categories", ONLY list Expense categories, do not list income sources.
+      - Keep answers short (under 40 words).
+      `
+      setSystemContext(context)
+    } catch (e) {
+      console.error(e)
     }
   }
 
+  // --- 3. ONLINE ENGINE (Streaming) ---
+  const processOnline = async (query: string, messageId: string) => {
+    let responseText = ''
+    try {
+      const res = await fetch(`${API_URL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: onlineModelId,
+          messages: [
+            { role: 'system', content: systemContext },
+            { role: 'user', content: query }
+          ],
+          stream: true
+        })
+      })
+
+      if (!res.body) throw new Error('No stream')
+      
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let done = false
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read()
+        done = doneReading
+        const chunkValue = decoder.decode(value, { stream: true })
+        
+        const lines = chunkValue.split('\n').filter(line => line.trim() !== '')
+        for (const line of lines) {
+          if (line.includes('[DONE]')) break
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.replace('data: ', ''))
+              const content = data.choices[0]?.delta?.content || ''
+              if (content) {
+                responseText += content
+                setMessages(prev => prev.map(m => 
+                  m.id === messageId ? { ...m, content: responseText } : m
+                ))
+              }
+            } catch (e) { console.error(e) }
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback to offline if online fails
+      const fallback = await processOffline(query)
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, content: fallback } : m
+      ))
+    }
+  }
+
+  // --- 4. OFFLINE ENGINE (Rule Based) ---
+  const processOffline = async (query: string): Promise<string> => {
+    const lowerQuery = query.toLowerCase()
+    
+    try {
+      // Refetch data for accuracy
+      const [trRes, acRes, dcRes, glRes] = await Promise.all([
+        supabase.from('transactions').select('*').eq('user_id', user?.id),
+        supabase.from('accounts').select('*').eq('user_id', user?.id),
+        supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
+        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
+      ])
+      
+      const transactions = trRes.data || []
+      const accounts = acRes.data || []
+      
+      // Calculate
+      const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+      const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+      const balance = accounts.reduce((s, a) => s + (a.balance || 0), 0)
+
+      if (lowerQuery.includes('balance') || lowerQuery.includes('bal')) {
+        return `Current Balance: ${formatCurrency(balance)}\n(Inc: ${formatCurrency(income)}, Exp: ${formatCurrency(expense)})`
+      }
+
+      if (lowerQuery.includes('categor') || lowerQuery.includes('spending')) {
+        // STRICTLY Filter Expenses Only
+        const expenses = transactions.filter(t => t.type === 'expense')
+        if (expenses.length === 0) return 'No expenses recorded yet.'
+        
+        const catMap = expenses.reduce((acc, t) => {
+            const c = t.category || 'Uncategorized'
+            acc[c] = (acc[c] || 0) + Number(t.amount)
+            return acc
+        }, {} as Record<string, number>)
+        
+        const top = Object.entries(catMap)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([k,v]) => `${k}: ${formatCurrency(v)}`)
+            .join('\n')
+            
+        return `Top Spending:\n${top}`
+      }
+
+      // Default fallback
+      return "I can help with Balance, Categories, Recent transactions, or Debts."
+      
+    } catch (e) {
+      return "Error checking your records."
+    }
+  }
+
+  // --- 5. HANDLE SEND ---
   const handleSendMessage = async (msg?: string) => {
     const query = msg || inputValue
     if (!query.trim() || loading) return
 
+    // Add User Message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -529,42 +270,39 @@ export default function AIChat() {
     setInputValue('')
     setLoading(true)
 
+    // Add Assistant Placeholder (Empty content initially)
+    const assistantId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev, {
+      id: assistantId,
+      type: 'assistant',
+      content: '', // Start empty to avoid ghost bubble
+      timestamp: new Date(),
+      quickReplies: ['Balance?', 'Categories?', 'Recent?']
+    }])
+
     try {
-      const response = await processQuery(query)
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: response,
-        timestamp: new Date(),
-        quickReplies: [
-        'Balance?',
-        'This month?',
-        'Inc vs exp?',
-        'I owe?',
-        'Goals?',
-        'Recent?',
-        'Who owes me?',
-        'Budget status?',
-        'Categories?'
-        ]
+      if (isOnline) {
+        await processOnline(query, assistantId)
+      } else {
+        // Simulate thinking delay for offline
+        setTimeout(async () => {
+          const response = await processOffline(query)
+          setMessages(prev => prev.map(m => 
+            m.id === assistantId ? { ...m, content: response } : m
+          ))
+        }, 600)
       }
-      setMessages(prev => [...prev, assistantMessage])
-    } catch {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: 'Error occurred.',
-        timestamp: new Date()
-      }])
+    } catch (e) {
+        setMessages(prev => prev.map(m => 
+            m.id === assistantId ? { ...m, content: "Error processing request." } : m
+        ))
     } finally {
       setLoading(false)
     }
   }
 
-  
   return (
     <>
-      {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-6 right-6 w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center z-40 ${isOpen ? 'scale-0' : 'scale-100'}`}
@@ -572,12 +310,18 @@ export default function AIChat() {
         <MessageCircle className="w-6 h-6" />
       </button>
 
-      {/* Chat Window */}
-      <div className={`fixed bottom-6 right-6 w-80 h-90 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+      <div className={`fixed bottom-6 right-6 w-80 h-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 flex flex-col ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+        
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-2">
-            {/* LOGO ADDED HERE */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-xl">
+          <div className="flex items-center space-x-3">
+             {/* Logo */}
+            {/* <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+               <MessageCircle className="w-5 h-5" />
+            </div> */}
+
+
+              {/* LOGO ADDED HERE */}
             <svg
               className="w-8 h-8 text-green-600"
               fill="none"
@@ -592,44 +336,60 @@ export default function AIChat() {
                 d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
               />
             </svg>
+
+
+
             <div>
-              <h3 className="font-medium text-gray-900 dark:text-white">Fintrac AI</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Financial Assistant</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Fintrac AI</h3>
+              {/* STATUS INDICATOR (Red/Green Dot) */}
+              <div className="flex items-center space-x-1.5">
+                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`}></span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                    {isOnline ? 'Online (Model)' : 'Offline (Rules)'}
+                </span>
+              </div>
             </div>
           </div>
-          <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-            <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 p-4 h-64 overflow-y-auto space-y-3">
+        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white dark:bg-gray-800">
           {messages.map((m) => (
-            <div key={m.id} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs px-3 py-2 rounded-lg text-sm whitespace-pre-line ${m.type === 'user' ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'}`}>
-                {m.content}
-              </div>
-            </div>
+            // FIX: Only render the bubble if content exists!
+            (m.content) ? (
+                <div key={m.id} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-line shadow-sm ${m.type === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none'}`}>
+                    {m.content}
+                </div>
+                </div>
+            ) : null
           ))}
+          
+          {/* Loading Animation (Only shows when loading is TRUE) */}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg text-sm">
+              <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg rounded-bl-none">
                 <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-150"></div>
                 </div>
               </div>
             </div>
           )}
-          {/* Quick Replies */}
-          {messages[messages.length - 1]?.quickReplies && !loading && (
-            <div className="flex flex-wrap gap-2 mt-2">
+          <div ref={messagesEndRef} />
+          
+          {/* Quick Replies (Only for last message if not loading) */}
+          {!loading && messages[messages.length - 1]?.quickReplies && (
+            <div className="flex flex-wrap gap-2 pt-1">
               {messages[messages.length - 1].quickReplies!.map((q, i) => (
                 <button
                   key={i}
                   onClick={() => handleSendMessage(q)}
-                  className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40"
+                  className="px-2 py-1 text-[11px] bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-md hover:bg-green-100 transition-colors"
                 >
                   {q}
                 </button>
@@ -639,21 +399,21 @@ export default function AIChat() {
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-xl">
           <div className="flex items-center space-x-2">
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              placeholder="Ask about your finances..."
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Ask finances..."
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-1 focus:ring-green-500 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
               disabled={loading}
             />
             <button
               onClick={() => handleSendMessage()}
               disabled={loading || !inputValue.trim()}
-              className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 transition-colors"
+              className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>
