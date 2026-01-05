@@ -109,7 +109,7 @@ export default function AIChat() {
           .eq('user_id', user?.id)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: false }),
-        supabase.from('accounts').select('*').eq('user_id', user?.id),
+        supabase.from('accounts').select('*').eq('user_id', user?.id).eq('is_active', true),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
         supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
       ])
@@ -230,7 +230,7 @@ export default function AIChat() {
     try {
       const [trRes, acRes, dcRes, glRes] = await Promise.all([
         supabase.from('transactions').select('*, accounts(name)').eq('user_id', user?.id).order('created_at', { ascending: false }),
-        supabase.from('accounts').select('*').eq('user_id', user?.id),
+        supabase.from('accounts').select('*').eq('user_id', user?.id).eq('is_active', true),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
         supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
       ])
