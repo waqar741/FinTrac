@@ -189,7 +189,7 @@
 
 //   const applyTimeFilter = () => {
 //     const { start, end } = getDateRange()
-    
+
 //     const filtered = allTransactions.filter(transaction => {
 //       const transactionDate = new Date(transaction.created_at)
 //       return transactionDate >= start && transactionDate <= end
@@ -201,7 +201,7 @@
 //     const totalIncome = filtered
 //       .filter(t => t.type === 'income')
 //       .reduce((sum, t) => sum + Number(t.amount), 0)
-    
+
 //     const totalExpenses = filtered
 //       .filter(t => t.type === 'expense')
 //       .reduce((sum, t) => sum + Number(t.amount), 0)
@@ -211,9 +211,9 @@
 //     // Calculate category spending
 //     const expenseTransactions = filtered.filter(t => t.type === 'expense')
 //     const totalExpenseAmount = expenseTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
-    
+
 //     const categoryMap = new Map<string, number>()
-    
+
 //     expenseTransactions.forEach(transaction => {
 //       const category = transaction.category || 'Uncategorized'
 //       const amount = Number(transaction.amount)
@@ -278,7 +278,7 @@
 
 //       const fetchedAccountsData = accountsData || []
 //       const fetchedTransactionsData = transactionsData || []
-      
+
 //       // Client-side sorting as fallback
 //       const sortedAccounts = [...fetchedAccountsData].sort((a, b) => {
 //         if (a.is_default && !b.is_default) return -1
@@ -295,11 +295,11 @@
 //         const totalIncome = fetchedTransactionsData
 //           .filter((t) => t.type === 'income')
 //           .reduce((sum, t) => sum + Number(t.amount), 0)
-        
+
 //         const totalExpenses = fetchedTransactionsData
 //           .filter((t) => t.type === 'expense')
 //           .reduce((sum, t) => sum + Number(t.amount), 0)
-        
+
 //         const totalDebt = debtsCreditsData
 //           .filter((d) => d.type === 'debt' && !d.is_settled)
 //           .reduce((sum, d) => sum + Number(d.amount), 0)
@@ -361,7 +361,7 @@
 //             Last Updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
 //           </p>
 //         </div>
-        
+
 //         {/* Time Filter Dropdown */}
 //         <div className="relative mt-4 sm:mt-0 filter-dropdown-container">
 //           <button
@@ -579,7 +579,7 @@
 //           </div>
 //         </div>
 //       </div>
-         
+
 
 //      {/* Account Cards - SORTED: Default first, then newest first */}
 //       <div className="space-y-6">
@@ -592,7 +592,7 @@
 //             Manage
 //           </Link>
 //         </div>
-      
+
 //         {accounts.length === 0 ? (
 //           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
 //             No accounts created yet
@@ -613,13 +613,13 @@
 //                     Default
 //                   </div>
 //                 )}
-                
+
 //                 <div className="flex items-center space-x-3">
 //                   <div 
 //                     className="w-8 h-8 rounded-full flex-shrink-0"
 //                     style={{ backgroundColor: account.color }}
 //                   ></div>
-                  
+
 //                   <div className="flex-1 min-w-0">
 //                     <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
 //                       {account.name}
@@ -656,7 +656,7 @@
 //             {getFilterLabel(timeFilter)}
 //           </span>
 //         </div>
-        
+
 //         {categorySpending.length === 0 ? (
 //           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
 //             No spending recorded for this period
@@ -670,19 +670,19 @@
 //                     {item.category}
 //                   </p>
 //                 </div>
-                
+
 //                 <div className="flex items-center space-x-4">
 //                   <p className="text-sm font-semibold text-red-600 whitespace-nowrap">
 //                     {formatCurrency(item.amount)}
 //                   </p>
-                  
+
 //                   <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
 //                     <div
 //                       className="h-2 rounded-full bg-red-500 transition-all duration-300"
 //                       style={{ width: `${Math.min(item.percentage, 100)}%` }}
 //                     />
 //                   </div>
-                  
+
 //                   <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
 //                     {item.percentage.toFixed(1)}%
 //                   </p>
@@ -752,21 +752,22 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PlusCircle, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react'
-import { 
-  format, 
-  startOfToday, 
-  startOfYesterday, 
-  startOfWeek, 
-  startOfMonth, 
-  startOfYear, 
-  endOfToday, 
-  endOfYesterday, 
-  endOfWeek, 
-  endOfMonth, 
+import { useCurrency } from '../hooks/useCurrency'
+import {
+  format,
+  startOfToday,
+  startOfYesterday,
+  startOfWeek,
+  startOfMonth,
+  startOfYear,
+  endOfToday,
+  endOfYesterday,
+  endOfWeek,
+  endOfMonth,
   endOfYear,
   subDays,
   subMonths,
-  subWeeks 
+  subWeeks
 } from 'date-fns'
 
 interface Goal {
@@ -817,6 +818,7 @@ type TimeFilter = 'all' | 'today' | 'yesterday' | 'week' | 'last_week' | 'month'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const { formatCurrency } = useCurrency()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
@@ -942,7 +944,7 @@ export default function Dashboard() {
 
   const applyTimeFilter = () => {
     const { start, end } = getDateRange()
-    
+
     const filtered = allTransactions.filter(transaction => {
       const transactionDate = new Date(transaction.created_at)
       return transactionDate >= start && transactionDate <= end
@@ -954,7 +956,7 @@ export default function Dashboard() {
     const totalIncome = filtered
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + Number(t.amount), 0)
-    
+
     const totalExpenses = filtered
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0)
@@ -964,9 +966,9 @@ export default function Dashboard() {
     // Calculate category spending
     const expenseTransactions = filtered.filter(t => t.type === 'expense')
     const totalExpenseAmount = expenseTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
-    
+
     const categoryMap = new Map<string, number>()
-    
+
     expenseTransactions.forEach(transaction => {
       const category = transaction.category || 'Uncategorized'
       const amount = Number(transaction.amount)
@@ -1031,7 +1033,7 @@ export default function Dashboard() {
 
       const fetchedAccountsData = accountsData || []
       const fetchedTransactionsData = transactionsData || []
-      
+
       // Client-side sorting as fallback
       const sortedAccounts = [...fetchedAccountsData].sort((a, b) => {
         if (a.is_default && !b.is_default) return -1
@@ -1048,11 +1050,11 @@ export default function Dashboard() {
         const totalIncome = fetchedTransactionsData
           .filter((t) => t.type === 'income')
           .reduce((sum, t) => sum + Number(t.amount), 0)
-        
+
         const totalExpenses = fetchedTransactionsData
           .filter((t) => t.type === 'expense')
           .reduce((sum, t) => sum + Number(t.amount), 0)
-        
+
         const totalDebt = debtsCreditsData
           .filter((d) => d.type === 'debt' && !d.is_settled)
           .reduce((sum, d) => sum + Number(d.amount), 0)
@@ -1080,13 +1082,8 @@ export default function Dashboard() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
+  // Local formatCurrency function removed
+
 
   if (loading) {
     return (
@@ -1113,7 +1110,7 @@ export default function Dashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
             </div>
-            
+
             {/* Mobile Time Filter Dropdown */}
             <div className="relative mobile-filter-dropdown-container">
               <button
@@ -1136,7 +1133,7 @@ export default function Dashboard() {
                       Time Range
                     </div>
                     {([
-                      'today', 
+                      'today',
                       'yesterday',
                       'last_7_days',
                       'last_30_days',
@@ -1153,11 +1150,10 @@ export default function Dashboard() {
                           setTimeFilter(filter)
                           setShowMobileFilterDropdown(false)
                         }}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          timeFilter === filter
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${timeFilter === filter
+                          ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
                       >
                         {getFilterLabel(filter)}
                       </button>
@@ -1249,9 +1245,8 @@ export default function Dashboard() {
                 filteredTransactions.slice(0, 4).map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                        transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
-                      }`}>
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
+                        }`}>
                         {transaction.type === 'income' ? (
                           <ArrowUpRight className="w-5 h-5 text-green-600" />
                         ) : (
@@ -1268,9 +1263,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right ml-3 flex-shrink-0">
-                      <p className={`font-semibold text-sm ${
-                        transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                       </p>
                     </div>
@@ -1291,7 +1285,7 @@ export default function Dashboard() {
                 Manage
               </Link>
             </div>
-            
+
             {accounts.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">
                 No accounts created yet
@@ -1301,18 +1295,17 @@ export default function Dashboard() {
                 {accounts.slice(0, 6).map((account) => (
                   <div
                     key={account.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg ${
-                      account.is_default 
-                        ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20' 
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
+                    className={`flex items-center justify-between p-4 border rounded-lg ${account.is_default
+                      ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700'
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-full flex-shrink-0"
                         style={{ backgroundColor: account.color }}
                       ></div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <p className="text-gray-900 dark:text-white text-sm font-medium truncate">
                           {account.name}
@@ -1326,9 +1319,8 @@ export default function Dashboard() {
 
                     <div className="text-right">
                       <p
-                        className={`text-sm font-bold ${
-                          account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}
+                        className={`text-sm font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}
                       >
                         {formatCurrency(account.balance)}
                       </p>
@@ -1347,7 +1339,7 @@ export default function Dashboard() {
                 {getFilterLabel(timeFilter)}
               </span>
             </div>
-            
+
             {categorySpending.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">
                 No spending recorded for {getFilterLabel(timeFilter).toLowerCase()}
@@ -1361,7 +1353,7 @@ export default function Dashboard() {
                         {item.category}
                       </p>
                     </div>
-                    
+
                     <div className="flex items-center space-x-3">
                       <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
@@ -1369,7 +1361,7 @@ export default function Dashboard() {
                           style={{ width: `${Math.min(item.percentage, 100)}%` }}
                         />
                       </div>
-                      
+
                       <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
                         {item.percentage.toFixed(1)}%
                       </p>
@@ -1403,7 +1395,7 @@ export default function Dashboard() {
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
                           className="h-2 rounded-full transition-all duration-300"
-                          style={{ 
+                          style={{
                             width: `${progress}%`,
                             backgroundColor: progress >= 100 ? '#10B981' : goal.color
                           }}
@@ -1438,7 +1430,7 @@ export default function Dashboard() {
               Last Updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
             </p>
           </div>
-          
+
           {/* Time Filter Dropdown */}
           <div className="relative mt-4 sm:mt-0 filter-dropdown-container">
             <button
@@ -1462,7 +1454,7 @@ export default function Dashboard() {
                   </div>
                   {([
                     'all',
-                    'today', 
+                    'today',
                     'yesterday',
                     'last_7_days',
                     'last_30_days',
@@ -1478,11 +1470,10 @@ export default function Dashboard() {
                         setTimeFilter(filter)
                         setShowFilterDropdown(false)
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                        timeFilter === filter
-                          ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${timeFilter === filter
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
                     >
                       {getFilterLabel(filter)}
                     </button>
@@ -1609,9 +1600,8 @@ export default function Dashboard() {
                 filteredTransactions.map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className={`flex-shrink-0 p-2 rounded-full ${
-                        transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
-                      }`}>
+                      <div className={`flex-shrink-0 p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'
+                        }`}>
                         {transaction.type === 'income' ? (
                           <ArrowUpRight className="w-4 h-4 text-green-600" />
                         ) : (
@@ -1634,9 +1624,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right ml-3 flex-shrink-0">
-                      <p className={`font-semibold ${
-                        transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1661,7 +1650,7 @@ export default function Dashboard() {
               Manage
             </Link>
           </div>
-        
+
           {accounts.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
               No accounts created yet
@@ -1671,24 +1660,23 @@ export default function Dashboard() {
               {accounts.slice(0, 6).map((account) => (
                 <div
                   key={account.id}
-                  className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border shadow-sm hover:shadow-md transition-all ${
-                    account.is_default 
-                      ? 'border-blue-300 dark:border-blue-700' 
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
+                  className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border shadow-sm hover:shadow-md transition-all ${account.is_default
+                    ? 'border-blue-300 dark:border-blue-700'
+                    : 'border-gray-200 dark:border-gray-700'
+                    }`}
                 >
                   {account.is_default && (
                     <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
                       Default
                     </div>
                   )}
-                  
+
                   <div className="flex items-center space-x-3">
-                    <div 
+                    <div
                       className="w-8 h-8 rounded-full flex-shrink-0"
                       style={{ backgroundColor: account.color }}
                     ></div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
                         {account.name}
@@ -1704,9 +1692,8 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <p className="text-gray-500 dark:text-gray-400 text-sm">Available Balance</p>
                     <p
-                      className={`text-2xl font-bold ${
-                        account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
+                      className={`text-2xl font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
                     >
                       {formatCurrency(account.balance)}
                     </p>
@@ -1725,7 +1712,7 @@ export default function Dashboard() {
               {getFilterLabel(timeFilter)}
             </span>
           </div>
-          
+
           {categorySpending.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
               No spending recorded for this period
@@ -1739,19 +1726,19 @@ export default function Dashboard() {
                       {item.category}
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center space-x-4">
                     <p className="text-sm font-semibold text-red-600 whitespace-nowrap">
                       {formatCurrency(item.amount)}
                     </p>
-                    
+
                     <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="h-2 rounded-full bg-red-500 transition-all duration-300"
                         style={{ width: `${Math.min(item.percentage, 100)}%` }}
                       />
                     </div>
-                    
+
                     <p className="text-sm text-gray-500 dark:text-gray-400 w-12 text-right">
                       {item.percentage.toFixed(1)}%
                     </p>
@@ -1785,7 +1772,7 @@ export default function Dashboard() {
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
                       <div
                         className="h-2 rounded-full transition-all duration-300"
-                        style={{ 
+                        style={{
                           width: `${progress}%`,
                           backgroundColor: progress >= 100 ? '#10B981' : goal.color
                         }}

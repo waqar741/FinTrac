@@ -101,7 +101,7 @@
 //     .reduce((acc, transaction) => {
 //       const budgetName = transaction.budgets.name
 //       const existing = acc.find(item => item.name === budgetName)
-      
+
 //       if (existing) {
 //         existing.value += Number(transaction.amount)
 //       } else {
@@ -111,7 +111,7 @@
 //           color: transaction.budgets.color
 //         })
 //       }
-      
+
 //       return acc
 //     }, [] as ChartData[])
 
@@ -121,7 +121,7 @@
 //     .reduce((acc, transaction) => {
 //       const category = transaction.category || 'Other'
 //       const existing = acc.find(item => item.name === category)
-      
+
 //       if (existing) {
 //         existing.value += Number(transaction.amount)
 //       } else {
@@ -131,7 +131,7 @@
 //           color: `hsl(${Math.random() * 360}, 70%, 50%)`
 //         })
 //       }
-      
+
 //       return acc
 //     }, [] as ChartData[])
 
@@ -141,7 +141,7 @@
 //       const month = format(new Date(transaction.created_at), 'MMM yyyy')
 //       const existing = acc.find(item => item.month === month)
 //       const amount = Number(transaction.amount)
-      
+
 //       if (existing) {
 //         if (transaction.type === 'income') {
 //           existing.income += amount
@@ -157,7 +157,7 @@
 //           net: transaction.type === 'income' ? amount : -amount
 //         })
 //       }
-      
+
 //       return acc
 //     }, [] as MonthlyData[])
 //     .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
@@ -166,7 +166,7 @@
 //   const totalIncome = transactions
 //     .filter(t => t.type === 'income')
 //     .reduce((sum, t) => sum + Number(t.amount), 0)
-  
+
 //   const totalExpenses = transactions
 //     .filter(t => t.type === 'expense')
 //     .reduce((sum, t) => sum + Number(t.amount), 0)
@@ -350,16 +350,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { useCurrency } from '../hooks/useCurrency'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   Legend,
   ResponsiveContainer,
   LineChart,
@@ -384,6 +385,7 @@ interface ChartData {
   name: string
   value: number
   color: string
+  [key: string]: any
 }
 
 interface MonthlyData {
@@ -395,6 +397,7 @@ interface MonthlyData {
 
 export default function Analytics() {
   const { user } = useAuth()
+  const { formatCurrency, currency } = useCurrency()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('6months')
@@ -436,13 +439,6 @@ export default function Analytics() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
 
   // ✅ Memoized budget distribution calculation
   const budgetDistribution = useMemo(() => {
@@ -451,7 +447,7 @@ export default function Analytics() {
       .reduce((acc, transaction) => {
         const budgetName = transaction.budgets?.name || 'Uncategorized' // Safety check
         const existing = acc.find(item => item.name === budgetName)
-        
+
         if (existing) {
           existing.value += Number(transaction.amount)
         } else {
@@ -461,7 +457,7 @@ export default function Analytics() {
             color: transaction.budgets?.color || '#A9A9A9' // Safety check
           })
         }
-        
+
         return acc
       }, [] as ChartData[])
   }, [transactions])
@@ -473,7 +469,7 @@ export default function Analytics() {
       .reduce((acc, transaction) => {
         const category = transaction.category || 'Other'
         const existing = acc.find(item => item.name === category)
-        
+
         if (existing) {
           existing.value += Number(transaction.amount)
         } else {
@@ -483,7 +479,7 @@ export default function Analytics() {
             color: `hsl(${Math.random() * 360}, 70%, 50%)` // Color is now stable
           })
         }
-        
+
         return acc
       }, [] as ChartData[])
   }, [transactions])
@@ -495,7 +491,7 @@ export default function Analytics() {
         const month = format(new Date(transaction.created_at), 'MMM yyyy')
         const existing = acc.find(item => item.month === month)
         const amount = Number(transaction.amount)
-        
+
         if (existing) {
           if (transaction.type === 'income') {
             existing.income += amount
@@ -511,24 +507,24 @@ export default function Analytics() {
             net: transaction.type === 'income' ? amount : -amount
           })
         }
-        
+
         return acc
       }, [] as MonthlyData[])
       .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
   }, [transactions])
 
   // ✅ Memoized totals calculations
-  const totalIncome = useMemo(() => 
+  const totalIncome = useMemo(() =>
     transactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + Number(t.amount), 0)
-  , [transactions])
-  
+    , [transactions])
+
   const totalExpenses = useMemo(() =>
     transactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0)
-  , [transactions])
+    , [transactions])
 
   if (loading) {
     return (
@@ -581,9 +577,8 @@ export default function Analytics() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
           <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Net Balance</h3>
-          <p className={`text-2xl font-bold mt-2 ${
-            totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
+          <p className={`text-2xl font-bold mt-2 ${totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
             {formatCurrency(totalIncome - totalExpenses)}
           </p>
         </div>
@@ -602,7 +597,7 @@ export default function Analytics() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -633,7 +628,7 @@ export default function Analytics() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -684,12 +679,12 @@ export default function Analytics() {
             <LineChart data={monthlyTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => `₹${(Number(value) / 1000).toFixed(0)}k`} />
+              <YAxis tickFormatter={(value) => `${currency === 'INR' ? '₹' : currency} ${(Number(value) / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              <Line 
-                type="monotone" 
-                dataKey="net" 
-                stroke="#3B82F6" 
+              <Line
+                type="monotone"
+                dataKey="net"
+                stroke="#3B82F6"
                 strokeWidth={3}
                 name="Net Balance"
               />

@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
 import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader, Shield } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
+import { useCurrency } from '../hooks/useCurrency'
 
 interface Account {
   id: string
@@ -32,12 +34,19 @@ interface TransferForm {
 
 export default function Accounts() {
   const { user } = useAuth()
+  const { formatCurrency, currency } = useCurrency()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null)
+
+  // Error Modal State
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const {
     register,
@@ -72,13 +81,9 @@ export default function Accounts() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      
+
       if (data) {
         setAccounts(data)
-        
-        if (data.length === 0) {
-          await createDefaultAccount()
-        }
       }
     } catch (error) {
       console.error('Error fetching accounts:', error)
@@ -87,31 +92,7 @@ export default function Accounts() {
     }
   }
 
-  const createDefaultAccount = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .insert({
-          user_id: user?.id,
-          name: 'Main Account',
-          type: 'bank',
-          balance: 0,
-          currency: 'INR',
-          color: '#3B82F6',
-          is_active: true,
-          is_default: true
-        })
-        .select()
 
-      if (error) throw error
-      
-      await fetchAccounts()
-      console.log('Default account created successfully')
-      
-    } catch (error) {
-      console.error('Error creating default account:', error)
-    }
-  }
 
   const onSubmit = async (data: AccountForm) => {
     try {
@@ -121,18 +102,35 @@ export default function Accounts() {
           type: data.type,
           color: data.color
         }
-        
+
         const { data: transactions } = await supabase
           .from('transactions')
           .select('id')
           .eq('account_id', editingAccount.id)
+          .eq('account_id', editingAccount.id)
           .limit(1)
-        
-        if (!transactions || transactions.length === 0) {
+
+        const { data: transfersFrom } = await supabase
+          .from('transfers')
+          .select('id')
+          .eq('from_account_id', editingAccount.id)
+          .limit(1)
+
+        const { data: transfersTo } = await supabase
+          .from('transfers')
+          .select('id')
+          .eq('to_account_id', editingAccount.id)
+          .limit(1)
+
+        const hasHistory = (transactions && transactions.length > 0) ||
+          (transfersFrom && transfersFrom.length > 0) ||
+          (transfersTo && transfersTo.length > 0)
+
+        if (!hasHistory) {
           updateData.balance = data.balance
         } else if (data.balance !== editingAccount.balance) {
-          setError('root', { 
-            message: 'Balance cannot be changed for accounts with transaction history. Use transfers or transactions instead.' 
+          setError('root', {
+            message: 'Balance cannot be changed for accounts with transaction or transfer history. Use transfers or transactions instead.'
           })
           return
         }
@@ -153,7 +151,7 @@ export default function Accounts() {
             balance: data.balance,
             color: data.color,
             is_active: true,
-            is_default: false
+            is_default: accounts.length === 0 // Make first account default
           })
 
         if (error) throw error
@@ -214,27 +212,34 @@ export default function Accounts() {
     }
   }
 
-  const deleteAccount = async (id: string) => {
-    if (deletingAccountId === id) {
-      return;
-    }
-
-    const accountToDelete = accounts.find(acc => acc.id === id)
-    
-    if (accountToDelete?.is_default) {
-      alert('Cannot delete the default account. This account is required for the application to function properly.')
+  const initiateDeleteAccount = (account: Account) => {
+    if (account.is_default) {
+      setErrorMessage('Cannot delete the default account. This account is required for the application to function properly.')
+      setShowErrorModal(true)
       return
     }
 
-    if (!confirm('Are you sure you want to delete this account? This will permanently delete the account and all associated transactions.')) return
+    if (account.balance !== 0) {
+      setErrorMessage('Account cannot be deleted while it has a non-zero balance. Please transfer or withdraw funds first.')
+      setShowErrorModal(true)
+      return
+    }
+
+    setAccountToDelete(account)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!accountToDelete) return
 
     try {
-      setDeletingAccountId(id);
+      setDeletingAccountId(accountToDelete.id)
+      setShowDeleteModal(false)
 
       const { error } = await supabase
         .from('accounts')
-        .delete()
-        .eq('id', id)
+        .update({ is_active: false })
+        .eq('id', accountToDelete.id)
 
       if (error) throw error
       await fetchAccounts()
@@ -242,8 +247,14 @@ export default function Accounts() {
       console.error('Error deleting account:', error)
       alert(`Error deleting account: ${error.message}`)
     } finally {
-      setDeletingAccountId(null);
+      setDeletingAccountId(null)
+      setAccountToDelete(null)
     }
+  }
+
+  const deleteAccount = async (id: string) => {
+    // Deprecated in favor of initiateDeleteAccount, keeping for interface compatibility if needed momentarily
+    // But we will replace usage in JSX
   }
 
   const handleCloseModal = () => {
@@ -263,13 +274,9 @@ export default function Accounts() {
     setShowModal(true)
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
+
+
+  // Removed local formatCurrency function in favor of useCurrency hook
 
   const getAccountIcon = (type: string) => {
     switch (type) {
@@ -296,6 +303,179 @@ export default function Accounts() {
     '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
     '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'
   ]
+
+
+
+  // Empty State / Welcome UI
+  if (!loading && accounts.length === 0) {
+    return (
+      <div className="space-y-6">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to FinTrac!</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              Let's get started by creating your main account.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingAccount(null)
+              reset()
+              setShowModal(true)
+            }}
+            className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Default Account</span>
+          </button>
+        </header>
+
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 text-center">
+          <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mb-4">
+            <Wallet className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Accounts Yet</h3>
+          <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
+            You need at least one account to start tracking your expenses and income. The first account you create will be your <strong>Default Account</strong>.
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-4">
+            Tip: You can set an initial balance for this account, which will serve as your starting point. This initial balance will not be recorded as a transaction.
+          </p>
+        </div>
+
+        {/* Modal needs to be rendered here as well */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingAccount ? 'Edit Account' : 'Setup Default Account'}
+                </h2>
+                <button
+                  onClick={handleCloseModal}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Account Name
+                  </label>
+                  <input
+                    {...register('name', { required: 'Account name is required' })}
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="e.g., Main Bank Account"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Account Type
+                  </label>
+                  <select
+                    {...register('type')}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    {accountTypes.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Initial Balance ({currency})
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500 dark:text-gray-400">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(0).replace(/\d/g, '').replace(/[.,]/g, '').trim()}
+                    </span>
+                    <input
+                      {...register('balance', {
+                        required: 'Initial balance is required',
+                        valueAsNumber: true
+                      })}
+                      type="number"
+                      step="0.01"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {errors.balance && (
+                    <p className="text-red-500 text-sm mt-1">{errors.balance.message}</p>
+                  )}
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    This will be the starting balance and cannot be changed later without transactions.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Color
+                  </label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#64748B', '#A855F7', '#D946EF'].map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => {
+                          // We need to set the value manually since it's not a standard input
+                          const event = { target: { name: 'color', value: color } }
+                          register('color').onChange(event)
+                          // Verify visual selection logic in main component or use watch to highlight
+                        }}
+                        className={`w-8 h-8 rounded-full border-2 ${
+                          // This logic relies on watch() which we need to ensure is available if we copy-paste
+                          // For simplicity in this block we can just use the register returned onChange or just rely on standard form handling
+                          // Let's assume standard behavior for now, but better to use a proper color picker component logic if existing.
+                          'border-gray-200 dark:border-gray-600'
+                          }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                    {/* Re-implementing the color picker simpler for this view to match existing or simplify */}
+                    <input
+                      type="color"
+                      {...register('color')}
+                      className="h-10 w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400"
+                  >
+                    {isSubmitting ? (
+                      <Loader className="w-5 h-5 animate-spin mx-auto" />
+                    ) : (
+                      'Create Account'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
 
@@ -378,30 +558,30 @@ export default function Accounts() {
       </div>
 
       {/* Mobile Total Balance */}
-{/* --- START: Edited Mobile-Optimized Code --- */}
+      {/* --- START: Edited Mobile-Optimized Code --- */}
 
-{/* Mobile View - Structured Total Balance Card */}
-<div className="sm:hidden bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-  <div className="flex items-center justify-between">
-    {/* Text content on the left for clear hierarchy */}
-    <div>
-      <h2 className="text-base font-medium opacity-90">Total Balance</h2>
-      <p className="text-3xl font-bold tracking-tight mt-1">{formatCurrency(totalBalance)}</p>
-      <p className="text-xs opacity-80 mt-2">{accounts.length} accounts</p>
-    </div>
-    
-    {/* Icon on the right as a visual anchor */}
-    <div className="flex-shrink-0">
-      {/* Assuming you are using lucide-react or a similar icon library */}
-      {/* Replace <WalletIcon> with your actual icon component */}
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-      </svg>
-    </div>
-  </div>
-</div>
+      {/* Mobile View - Structured Total Balance Card */}
+      <div className="sm:hidden bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          {/* Text content on the left for clear hierarchy */}
+          <div>
+            <h2 className="text-base font-medium opacity-90">Total Balance</h2>
+            <p className="text-3xl font-bold tracking-tight mt-1">{formatCurrency(totalBalance)}</p>
+            <p className="text-xs opacity-80 mt-2">{accounts.length} accounts</p>
+          </div>
 
-{/* --- END: Edited Mobile-Optimized Code --- */}
+          {/* Icon on the right as a visual anchor */}
+          <div className="flex-shrink-0">
+            {/* Assuming you are using lucide-react or a similar icon library */}
+            {/* Replace <WalletIcon> with your actual icon component */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* --- END: Edited Mobile-Optimized Code --- */}
       {/* Desktop Accounts Grid - Your original code */}
       <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedAccounts.length === 0 ? (
@@ -414,26 +594,25 @@ export default function Accounts() {
             const IconComponent = getAccountIcon(account.type)
             const isDeleting = deletingAccountId === account.id
             const isDefaultAccount = account.is_default
-            
+
             return (
-              <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border ${
-                isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
-              } relative`}>
-                
+              <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border ${isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
+                } relative`}>
+
                 {isDefaultAccount && (
                   <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
                     <Shield className="w-3 h-3 mr-1" />
                     Default
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div
                       className="p-3 rounded-full"
                       style={{ backgroundColor: account.color + '20' }}
                     >
-                      <IconComponent 
+                      <IconComponent
                         className="w-6 h-6"
                         style={{ color: account.color }}
                       />
@@ -455,10 +634,16 @@ export default function Accounts() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => deleteAccount(account.id)}
-                      disabled={isDeleting || isDefaultAccount}
+                      onClick={() => initiateDeleteAccount(account)}
+                      disabled={isDeleting}
                       className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title={isDefaultAccount ? "Default account cannot be deleted" : "Delete account"}
+                      title={
+                        isDefaultAccount
+                          ? "Cannot delete default account"
+                          : account.balance !== 0
+                            ? "Cannot delete account with balance"
+                            : "Archive account"
+                      }
                     >
                       {isDeleting ? (
                         <Loader className="w-4 h-4 animate-spin" />
@@ -468,11 +653,10 @@ export default function Accounts() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
-                  <p className={`text-2xl font-bold ${
-                    account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <p className={`text-2xl font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
                     {formatCurrency(account.balance)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -497,26 +681,25 @@ export default function Accounts() {
             const IconComponent = getAccountIcon(account.type)
             const isDeleting = deletingAccountId === account.id
             const isDefaultAccount = account.is_default
-            
+
             return (
-              <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border ${
-                isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
-              } relative`}>
-                
+              <div key={account.id} className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border ${isDefaultAccount ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-gray-700'
+                } relative`}>
+
                 {isDefaultAccount && (
                   <div className="absolute -top-1 -left-1 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
                     <Shield className="w-2 h-2 mr-1" />
                     Default
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <div
                       className="p-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: account.color + '20' }}
                     >
-                      <IconComponent 
+                      <IconComponent
                         className="w-5 h-5"
                         style={{ color: account.color }}
                       />
@@ -528,11 +711,10 @@ export default function Accounts() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-end ml-3">
-                    <p className={`text-lg font-bold ${
-                      account.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <p className={`text-lg font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {formatCurrency(account.balance)}
                     </p>
                     <div className="flex items-center space-x-1 mt-1">
@@ -545,10 +727,10 @@ export default function Accounts() {
                         <Edit2 className="w-3 h-3" />
                       </button>
                       <button
-                        onClick={() => deleteAccount(account.id)}
-                        disabled={isDeleting || isDefaultAccount}
+                        onClick={() => initiateDeleteAccount(account)}
+                        disabled={isDeleting}
                         className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={isDefaultAccount ? "Default account cannot be deleted" : "Delete account"}
+                        title="Delete account"
                       >
                         {isDeleting ? (
                           <Loader className="w-3 h-3 animate-spin" />
@@ -613,18 +795,17 @@ export default function Accounts() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Initial Balance (₹)
+                  Initial Balance ({currency})
                 </label>
                 <input
-                  {...register('balance', { 
+                  {...register('balance', {
                     required: 'Balance is required',
                     valueAsNumber: true
                   })}
                   type="number"
                   step="0.01"
-                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                    editingAccount ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${editingAccount ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''
+                    }`}
                   placeholder="10000"
                   readOnly={!!editingAccount}
                   title={editingAccount ? "Balance cannot be edited for existing accounts" : "Initial balance"}
@@ -756,7 +937,7 @@ export default function Accounts() {
                   Amount (₹)
                 </label>
                 <input
-                  {...registerTransfer('amount', { 
+                  {...registerTransfer('amount', {
                     required: 'Amount is required',
                     min: { value: 0.01, message: 'Amount must be greater than 0' },
                     valueAsNumber: true
@@ -809,6 +990,27 @@ export default function Accounts() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Account"
+        message="Are you sure you want to delete this account? The account will be hidden but all transaction history will be preserved. You can verify this in your transaction history."
+        type="warning"
+        confirmText="Delete Account"
+      />
+      {/* Error Alert Modal */}
+      <ConfirmModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        onConfirm={() => setShowErrorModal(false)}
+        title="Cannot Delete Account"
+        message={errorMessage}
+        confirmText="OK"
+        showCancel={false}
+        type="warning"
+      />
     </div>
   )
 }

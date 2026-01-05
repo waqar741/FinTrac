@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, fullName: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -115,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'your_supabase_url') {
       throw new Error('Supabase is not configured. Please set up your Supabase credentials in the .env file.')
     }
-    
+
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
@@ -127,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    refreshProfile: async () => {
+      if (user) await fetchProfile(user.id)
+    }
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

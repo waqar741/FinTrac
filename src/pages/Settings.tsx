@@ -24,6 +24,8 @@ import {
   EyeOff,
   Wallet,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { useDateFormat } from '../hooks/useDateFormat'
 
 interface Account {
   id: string
@@ -52,8 +54,9 @@ const SettingItem = ({ icon: Icon, title, subtitle, children }: any) => (
 )
 
 export default function Settings() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const { isDark, toggleTheme } = useTheme()
+  const { formatDate } = useDateFormat()
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState('Profile')
@@ -70,10 +73,11 @@ export default function Settings() {
   const [currency, setCurrency] = useState(profile?.currency || 'INR')
   const [dateFormat, setDateFormat] = useState(profile?.date_format || 'DD/MM/YYYY')
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.notifications_enabled ?? true)
-  
+
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [showArchivedAccounts, setShowArchivedAccounts] = useState(profile?.show_archived_accounts ?? false)
+  const [exporting, setExporting] = useState(false)
 
   // Click protection states
   const [themeChanging, setThemeChanging] = useState(false)
@@ -113,9 +117,9 @@ export default function Settings() {
       setTimeout(() => setError(''), 3000)
       return
     }
-    
+
     if (accountVisibilityUpdating) return
-    
+
     setAccountVisibilityUpdating(accountId)
     try {
       const { error } = await supabase
@@ -124,9 +128,9 @@ export default function Settings() {
         .eq('id', accountId)
 
       if (error) throw error
-      
-      setAccounts(accounts.map(acc => 
-        acc.id === accountId ? {...acc, is_active: !currentStatus} : acc
+
+      setAccounts(accounts.map(acc =>
+        acc.id === accountId ? { ...acc, is_active: !currentStatus } : acc
       ))
       setSuccess('Account status updated.')
       setTimeout(() => setSuccess(''), 2000)
@@ -137,7 +141,7 @@ export default function Settings() {
     }
   }
 
-const handleSignOut = async () => {
+  const handleSignOut = async () => {
     try {
       // Attempt to sign out
       const { error } = await supabase.auth.signOut();
@@ -147,7 +151,7 @@ const handleSignOut = async () => {
         // If it's a different, unexpected error, log it
         console.error('Unexpected error signing out:', error);
       }
-      
+
     } catch (error) {
       // This will catch any other critical errors during the sign-out process
       console.error('A critical error occurred during sign out:', error);
@@ -157,7 +161,7 @@ const handleSignOut = async () => {
       navigate('/login');
     }
   };
-  
+
   const handleSaveName = async () => {
     if (saving) return
 
@@ -232,6 +236,52 @@ const handleSignOut = async () => {
     }
   }
 
+  const handleExportData = async () => {
+    if (exporting) return
+
+    setExporting(true)
+    setError('')
+    try {
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          accounts (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const exportData = transactions?.map(t => ({
+        Date: formatDate(t.created_at),
+        Description: t.description,
+        Amount: t.amount,
+        Type: t.type,
+        Category: t.category,
+        Account: t.accounts?.name || 'Unknown',
+        Recurring: t.is_recurring ? 'Yes' : 'No',
+        Frequency: t.recurring_frequency || '-'
+      })) || []
+
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Financial Data')
+      XLSX.writeFile(wb, `FinTrac-Export-${formatDate(new Date())}.xlsx`)
+
+      setSuccess('Data exported successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error exporting data:', err)
+      setError(err.message || 'Failed to export data')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const updatePreference = async (field: string, value: any) => {
     try {
       const { error: updateError } = await supabase
@@ -243,6 +293,9 @@ const handleSignOut = async () => {
 
       setSuccess('Preference updated!')
       setTimeout(() => setSuccess(''), 2000)
+
+      // Refresh global state
+      await refreshProfile()
     } catch (err: any) {
       setError(err.message || 'Failed to update preference')
     }
@@ -271,11 +324,10 @@ const handleSignOut = async () => {
   const TabButton = ({ name, icon: Icon }: any) => (
     <button
       onClick={() => setActiveTab(name)}
-      className={`flex items-center justify-center md:justify-start space-x-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium w-full md:w-auto ${
-        activeTab === name
-          ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-          : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-      }`}
+      className={`flex items-center justify-center md:justify-start space-x-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium w-full md:w-auto ${activeTab === name
+        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+        }`}
     >
       <Icon className="w-5 h-5" />
       <span className="hidden md:inline">{name}</span>
@@ -285,7 +337,7 @@ const handleSignOut = async () => {
   // Theme change handler with protection
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     if (themeChanging) return
-    
+
     setThemeChanging(true)
     try {
       if (newTheme === 'light' && isDark) {
@@ -301,7 +353,7 @@ const handleSignOut = async () => {
   // Notification toggle handler with protection
   const handleNotificationToggle = async () => {
     if (notificationUpdating) return
-    
+
     setNotificationUpdating(true)
     try {
       const newValue = !notificationsEnabled
@@ -315,7 +367,7 @@ const handleSignOut = async () => {
   // Archive toggle handler with protection
   const handleArchiveToggle = async () => {
     if (archiveToggleUpdating) return
-    
+
     setArchiveToggleUpdating(true)
     try {
       const newValue = !showArchivedAccounts
@@ -492,11 +544,10 @@ const handleSignOut = async () => {
                   <button
                     onClick={() => handleThemeChange('light')}
                     disabled={themeChanging}
-                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${
-                      !isDark 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${!isDark
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Sun className="w-4 h-4" />
                     <span>Light</span>
@@ -504,11 +555,10 @@ const handleSignOut = async () => {
                   <button
                     onClick={() => handleThemeChange('dark')}
                     disabled={themeChanging}
-                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${
-                      isDark 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${isDark
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Moon className="w-4 h-4" />
                     <span>Dark</span>
@@ -536,7 +586,7 @@ const handleSignOut = async () => {
                 </select>
               </SettingItem>
 
-              <SettingItem icon={FileText} title="Date Format" subtitle="Choose how dates are displayed across the app.">
+              {/* <SettingItem icon={FileText} title="Date Format" subtitle="Choose how dates are displayed across the app.">
                 <select
                   value={dateFormat}
                   onChange={(e) => {
@@ -551,7 +601,7 @@ const handleSignOut = async () => {
                     </option>
                   ))}
                 </select>
-              </SettingItem>
+              </SettingItem> */}
             </div>
           </div>
         )}
@@ -567,14 +617,12 @@ const handleSignOut = async () => {
                   <button
                     onClick={handleNotificationToggle}
                     disabled={notificationUpdating}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      notificationsEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
-                    } ${notificationUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notificationsEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                      } ${notificationUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                 </div>
@@ -599,9 +647,8 @@ const handleSignOut = async () => {
                   <button
                     onClick={handleArchiveToggle}
                     disabled={archiveToggleUpdating}
-                    className={`text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium ${
-                      archiveToggleUpdating ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                    className={`text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium ${archiveToggleUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                   >
                     {showArchivedAccounts ? 'Hide Archived Accounts' : 'Show Archived Accounts'}
                     {archiveToggleUpdating && '...'}
@@ -639,13 +686,12 @@ const handleSignOut = async () => {
                           <button
                             onClick={() => toggleAccountVisibility(account.id, account.is_active)}
                             disabled={accountVisibilityUpdating === account.id || (account.is_default && account.is_active)}
-                            className={`flex items-center space-x-1.5 px-3 py-1 text-xs rounded-full transition-colors ${
-                              account.is_active
-                                ? account.is_default 
-                                  ? 'bg-blue-100 text-blue-800 cursor-not-allowed'
-                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                            } ${(accountVisibilityUpdating === account.id || (account.is_default && account.is_active)) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex items-center space-x-1.5 px-3 py-1 text-xs rounded-full transition-colors ${account.is_active
+                              ? account.is_default
+                                ? 'bg-blue-100 text-blue-800 cursor-not-allowed'
+                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                              } ${(accountVisibilityUpdating === account.id || (account.is_default && account.is_active)) ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             {accountVisibilityUpdating === account.id ? (
                               <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -661,12 +707,12 @@ const handleSignOut = async () => {
                               <EyeOff className="w-3 h-3" />
                             )}
                             <span>
-                              {accountVisibilityUpdating === account.id 
-                                ? 'Updating...' 
+                              {accountVisibilityUpdating === account.id
+                                ? 'Updating...'
                                 : account.is_default && account.is_active
                                   ? 'Default'
-                                  : account.is_active 
-                                    ? 'Visible' 
+                                  : account.is_active
+                                    ? 'Visible'
                                     : 'Hidden'
                               }
                             </span>
@@ -687,15 +733,23 @@ const handleSignOut = async () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <SettingItem icon={Download} title="Export Data" subtitle="Download your financial data in various formats.">
                 <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
-                    <FileText className="w-4 h-4" />
-                    <span>Export as Excel</span>
+                  <button
+                    onClick={handleExportData}
+                    disabled={exporting}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {exporting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span>{exporting ? 'Exporting...' : 'Export as Excel'}</span>
                   </button>
                 </div>
               </SettingItem>
 
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 shadow-sm">
-               <div className="flex items-start space-x-4">
+                <div className="flex items-start space-x-4">
                   <div className="bg-red-100 dark:bg-red-800 p-3 rounded-lg">
                     <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
                   </div>
@@ -710,17 +764,17 @@ const handleSignOut = async () => {
                     <span>Delete All Data</span>
                   </button>
                 </div>
-             </div>
-            
-            <SettingItem icon={LogOut} title="Account Actions" subtitle="Sign out from your current session.">
-              <button
-                onClick={handleSignOut}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-500 text-sm font-medium rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
-            </SettingItem>
+              </div>
+
+              <SettingItem icon={LogOut} title="Account Actions" subtitle="Sign out from your current session.">
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-500 text-sm font-medium rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </SettingItem>
             </div>
           </div>
         )}

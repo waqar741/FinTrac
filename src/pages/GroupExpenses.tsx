@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
 import { Plus, Users, Copy, Check, X, UserPlus, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
+import { useCurrency } from '../hooks/useCurrency'
 
 interface Group {
   id: string
@@ -60,6 +61,7 @@ interface ExpenseForm {
 
 export default function GroupExpenses() {
   const { user } = useAuth()
+  const { formatCurrency, currency } = useCurrency()
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([])
@@ -174,7 +176,7 @@ export default function GroupExpenses() {
   const createGroup = async (data: GroupForm) => {
     try {
       const inviteCode = generateInviteCode()
-      
+
       const { data: newGroup, error } = await supabase
         .from('groups')
         .insert({
@@ -300,7 +302,7 @@ export default function GroupExpenses() {
     if (!groupExpenses.length || !groupMembers.length) return []
 
     const balances: Record<string, number> = {}
-    
+
     // Initialize balances
     groupMembers.forEach(member => {
       balances[member.user_id] = 0
@@ -364,13 +366,7 @@ export default function GroupExpenses() {
     return settlements
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
+
 
   if (loading) {
     return (
@@ -452,11 +448,11 @@ export default function GroupExpenses() {
                     </button>
                   </div>
                 </div>
-                
+
                 {group.description && (
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{group.description}</p>
                 )}
-                
+
                 <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                   <span>{group.member_count} members</span>
                   <span>Code: {group.invite_code}</span>
@@ -493,7 +489,7 @@ export default function GroupExpenses() {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-4">
                 <span className="text-gray-600 dark:text-gray-300">
@@ -702,10 +698,10 @@ export default function GroupExpenses() {
             <form onSubmit={handleExpenseSubmit(addExpense)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount (₹)
+                  Amount ({currency})
                 </label>
                 <input
-                  {...registerExpense('amount', { 
+                  {...registerExpense('amount', {
                     required: 'Amount is required',
                     min: { value: 0.01, message: 'Amount must be greater than 0' }
                   })}
