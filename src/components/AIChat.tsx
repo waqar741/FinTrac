@@ -15,7 +15,7 @@ interface Message {
 const API_URL = import.meta.env.VITE_AI_API_URL
 
 export default function AIChat() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -103,7 +103,7 @@ export default function AIChat() {
         startDate = subMonths(new Date(), 2)
       }
 
-      const [trRes, acRes, dcRes, glRes, upRes] = await Promise.all([
+      const [trRes, acRes, dcRes, glRes] = await Promise.all([
         supabase.from('transactions')
           .select('*, accounts(name)')
           .eq('user_id', user?.id)
@@ -111,15 +111,14 @@ export default function AIChat() {
           .order('created_at', { ascending: false }),
         supabase.from('accounts').select('*').eq('user_id', user?.id),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
-        supabase.from('savings_goals').select('*').eq('user_id', user?.id),
-        supabase.from('profiles').select('full_name').eq('id', user?.id).single()
+        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
       ])
 
       const transactions = trRes.data || []
       const accounts = acRes.data || []
       const debtsCredits = dcRes.data || []
       const goals = glRes.data || []
-      const profile = upRes.data
+      // profile is already from useAuth
 
       const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
 
@@ -229,19 +228,18 @@ export default function AIChat() {
     }
 
     try {
-      const [trRes, acRes, dcRes, glRes, upRes] = await Promise.all([
+      const [trRes, acRes, dcRes, glRes] = await Promise.all([
         supabase.from('transactions').select('*, accounts(name)').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('accounts').select('*').eq('user_id', user?.id),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
-        supabase.from('savings_goals').select('*').eq('user_id', user?.id),
-        supabase.from('profiles').select('full_name').eq('id', user?.id).single()
+        supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
       ])
 
       const transactions = trRes.data || []
       const accounts = acRes.data || []
       const debtsCredits = dcRes.data || []
       const goals = glRes.data || []
-      const profile = upRes.data
+      // profile from useAuth
 
       const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
       const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
