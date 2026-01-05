@@ -149,7 +149,9 @@ export default function AIChat() {
       
       IMPORTANT:
       - Always refer to the user as 'You'. 
-      - Do NOT use the name '${profile?.full_name}' in your response (e.g., say "You owe", not "${profile?.full_name} owes").
+      - Do NOT use the name '${profile?.full_name}' in your response.
+      - FOR DEBTS: Say "You owe [Name]".
+      - FOR CREDITS: Say "[Name] owes you".
       - Provide plain text responses only.
       - Do NOT use markdown formatting (no bold **, no italics *).
       - Be concise and helpful.
@@ -177,7 +179,7 @@ export default function AIChat() {
           ],
           stream: true,
           temperature: 0.1,
-          max_tokens: 300
+          max_tokens: 200
         })
       })
 
@@ -211,7 +213,13 @@ export default function AIChat() {
       }
     } catch (e) {
       const fallback = await processOffline(query)
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fallback } : m))
+      // Simulate typing for fallback too
+      let currentText = ''
+      for (let i = 0; i < fallback.length; i++) {
+        currentText += fallback[i]
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: currentText } : m))
+        await new Promise(r => setTimeout(r, 10))
+      }
     }
   }
 
@@ -296,15 +304,15 @@ Net:     ${formatCurrency(inc - exp)}`
       if (matches(['owe', 'debt', 'payable', 'liability']) && !lowerQuery.includes('owed to me')) {
         const debts = debtsCredits.filter(d => d.type === 'debt')
         if (debts.length === 0) return 'No active debts!'
-        const list = debts.map(d => `• ${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}`).join('\n')
-        return `You Owe:\n${list}\nTotal: ${formatCurrency(totalDebt)}`
+        const list = debts.map(d => `• You owe ${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}`).join('\n')
+        return `Your Debts:\n${list}\nTotal: ${formatCurrency(totalDebt)}`
       }
 
       if (matches(['owes me', 'credit', 'receivable', 'owed to me'])) {
         const credits = debtsCredits.filter(d => d.type === 'credit')
         if (credits.length === 0) return 'No one owes you money.'
-        const list = credits.map(c => `• ${c.person_name || 'Unknown'}: ${formatCurrency(c.amount)}`).join('\n')
-        return `Owed to You:\n${list}\nTotal: ${formatCurrency(totalCredit)}`
+        const list = credits.map(c => `• ${c.person_name || 'Unknown'} owes you: ${formatCurrency(c.amount)}`).join('\n')
+        return `Credits (Owed to You):\n${list}\nTotal: ${formatCurrency(totalCredit)}`
       }
 
       if (matches(['goal', 'target', 'save', 'saving'])) {
@@ -363,12 +371,21 @@ Net:     ${formatCurrency(inc - exp)}`
         const freshContext = await refreshFinancialContext(query)
         await processOnline(query, assistantId, freshContext)
       } else {
-        setTimeout(async () => {
-          const response = await processOffline(query)
+        // Simulate "Processing" time briefly
+        await new Promise(r => setTimeout(r, 600))
+
+        const response = await processOffline(query)
+
+        // Simulate Typing Effect for Offline Mode
+        let currentText = ''
+        const chunkSize = 3 // chars per tick
+        for (let i = 0; i < response.length; i += chunkSize) {
+          currentText += response.slice(i, i + chunkSize)
           setMessages(prev => prev.map(m =>
-            m.id === assistantId ? { ...m, content: response } : m
+            m.id === assistantId ? { ...m, content: currentText } : m
           ))
-        }, 600)
+          await new Promise(r => setTimeout(r, 10)) // Speed of typing
+        }
       }
     } catch (e) {
       setMessages(prev => prev.map(m =>
@@ -438,7 +455,7 @@ Net:     ${formatCurrency(inc - exp)}`
             ) : null
           ))}
 
-          {loading && (
+          {loading && !messages[messages.length - 1]?.content && (
             <div className="flex justify-start">
               <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg rounded-bl-none">
                 <div className="flex space-x-1">

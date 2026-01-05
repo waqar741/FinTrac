@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
 import { Plus, Trash2, X, Search, Download, FileText, Clock, Loader, Eye, ChevronDown, ChevronUp } from 'lucide-react'
-import { format, subDays, isBefore } from 'date-fns'
+import { format, subDays, isBefore, subMonths } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 
@@ -61,10 +61,11 @@ export default function Transactions() {
   const [showModal, setShowModal] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterAccount, setFilterAccount] = useState<string>('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'))
+  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
   const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
@@ -82,22 +83,31 @@ export default function Transactions() {
 
   const isRecurring = watch('is_recurring', false)
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     if (user) {
-      fetchInitialData()
+      fetchInitialData(true)
     }
   }, [user])
 
   // Reset pagination when filters change
   useEffect(() => {
     if (user) {
-      fetchInitialData()
+      fetchInitialData(false)
     }
-  }, [searchTerm, filterType, filterAccount, dateFrom, dateTo])
+  }, [debouncedSearchTerm, filterType, filterAccount, dateFrom, dateTo])
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       setPage(0)
       setHasMore(true)
 
@@ -144,8 +154,8 @@ export default function Transactions() {
       if (dateTo) {
         query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
       }
-      if (searchTerm) {
-        query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      if (debouncedSearchTerm) {
+        query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
       }
 
       const { data: transactionsData, error, count } = await query
@@ -200,8 +210,8 @@ export default function Transactions() {
       if (dateTo) {
         query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
       }
-      if (searchTerm) {
-        query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      if (debouncedSearchTerm) {
+        query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
       }
 
       const { data: newTransactions, error } = await query
@@ -264,7 +274,7 @@ export default function Transactions() {
 
         const currentBalance = Number(accountData?.balance) || 0
         const transactionAmount = Number(data.amount)
-        
+
         // Calculate new balance
         const balanceChange = data.type === 'income' ? transactionAmount : -transactionAmount
         const newBalance = currentBalance + balanceChange
@@ -341,7 +351,7 @@ export default function Transactions() {
           if (goalFetchError) throw goalFetchError;
 
           const newGoalAmount = Math.max(0, goalData.current_amount - transactionAmount);
-          
+
           const { error: goalUpdateError } = await supabase
             .from('goals')
             .update({ current_amount: newGoalAmount })
@@ -371,12 +381,12 @@ export default function Transactions() {
       if (updateError) throw updateError
 
       await fetchInitialData()
-      
-      alert(transaction.goal_id 
-        ? 'Transaction deleted successfully. Amount deducted from goal.' 
+
+      alert(transaction.goal_id
+        ? 'Transaction deleted successfully. Amount deducted from goal.'
         : 'Transaction deleted successfully.'
       );
-      
+
     } catch (error: any) {
       console.error('Error deleting transaction:', error);
       alert(`Error deleting transaction: ${error.message}`);
@@ -444,8 +454,8 @@ export default function Transactions() {
         if (dateTo) {
           query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
         }
-        if (searchTerm) {
-          query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        if (debouncedSearchTerm) {
+          query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
         }
 
         const { data: allTransactions, error } = await query
@@ -505,8 +515,8 @@ export default function Transactions() {
         if (dateTo) {
           query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
         }
-        if (searchTerm) {
-          query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        if (debouncedSearchTerm) {
+          query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
         }
 
         const { data: allTransactions, error } = await query
@@ -553,7 +563,7 @@ export default function Transactions() {
           pdf.text('Description', 50, yPos);
           pdf.text('Amount (INR)', 140, yPos);
           pdf.text('Type', 170, yPos);
-          
+
           yPos += 2;
           pdf.setLineWidth(0.2);
           pdf.line(20, yPos, pageWidth - 20, yPos);
@@ -578,19 +588,19 @@ export default function Transactions() {
 
             pdf.setFontSize(9);
             pdf.setFont('helvetica', 'normal');
-            
+
             pdf.text(format(new Date(t.created_at), 'yyyy-MM-dd'), 20, yPos);
-            
+
             let description = t.description || 'No description';
             if (description.length > 35) {
               description = description.substring(0, 32) + '...';
             }
             pdf.text(description, 50, yPos);
-            
+
             pdf.text(t.amount.toFixed(2), 140, yPos);
-            
+
             pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
-            
+
             yPos += 7;
           });
         }
@@ -600,7 +610,7 @@ export default function Transactions() {
           pdf.addPage();
           currentPage++;
         }
-        
+
         addHeader(currentPage, totalPages);
         yPos = 60;
 
@@ -617,7 +627,7 @@ export default function Transactions() {
         pdf.setFont('helvetica', 'bold');
         pdf.text('Summary:', 30, yPos);
         yPos += 12;
-        
+
         pdf.setFont('helvetica', 'normal');
         pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
         yPos += 10;
@@ -644,7 +654,7 @@ export default function Transactions() {
   }
 
   const categories = Array.from(new Set(transactions.map(t => t.category)))
-  
+
   if (loading) {
     return (
       <div className="p-6">
@@ -659,7 +669,7 @@ export default function Transactions() {
       </div>
     )
   }
-  
+
   return (
     <div className="p-4 space-y-3 sm:p-6">
       {/* Header */}
@@ -671,7 +681,7 @@ export default function Transactions() {
           onClick={() => setShowModal(true)}
           className="flex items-center px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
-          <Plus className="w-4 h-4 mr-2"/>
+          <Plus className="w-4 h-4 mr-2" />
           Add
         </button>
       </div>
@@ -842,7 +852,7 @@ export default function Transactions() {
                 const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
                 const isDeleting = deletingTransactionId === transaction.id
                 const isExpanded = expandedTransactionId === transaction.id
-                
+
                 return (
                   <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     {/* Mobile Layout */}
@@ -875,7 +885,7 @@ export default function Transactions() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
                           {/* View Details Button */}
                           <button
@@ -885,7 +895,7 @@ export default function Transactions() {
                           >
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
-                          
+
                           {/* Delete Button */}
                           <button
                             onClick={() => deleteTransaction(transaction)}
@@ -901,7 +911,7 @@ export default function Transactions() {
                           </button>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
                           <div className="flex items-center space-x-2">
@@ -914,11 +924,10 @@ export default function Transactions() {
                           </div>
                           <span className="text-xs">{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</span>
                         </div>
-                        
+
                         <div className="text-right">
-                          <p className={`font-semibold text-sm ${
-                            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                          }`}>
+                          <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                            }`}>
                             {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
@@ -929,7 +938,7 @@ export default function Transactions() {
                       {isExpanded && (
                         <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-600 rounded-lg space-y-2">
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            
+
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Created:</span>
                               <p>{format(new Date(transaction.created_at), 'MMM d, yyyy h:mm a')}</p>
@@ -999,17 +1008,16 @@ export default function Transactions() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
-                          <p className={`font-semibold ${
-                            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                          }`}>
+                          <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                            }`}>
                             {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           {/* View Details Button for Desktop */}
                           <button
@@ -1019,7 +1027,7 @@ export default function Transactions() {
                           >
                             <ChevronDown className="w-4 h-4" />
                           </button>
-                          
+
                           {/* Delete Button */}
                           <button
                             onClick={() => deleteTransaction(transaction)}
@@ -1165,7 +1173,7 @@ export default function Transactions() {
                   Amount (₹)
                 </label>
                 <input
-                  {...register('amount', { 
+                  {...register('amount', {
                     required: 'Amount is required',
                     min: { value: 0.01, message: 'Amount must be greater than 0' }
                   })}

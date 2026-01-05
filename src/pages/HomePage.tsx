@@ -117,7 +117,7 @@ const HomePage = () => {
                 </svg>
               )}
             </button>
-            
+
             <a href="/login" className="text-gray-600 dark:text-gray-300 font-medium hover:text-green-500 transition-all duration-300 hover:scale-105">Sign In</a>
             <a href="/signup" className="bg-gradient-to-r from-green-500 to-green-400 text-white font-medium px-5 py-2.5 rounded-lg shadow-md hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
               Start for Free
@@ -125,7 +125,7 @@ const HomePage = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300"
           >
@@ -180,17 +180,17 @@ const HomePage = () => {
         <section className="bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-6 py-20 md:py-32 text-center">
             <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight">
-                  Achieve Financial Clarity,{' '}
-                   <span className="bg-gradient-to-r from-green-500 to-green-400 bg-clip-text text-transparent">
-                     Completely Free.
-                   </span>
-                 </h1>
+              Achieve Financial Clarity,{' '}
+              <span className="bg-gradient-to-r from-green-500 to-green-400 bg-clip-text text-transparent">
+                Completely Free.
+              </span>
+            </h1>
             <p className="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300 animate-fadeInUp delay-200">
               Track expenses, manage budgets, and achieve your financial goals with our intelligent personal finance platform.
             </p>
             <div className="mt-10 flex justify-center animate-fadeInUp delay-400">
-              <a 
-                href="/signup" 
+              <a
+                href="/login"
                 className="bg-gradient-to-r from-green-500 to-green-400 text-white font-bold text-lg px-8 py-4 rounded-lg shadow-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl animate-pulse-slow"
               >
                 Start for Free &rarr;
@@ -198,14 +198,14 @@ const HomePage = () => {
             </div>
             <div className="mt-20 animate-fadeInUp delay-600">
               {/* Light Theme Image */}
-              <img 
-                src="/image/image.png" 
+              <img
+                src="/image/image.png"
                 alt="FinTrac Dashboard - Light Theme"
                 className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full dark:hidden transform hover:scale-105 transition-transform duration-500"
               />
               {/* Dark Theme Image */}
-              <img 
-                src="/image/dark.png" 
+              <img
+                src="/image/dark.png"
                 alt="FinTrac Dashboard - Dark Theme"
                 className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full hidden dark:block transform hover:scale-105 transition-transform duration-500"
               />
@@ -224,7 +224,7 @@ const HomePage = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {features.map((feature, index) => (
-                <div 
+                <div
                   key={index}
                   className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 animate-fadeInUp"
                   style={{ animationDelay: `${index * 100}ms` }}
@@ -239,14 +239,14 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-        
+
         {/* About Us Section */}
         <section id="about" className="py-20 md:py-28">
           <div className="container mx-auto px-6 text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white animate-fadeInUp">Our Mission</h2>
             <div className="max-w-4xl mx-auto mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed animate-fadeInUp delay-200">
               <p className="transform hover:scale-105 transition-transform duration-300">
-                We're breaking down barriers to financial independence by providing comprehensive, 
+                We're breaking down barriers to financial independence by providing comprehensive,
                 intuitive financial tools that are free for everyone, forever.
               </p>
             </div>
@@ -262,8 +262,8 @@ const HomePage = () => {
                 Join thousands building a better financial future with FinTrac.
               </p>
               <div className="mt-8 animate-fadeInUp delay-300">
-                <a 
-                  href="/signup" 
+                <a
+                  href="/signup"
                   className="bg-white text-green-600 font-bold text-lg px-8 py-4 rounded-lg shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-110 hover:shadow-2xl inline-block"
                 >
                   Get Started for Free &rarr;
@@ -290,7 +290,7 @@ const HomePage = () => {
                   </a>
                 </nav>
               </div>
-              
+
               <div className="text-center sm:text-left">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Legal</h3>
                 <nav className="mt-4 space-y-3">
@@ -304,12 +304,12 @@ const HomePage = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Developer Social Links */}
           <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-500 dark:text-gray-400 text-sm">&copy; 2025 FinTrac. All rights reserved.</p>
-              
+
               {/* Social Media Links with animations */}
               <div className="flex space-x-4 mt-4 md:mt-0">
                 {/* <a 
@@ -323,21 +323,21 @@ const HomePage = () => {
                     <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.026A9.578 9.578 0 0112 6.836c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.647.64.7 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.943.359.309.678.92.678 1.852 0 1.335-.012 2.415-.012 2.743 0 .267.18.58.688.482C19.138 20.164 22 16.418 22 12c0-5.523-4.477-10-10-10z" clipRule="evenodd" />
                   </svg>
                 </a> */}
-                
-                <a 
-                  href="https://linkedin.com/in/shaikh-waquar" 
-                  target="_blank" 
+
+                <a
+                  href="https://linkedin.com/in/shaikh-waquar"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-110"
                   aria-label="LinkedIn"
                 >
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                   </svg>
                 </a>
               </div>
             </div>
-            
+
             {/* Developer Credit */}
             <div className="mt-4 text-center md:text-left">
               <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">
