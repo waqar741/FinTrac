@@ -64,6 +64,7 @@ export default function Transactions() {
   const { user } = useAuth()
   const { formatCurrency, currency } = useCurrency()
   const { formatDate } = useDateFormat()
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [goals, setGoals] = useState<Goal[]>([])
@@ -82,7 +83,7 @@ export default function Transactions() {
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
   const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const pageSize = 15
 
   const {
@@ -121,8 +122,7 @@ export default function Transactions() {
   const fetchInitialData = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true)
-      setPage(0)
-      setHasMore(true)
+      setPage(1)
 
       // Fetch accounts with balance
       const { data: accountsData } = await supabase
@@ -138,7 +138,7 @@ export default function Transactions() {
         .eq('user_id', user?.id)
         .eq('is_active', true)
 
-      // Fetch first page of transactions
+      // Fetch ALL transactions within date range
       let query = supabase
         .from('transactions')
         .select(`
@@ -149,26 +149,16 @@ export default function Transactions() {
             color,
             balance
           )
-        `, { count: 'exact' })
+        `)
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
-        .limit(pageSize)
 
-      // Apply filters
-      if (filterType !== 'all') {
-        query = query.eq('type', filterType)
-      }
-      if (filterAccount !== 'all') {
-        query = query.eq('account_id', filterAccount)
-      }
+      // Apply date filters to DB query to limit initial payload size
       if (dateFrom) {
         query = query.gte('created_at', dateFrom)
       }
       if (dateTo) {
         query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
-      }
-      if (debouncedSearchTerm) {
-        query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
       }
 
       const { data: transactionsData, error } = await query
@@ -210,16 +200,16 @@ export default function Transactions() {
             type: 'transfer',
             category: 'Transfer',
             description: transfer.description || `Transfer from ${fromAccount?.name || 'Unknown'} to ${toAccount?.name || 'Unknown'}`,
-            account_id: transfer.from_account_id, // Default to 'from' account for sorting/filtering context if needed
+            account_id: transfer.from_account_id,
             is_recurring: false,
             recurring_frequency: null,
-            accounts: fromAccount // Attach from account details
+            accounts: fromAccount
           }
         })
         allItems = [...allItems, ...formattedTransfers]
       }
 
-      // Filter merged results manually for those filters not supported by direct DB query on mixed types
+      // Filter merged results client-side
       if (filterType !== 'all') {
         allItems = allItems.filter(item => item.type === filterType)
       }
@@ -241,9 +231,13 @@ export default function Transactions() {
       // Sort by date desc
       allItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      setTransactions(allItems)
-      setHasMore(false) // Disable load more for now as we are doing client side merge
-      setPage(1)
+      setAllTransactions(allItems)
+
+      // Initialize visible transactions
+      const initialBatch = allItems.slice(0, pageSize)
+      setTransactions(initialBatch)
+      setHasMore(allItems.length > pageSize)
+
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -252,12 +246,15 @@ export default function Transactions() {
   }
 
   const loadMoreTransactions = async () => {
-    // Simplify loadMore to just return if we are doing client side merge
-    // Since we merged transfers client-side and disabled manual pagination for simplicity with filters,
-    // we effectively disable "load more" strategies that rely on DB pagination for mixed sources unless complex logic is added.
-    // For now, we already fetched everything or large chunk in initial load if valid.
-    // Given the previous code just disabled it, we keep it disabled or empty to avoid errors.
-    return
+    setLoadingMore(true)
+    // Client-side pagination
+    const nextPage = page + 1
+    const nextBatch = allTransactions.slice(0, nextPage * pageSize)
+
+    setTransactions(nextBatch)
+    setPage(nextPage)
+    setHasMore(allTransactions.length > nextBatch.length)
+    setLoadingMore(false)
   }
 
   // Check if transaction is older than 1 day
@@ -1038,7 +1035,7 @@ export default function Transactions() {
                       <div className="flex items-center space-x-4 flex-1">
                         <div
                           className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: transaction.accounts.color }}
+                          style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2">
