@@ -229,7 +229,7 @@ export default function Analytics() {
       <SEO title="Analytics" description="Deep dive into your financial data" />
 
       {/* Header & Filter */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-row justify-between items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-blue-600">
             Analytics
@@ -242,7 +242,7 @@ export default function Analytics() {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-full md:w-auto justify-between md:justify-start"
+            className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-full sm:w-auto justify-between sm:justify-start"
           >
             <div className="flex items-center space-x-2">
               <Calendar className="w-4 h-4 text-gray-500" />

@@ -1,4 +1,3 @@
-import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useNotifications, Notification } from '../contexts/NotificationContext'
 import { Bell, Check, Info, AlertTriangle, ExternalLink } from 'lucide-react'
@@ -11,23 +10,8 @@ interface NotificationDropdownProps {
 
 export default function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
-    const dropdownRef = useRef<HTMLDivElement>(null)
+    // Click outside is now handled by the parent (Layout.tsx) to prevent conflict with the toggle button
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                onClose()
-            }
-        }
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside)
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside)
-        }
-    }, [isOpen, onClose])
 
     if (!isOpen) return null
 
@@ -57,8 +41,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     // Limit height and add scroll
     return (
         <div
-            ref={dropdownRef}
-            className="absolute right-0 mt-2 w-80 md:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
+            className="fixed inset-x-4 top-20 md:fixed md:inset-auto md:absolute md:right-0 md:top-full md:mt-2 w-auto md:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
         >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
                 <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>

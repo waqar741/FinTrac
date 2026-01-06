@@ -262,12 +262,19 @@ export default function Layout() {
 
   // Create a ref for the dropdown with proper type
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Profile Dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setProfileDropdownOpen(false)
+      }
+
+      // Notification Dropdown
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationOpen(false)
       }
     }
 
@@ -421,7 +428,7 @@ export default function Layout() {
             <div className="flex-1 lg:flex-none lg:ml-auto">
               <div className="flex items-center justify-end space-x-4">
                 {/* Notification Bell */}
-                <div className="relative">
+                <div className="relative" ref={notificationRef}>
                   <button
                     onClick={() => setNotificationOpen(!notificationOpen)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"

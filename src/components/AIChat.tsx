@@ -639,7 +639,7 @@ export default function AIChat() {
                 <div className="flex items-center space-x-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${useModel && isBackendReachable ? 'bg-green-500' : 'bg-blue-500'}`}></span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {useModel && isBackendReachable ? 'AI Model' : 'Offline Mode'}
+                    {useModel && isBackendReachable ? 'AI Model' : 'Rule Based Model'}
                   </span>
                 </div>
               </div>
