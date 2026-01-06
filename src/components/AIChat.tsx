@@ -25,7 +25,7 @@ export default function AIChat() {
     {
       id: '1',
       type: 'assistant',
-      content: 'Hello! I am Fintrac AI. I can help you with balance, accounts, debts, goals, and more!',
+      content: 'Hello! I am Fintrac AI. How can I help?',
       timestamp: new Date(),
       quickReplies: [
         'What is my balance?',
@@ -126,8 +126,28 @@ export default function AIChat() {
       const goals = glRes.data || []
 
       const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
-      const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
-      const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+      let totalIncome = 0
+      let totalExpenses = 0
+      let periodLabel = `From ${formatDate(startDate.toISOString())} to Now`
+
+      // Refined Calculation: Handle "Last Month" specific filtering
+      if (lowerQ.includes('last month') || lowerQ.includes('previous month')) {
+        const lastMonthStart = startOfMonth(subMonths(new Date(), 1))
+        const thisMonthStart = startOfMonth(new Date())
+
+        const lastMonthTxns = transactions.filter(t => {
+          const d = new Date(t.created_at || t.transaction_date)
+          return d >= lastMonthStart && d < thisMonthStart
+        })
+
+        totalIncome = lastMonthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+        totalExpenses = lastMonthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+        periodLabel = `Last Month (${format(lastMonthStart, 'MMMM yyyy')})`
+      } else {
+        // Default: Sum everything in the fetched range
+        totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+        totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+      }
 
       const accountList = accounts.map(a => `${a.name} (${a.bank_name || 'Bank'}): ${formatCurrency(a.balance)}`).join(', ')
       const debtList = debtsCredits.filter(d => d.type === 'debt').map(d => `${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}`).join(', ')
@@ -137,7 +157,7 @@ export default function AIChat() {
       You are Fintrac AI. Answer strictly based on the provided data.
       User Name: ${profile?.full_name || 'User'}
       
-      **FINANCIAL DATA (From ${formatDate(startDate.toISOString())} to Now):**
+      **FINANCIAL DATA (${periodLabel}):**
       - Total Balance: ${formatCurrency(totalBalance)}
       - Accounts (${accounts.length}): [${accountList}]
       - Income (in selected period): ${formatCurrency(totalIncome)}
@@ -254,10 +274,10 @@ export default function AIChat() {
     }
 
     if (matches(['who are you', 'what are you', 'your name'])) {
-      return "I'm Fintrac AI, your personal finance assistant. I can help you track accounts, balance, debts, goals, and transactions."
+      return "I'm Fintrac AI, your personal finance assistant. How can I help you?"
     }
 
-    if (matches(['who am i', 'my name'])) {
+    if (matches(['who am i', 'my name', 'what is my name'])) {
       return profile?.full_name
         ? `You are ${profile.full_name}.`
         : `You are logged in as ${user?.email}.`
@@ -322,7 +342,7 @@ export default function AIChat() {
       }
 
       // --- Recent Transactions ---
-      if (matches(['recent', 'last', 'latest', 'history', 'transaction', 'activity'])) {
+      if (matches(['recent', 'latest', 'history', 'transaction', 'activity'])) {
         const recent = transactions.slice(0, 8)
         if (recent.length === 0) return 'No recent transactions found.'
 
@@ -334,7 +354,7 @@ export default function AIChat() {
       }
 
       // --- Monthly Analysis ---
-      if (matches(['month', 'monthly', 'this month', 'current month'])) {
+      if (matches(['month', 'monthly', 'this month', 'current month']) && !lowerQuery.includes('last month')) {
         const now = new Date()
         const monthTxns = transactions.filter(t => {
           const d = new Date(t.created_at || t.transaction_date)
@@ -353,6 +373,30 @@ export default function AIChat() {
           `${inc > exp ? `Great! You're saving ${formatCurrency(net)} this month.` : `You're overspending by ${formatCurrency(-net)}.`}\n` +
           `${daysLeft} days remaining in the month.`
       }
+
+      // --- Last Month Analysis ---
+      if (matches(['last month', 'previous month'])) {
+        const now = new Date()
+        const lastMonthDate = subMonths(now, 1) // Go back 1 month
+        const lastMonth = lastMonthDate.getMonth()
+        const lastYear = lastMonthDate.getFullYear()
+
+        const lastMonthTxns = transactions.filter(t => {
+          const d = new Date(t.created_at || t.transaction_date)
+          return d.getMonth() === lastMonth && d.getFullYear() === lastYear
+        })
+
+        const inc = lastMonthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+        const exp = lastMonthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+        const net = inc - exp
+
+        return `Last Month's Summary (${format(lastMonthDate, 'MMMM yyyy')})\n\n` +
+          `Income: ${formatCurrency(inc)}\n` +
+          `Expenses: ${formatCurrency(exp)}\n` +
+          `Net: ${formatCurrency(net)}\n\n` +
+          `${inc > exp ? `You saved ${formatCurrency(net)} last month.` : `You overspent by ${formatCurrency(-net)} last month.`}`
+      }
+
 
       // --- Debts ---
       if (exactMatch([/owe|debt|payable|liability|borrow|loan/i]) && !lowerQuery.includes('owes me')) {
@@ -379,7 +423,7 @@ export default function AIChat() {
       }
 
       // --- Goals ---
-      if (matches(['goal', 'target', 'save', 'saving', 'progress', 'achievement'])) {
+      if (matches(['goal', 'goals', 'target', 'save', 'saving', 'progress', 'achievement'])) {
         if (goals.length === 0) return 'No active goals. Set up financial goals to track your progress!'
 
         const goalList = goals.map(g => {
@@ -503,7 +547,7 @@ export default function AIChat() {
       type: 'assistant',
       content: '', // Will stream in
       timestamp: new Date(),
-      quickReplies: ['Balance?', 'My Accounts?', 'Recent?', 'Inc vs Exp?', 'Debt', 'Credits']
+      quickReplies: ['Balance?', 'My Accounts?', 'Recent?', 'Inc vs Exp?', 'Debt?', 'Credits?', 'last month?']
     }])
 
     try {
