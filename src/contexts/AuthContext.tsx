@@ -22,20 +22,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
 
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth initialization timed out, forcing load completion')
+        setLoading(false)
+      }
+    }, 5000)
+
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
 
         if (!mounted) return
 
-        setUser(session?.user ?? null)
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
 
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        }
+        // Stop loading immediately after checking session
+        // Profile fetch can happen in background
+        setLoading(false)
 
-        if (mounted) {
-          setLoading(false)
+        if (currentUser) {
+          fetchProfile(currentUser.id)
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
@@ -52,10 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
 
-      setUser(session?.user ?? null)
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
 
-      if (session?.user) {
-        fetchProfile(session.user.id)
+      // Ensure loading is false on auth change usually
+      setLoading(false)
+
+      if (currentUser) {
+        fetchProfile(currentUser.id)
       } else {
         setProfile(null)
       }
@@ -63,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false
+      clearTimeout(safetyTimeout)
       subscription.unsubscribe()
     }
   }, [])
