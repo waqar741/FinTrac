@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
 import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet } from 'lucide-react'
-import DatePicker from '../components/DatePicker'
+
 import { format } from 'date-fns'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
@@ -910,12 +910,12 @@ export default function DebtsCredits() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Due Date
                 </label>
-                <DatePicker
+                <input
+                  type="date"
                   value={watch('due_date') || format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
-                  onChange={(date) => setValue('due_date', date)}
-                  placeholder="Select due date"
-                  className="w-full"
-                  minDate={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => setValue('due_date', e.target.value)}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 {errors.due_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>

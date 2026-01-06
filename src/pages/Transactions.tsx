@@ -9,7 +9,7 @@ import { format, subDays, isBefore, subMonths } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { useDateFormat } from '../hooks/useDateFormat'
-import DatePicker from '../components/DatePicker'
+
 
 
 // Update Transaction interface to be compatible with Transfers
@@ -789,17 +789,17 @@ export default function Transactions() {
 
           {/* Date Inputs */}
           <div className="grid grid-cols-2 gap-3">
-            <DatePicker
+            <input
+              type="date"
               value={dateFrom}
-              onChange={setDateFrom}
-              placeholder="Start Date"
-              className="w-full"
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
-            <DatePicker
+            <input
+              type="date"
               value={dateTo}
-              onChange={setDateTo}
-              placeholder="End Date"
-              className="w-full"
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
 
@@ -857,18 +857,18 @@ export default function Transactions() {
             ))}
           </select>
 
-          <DatePicker
+          <input
+            type="date"
             value={dateFrom}
-            onChange={setDateFrom}
-            placeholder="Start Date"
-            className="min-w-[140px]"
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
           />
 
-          <DatePicker
+          <input
+            type="date"
             value={dateTo}
-            onChange={setDateTo}
-            placeholder="End Date"
-            className="min-w-[140px]"
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
           />
 
           {/* Export Buttons */}

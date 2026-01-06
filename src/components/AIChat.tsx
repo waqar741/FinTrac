@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send, Cpu, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { startOfMonth, subMonths, startOfYear, subYears } from 'date-fns'
+import { startOfMonth, subMonths, startOfYear, subYears, format, differenceInDays } from 'date-fns'
 
 interface Message {
   id: string
@@ -19,18 +19,24 @@ export default function AIChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
-  const [useModel, setUseModel] = useState(true)
+  const [useModel, setUseModel] = useState(false) // Changed default to false (offline mode)
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'assistant',
-      content: 'Hello! I am Fintrac AI. How can I help?',
+      content: 'Hello! I am Fintrac AI. I can help you with balance, accounts, debts, goals, and more!',
       timestamp: new Date(),
       quickReplies: [
-        'Balance?', 'My Accounts?', 'Inc vs exp?',
-        'I owe?', 'Goals?', 'Recent?',
-        'Who owes me?', 'Budget status?', 'Categories?'
+        'What is my balance?',
+        'Show my accounts',
+        'Income vs expenses',
+        'Who do I owe?',
+        'Goals progress',
+        'Recent transactions',
+        'Who owes me?',
+        'Budget status',
+        'Spending categories'
       ]
     }
   ])
@@ -84,7 +90,7 @@ export default function AIChat() {
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount)
 
   const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
   // --- 2. DATA BUILDER (Returns context string for immediate use) ---
   const refreshFinancialContext = async (query: string = ''): Promise<string> => {
@@ -118,11 +124,8 @@ export default function AIChat() {
       const accounts = acRes.data || []
       const debtsCredits = dcRes.data || []
       const goals = glRes.data || []
-      // profile is already from useAuth
 
       const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
-
-      // Calculate totals based on the fetched transactions (which are time-filtered)
       const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
       const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
 
@@ -148,13 +151,16 @@ export default function AIChat() {
       ${transactions.slice(0, 10).map(t => `${formatDate(t.created_at)}: ${t.description} (${formatCurrency(t.amount)})`).join('\n')}
       
       IMPORTANT:
-      - Always refer to the user as 'You'. 
-      - Do NOT use the name '${profile?.full_name}' in your response.
-      - FOR DEBTS: Say "You owe [Name]".
-      - FOR CREDITS: Say "[Name] owes you".
-      - Provide plain text responses only.
-      - Do NOT use markdown formatting (no bold **, no italics *).
-      - Be concise and helpful.
+      1. IF THE USER SAYS GIBBERISH OR RANDOM CHARACTERS (e.g. "sdfg", "hig"): Reply "I'm sorry, I don't understand."
+      2. IF ASKED ABOUT DEBTS: Only then say "You owe [Name]".
+      3. IF ASKED ABOUT CREDITS: Only then say "[Name] owes you".
+      4. Always refer to the user as 'You'.
+      5. Provide plain text responses only.
+      6. Do NOT use markdown formatting(no bold **, no italics *)..
+      7. Do NOT use the name '${profile?.full_name}' in your response.
+      8. IF QUERY IS UNCLEAR/UNRELATED: Ask for clarification or what they want to know about their finances.
+      9. Provide plain text responses only. 
+      10.Be concise and helpful.
       `
       setSystemContext(context)
       return context
@@ -223,16 +229,38 @@ export default function AIChat() {
     }
   }
 
-  // --- 4. OFFLINE ENGINE (Updated Regex) ---
+  // --- 4. ENHANCED OFFLINE ENGINE (Default Mode) ---
   const processOffline = async (query: string): Promise<string> => {
     const lowerQuery = query.toLowerCase().trim()
 
-    // Match helper
-    const matches = (keywords: string[]) => keywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(lowerQuery))
+    // --- Offline Matching Helper with Word Boundaries ---
+    const matches = (keywords: string[]) => {
+      return keywords.some(k => {
+        // If keyword contains *, treat as wildcard (plain includes)
+        if (k.includes('.*')) return new RegExp(k, 'i').test(lowerQuery)
+        // Otherwise enforce word boundaries
+        return new RegExp(`\\b${k}\\b`, 'i').test(lowerQuery)
+      })
+    }
+    const exactMatch = (patterns: RegExp[]) => patterns.some(p => p.test(lowerQuery))
 
-    // --- Basic Personality & Identity ---
-    if (['hi', 'hello', 'hey', 'yo', 'greetings'].some(q => lowerQuery.includes(q))) {
-      return "Hello! How can I help you with your finances today?"
+    // --- Greetings & Identity ---
+    if (matches(['hi', 'hello', 'hey', 'yo', 'greetings', 'good morning', 'good afternoon'])) {
+      return "Hello! I'm Fintrac AI. How can I help you with your finances today?"
+    }
+
+    if (matches(['thanks', 'thank you', 'appreciate'])) {
+      return "You're welcome! Let me know if you need anything else."
+    }
+
+    if (matches(['who are you', 'what are you', 'your name'])) {
+      return "I'm Fintrac AI, your personal finance assistant. I can help you track accounts, balance, debts, goals, and transactions."
+    }
+
+    if (matches(['who am i', 'my name'])) {
+      return profile?.full_name
+        ? `You are ${profile.full_name}.`
+        : `You are logged in as ${user?.email}.`
     }
 
     try {
@@ -247,97 +275,210 @@ export default function AIChat() {
       const accounts = acRes.data || []
       const debtsCredits = dcRes.data || []
       const goals = glRes.data || []
-      // profile from useAuth
 
+      // Calculate totals
       const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
       const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
       const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0)
+      const netWorth = totalBalance + debtsCredits.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+        - debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
       const totalDebt = debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
       const totalCredit = debtsCredits.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
 
-      // --- Identity Query ---
-      if (lowerQuery.includes('who am i') || lowerQuery.includes('my name')) {
-        return profile?.full_name ? `You are ${profile.full_name}.` : `You are logged in as ${user?.email}.`
-      }
-
       // --- Account Queries ---
-      if (matches(['accounts', 'account', 'bank', 'banks'])) {
-        if (accounts.length === 0) return "You don't have any accounts linked yet."
+      if (matches(['accounts', 'account', 'bank', 'banks', 'my accounts', 'list accounts'])) {
+        if (accounts.length === 0) return "You haven't added any accounts yet. Add accounts to track your balance."
+
         const accountDetails = accounts.map(a =>
           `• ${a.name} (${a.bank_name || 'Bank'}): ${formatCurrency(a.balance)}`
         ).join('\n')
-        return `You have ${accounts.length} accounts:\n${accountDetails}\n\nTotal Balance: ${formatCurrency(totalBalance)}`
+
+        return `You have ${accounts.length} account${accounts.length > 1 ? 's' : ''}:\n${accountDetails}\n\nTotal Balance: ${formatCurrency(totalBalance)}`
       }
 
-      // --- Standard Financial Queries ---
+      // --- Balance & Financial Overview ---
+      if (matches(['balance', 'bal', 'money', 'cash', 'funds', 'how much', 'total money', 'net worth'])) {
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100).toFixed(1) : '0'
 
-      if (matches(['balance', 'bal', 'money', 'cash', 'funds'])) {
-        return `Balance Status:
-Current: ${formatCurrency(totalBalance)}
-
-Totals:
-• Income: ${formatCurrency(totalIncome)}
-• Expense: ${formatCurrency(totalExpenses)}`
+        return `Financial Overview\n\n` +
+          `Total Balance: ${formatCurrency(totalBalance)}\n` +
+          `Net Worth: ${formatCurrency(netWorth)}\n\n` +
+          `Income: ${formatCurrency(totalIncome)}\n` +
+          `Expenses: ${formatCurrency(totalExpenses)}\n` +
+          `Savings Rate: ${savingsRate}%`
       }
 
-      if (matches(['recent', 'last', 'latest', 'history'])) {
-        const recent = transactions.slice(0, 5).map(t =>
-          `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)})`
+      // --- Income vs Expenses ---
+      if (exactMatch([/income.*expense|expense.*income|inc.*exp|exp.*inc/i, /how.*spending/i, /saving.*rate/i])) {
+        const net = totalIncome - totalExpenses
+        const savingsRate = totalIncome > 0 ? ((net / totalIncome) * 100).toFixed(1) : '0'
+
+        return `Income vs Expenses\n\n` +
+          `Income: ${formatCurrency(totalIncome)}\n` +
+          `Expenses: ${formatCurrency(totalExpenses)}\n` +
+          `Net: ${formatCurrency(net)}\n` +
+          `Savings Rate: ${savingsRate}%\n\n` +
+          `${net >= 0 ? 'Good job! You are saving money.' : 'You are spending more than you earn.'}`
+      }
+
+      // --- Recent Transactions ---
+      if (matches(['recent', 'last', 'latest', 'history', 'transaction', 'activity'])) {
+        const recent = transactions.slice(0, 8)
+        if (recent.length === 0) return 'No recent transactions found.'
+
+        const recentList = recent.map(t =>
+          `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)}) ${t.type === 'income' ? '(+)' : '(-)'}`
         ).join('\n')
-        return recent ? `Recent Activity:\n${recent}` : 'No recent transactions.'
+
+        return `Recent Transactions\n\n${recentList}\n\nView all transactions for more details.`
       }
 
-      if (matches(['month', 'monthly'])) {
+      // --- Monthly Analysis ---
+      if (matches(['month', 'monthly', 'this month', 'current month'])) {
         const now = new Date()
         const monthTxns = transactions.filter(t => {
           const d = new Date(t.created_at || t.transaction_date)
           return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
         })
+
         const inc = monthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
         const exp = monthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-        return `This Month:
-Income:  ${formatCurrency(inc)}
-Expense: ${formatCurrency(exp)}
-Net:     ${formatCurrency(inc - exp)}`
+        const net = inc - exp
+        const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate()
+
+        return `This Month's Summary\n\n` +
+          `Income: ${formatCurrency(inc)}\n` +
+          `Expenses: ${formatCurrency(exp)}\n` +
+          `Net: ${formatCurrency(net)}\n\n` +
+          `${inc > exp ? `Great! You're saving ${formatCurrency(net)} this month.` : `You're overspending by ${formatCurrency(-net)}.`}\n` +
+          `${daysLeft} days remaining in the month.`
       }
 
-      if (matches(['owe', 'debt', 'payable', 'liability']) && !lowerQuery.includes('owed to me')) {
+      // --- Debts ---
+      if (exactMatch([/owe|debt|payable|liability|borrow|loan/i]) && !lowerQuery.includes('owes me')) {
         const debts = debtsCredits.filter(d => d.type === 'debt')
-        if (debts.length === 0) return 'No active debts!'
-        const list = debts.map(d => `• You owe ${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}`).join('\n')
-        return `Your Debts:\n${list}\nTotal: ${formatCurrency(totalDebt)}`
-      }
+        if (debts.length === 0) return 'No active debts! You are debt-free!'
 
-      if (matches(['owes me', 'credit', 'receivable', 'owed to me'])) {
-        const credits = debtsCredits.filter(d => d.type === 'credit')
-        if (credits.length === 0) return 'No one owes you money.'
-        const list = credits.map(c => `• ${c.person_name || 'Unknown'} owes you: ${formatCurrency(c.amount)}`).join('\n')
-        return `Credits (Owed to You):\n${list}\nTotal: ${formatCurrency(totalCredit)}`
-      }
-
-      if (matches(['goal', 'target', 'save', 'saving'])) {
-        if (goals.length === 0) return 'No active goals.'
-        return `Goals Progress:\n` + goals.map(g =>
-          `• ${g.name}: ${formatCurrency(g.current_amount || 0)} / ${formatCurrency(g.target_amount)}`
+        const list = debts.map(d =>
+          `• You owe ${d.person_name || 'Someone'}: ${formatCurrency(d.amount)}`
         ).join('\n')
+
+        return `Your Debts\n\n${list}\n\nTotal Debt: ${formatCurrency(totalDebt)}`
       }
 
-      if (matches(['category', 'categories', 'spending', 'expense'])) {
+      // --- Credits (Who owes me) ---
+      if (exactMatch([/owes me|credit|receivable|owed to me|who owes|lend/i])) {
+        const credits = debtsCredits.filter(d => d.type === 'credit')
+        if (credits.length === 0) return 'No one owes you money currently.'
+
+        const list = credits.map(c =>
+          `• ${c.person_name || 'Someone'} owes you: ${formatCurrency(c.amount)}`
+        ).join('\n')
+
+        return `Money Owed to You\n\n${list}\n\nTotal Owed: ${formatCurrency(totalCredit)}`
+      }
+
+      // --- Goals ---
+      if (matches(['goal', 'target', 'save', 'saving', 'progress', 'achievement'])) {
+        if (goals.length === 0) return 'No active goals. Set up financial goals to track your progress!'
+
+        const goalList = goals.map(g => {
+          const progress = g.current_amount || 0
+          const target = g.target_amount
+          const percent = target > 0 ? Math.min(100, (progress / target) * 100).toFixed(1) : '0'
+          return `• ${g.name}: ${formatCurrency(progress)} / ${formatCurrency(target)} (${percent}%)`
+        }).join('\n')
+
+        return `Goals Progress\n\n${goalList}`
+      }
+
+      // --- Spending Categories ---
+      if (matches(['category', 'categories', 'spending', 'expense', 'where.*money', 'spend.*most'])) {
         const expenses = transactions.filter(t => t.type === 'expense')
+        if (expenses.length === 0) return 'No expense data available.'
+
         const catMap = expenses.reduce((acc, t) => {
           const c = t.category || 'Other'
           acc[c] = (acc[c] || 0) + Number(t.amount)
           return acc
         }, {} as Record<string, number>)
-        const top = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 4)
-          .map(([k, v]) => `• ${k}: ${formatCurrency(v)}`).join('\n')
-        return `Top Spending:\n${top}`
+
+        const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1])
+        const top = sorted.slice(0, 5)
+          .map(([k, v], i) => `${i + 1}. ${k}: ${formatCurrency(v)} (${((v / totalExpenses) * 100).toFixed(1)}%)`)
+          .join('\n')
+
+        return `Top Spending Categories\n\n${top}`
       }
 
-      return "I can help with Balance, Recent transactions, Debts, Goals, or Account details."
+      // --- Budget Status ---
+      if (matches(['budget', 'budget status', 'budget left', 'remaining'])) {
+        // Assuming you have a budget table or using monthly expenses
+        const now = new Date()
+        const monthExpenses = transactions
+          .filter(t => t.type === 'expense')
+          .filter(t => {
+            const d = new Date(t.created_at || t.transaction_date)
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+          })
+          .reduce((s, t) => s + Number(t.amount), 0)
+
+        // You can customize this based on your budget system
+        return `Budget Status\n\n` +
+          `This month's expenses: ${formatCurrency(monthExpenses)}\n` +
+          `Average daily spend: ${formatCurrency(monthExpenses / now.getDate())}\n\n` +
+          `Tip: Track your spending to stay within budget.`
+      }
+
+      // --- Financial Health ---
+      if (matches(['health', 'status', 'how.*doing', 'financial health'])) {
+        const debtRatio = totalIncome > 0 ? (totalDebt / totalIncome).toFixed(2) : '0'
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100).toFixed(1) : '0'
+
+        let healthStatus = ''
+        if (parseFloat(savingsRate) > 20) healthStatus = 'Excellent'
+        else if (parseFloat(savingsRate) > 10) healthStatus = 'Good'
+        else if (parseFloat(savingsRate) > 0) healthStatus = 'Fair'
+        else healthStatus = 'Needs Improvement'
+
+        return `Financial Health Check\n\n` +
+          `Status: ${healthStatus}\n` +
+          `Savings Rate: ${savingsRate}%\n` +
+          `Debt-to-Income Ratio: ${debtRatio}\n` +
+          `Accounts: ${accounts.length}\n` +
+          `Active Goals: ${goals.length}\n\n` +
+          `${parseFloat(savingsRate) > 10 ? 'You are on the right track!' : 'Consider increasing your savings rate.'}`
+      }
+
+      // --- Help & Suggestions ---
+      if (matches(['help', 'what can you do', 'features', 'capabilities'])) {
+        return `What I Can Help With:\n\n` +
+          `• Check balances and net worth\n` +
+          `• Track income vs expenses\n` +
+          `• Monitor debts and credits\n` +
+          `• Review recent transactions\n` +
+          `• Track goal progress\n` +
+          `• Analyze spending categories\n` +
+          `• Monthly budget status\n` +
+          `• Financial health assessment\n\n` +
+          `Try asking about any of these topics!`
+      }
+
+      // --- Fallback ---
+      return "I can help you with:\n\n" +
+        "• Balance and financial overview\n" +
+        "• Account details and net worth\n" +
+        "• Income vs expenses analysis\n" +
+        "• Recent transactions\n" +
+        "• Debts and credits tracking\n" +
+        "• Goals progress\n" +
+        "• Spending categories\n" +
+        "• Monthly budget status\n\n" +
+        "Try asking something like 'What's my balance?' or 'How am I spending my money?'"
 
     } catch (e) {
-      return "Error accessing records."
+      console.error("Error processing offline request:", e)
+      return "I'm having trouble accessing your financial data right now. Please try again or check your connection."
     }
   }
 
@@ -362,7 +503,7 @@ Net:     ${formatCurrency(inc - exp)}`
       type: 'assistant',
       content: '', // Will stream in
       timestamp: new Date(),
-      quickReplies: ['Balance?', 'My Accounts?', 'Debts?', 'Goals?']
+      quickReplies: ['Balance?', 'My Accounts?', 'Recent?', 'Inc vs Exp?', 'Debt', 'Credits']
     }])
 
     try {
@@ -372,31 +513,31 @@ Net:     ${formatCurrency(inc - exp)}`
         await processOnline(query, assistantId, freshContext)
       } else {
         // Simulate "Processing" time briefly
-        await new Promise(r => setTimeout(r, 600))
+        await new Promise(r => setTimeout(r, 400))
 
         const response = await processOffline(query)
 
         // Simulate Typing Effect for Offline Mode
         let currentText = ''
-        const chunkSize = 3 // chars per tick
+        const chunkSize = 2 // Slightly faster typing
         for (let i = 0; i < response.length; i += chunkSize) {
           currentText += response.slice(i, i + chunkSize)
           setMessages(prev => prev.map(m =>
             m.id === assistantId ? { ...m, content: currentText } : m
           ))
-          await new Promise(r => setTimeout(r, 10)) // Speed of typing
+          await new Promise(r => setTimeout(r, 8)) // Faster typing speed
         }
       }
     } catch (e) {
       setMessages(prev => prev.map(m =>
-        m.id === assistantId ? { ...m, content: "Error processing request." } : m
+        m.id === assistantId ? { ...m, content: "Sorry, I encountered an error. Please try again." } : m
       ))
     } finally {
       setLoading(false)
     }
   }
 
-  const cleanContent = (content: string) => content.replace(/\*\*/g, '').replace(/\*/g, '•') // Simple cleaner
+  const cleanContent = (content: string) => content
 
   return (
     <>
@@ -420,9 +561,9 @@ Net:     ${formatCurrency(inc - exp)}`
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Fintrac AI</h3>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isBackendReachable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${useModel && isBackendReachable ? 'bg-green-500' : 'bg-blue-500'}`}></span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {useModel && isBackendReachable ? 'Model' : 'Offline'}
+                    {useModel && isBackendReachable ? 'AI Model' : 'Offline Mode'}
                   </span>
                 </div>
               </div>
@@ -432,8 +573,8 @@ Net:     ${formatCurrency(inc - exp)}`
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setUseModel(!useModel)}
-              className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}
-              title={useModel ? "Switch to Rule-Based" : "Switch to AI Model"}
+              className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
+              title={useModel ? "Switch to Offline Mode" : "Switch to AI Model"}
             >
               {useModel ? <Cpu className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
             </button>
@@ -492,7 +633,7 @@ Net:     ${formatCurrency(inc - exp)}`
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              placeholder={useModel ? "Ask AI..." : "Command..."}
+              placeholder={useModel ? "Ask AI..." : "Ask about finances..."}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-1 focus:ring-green-500 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
               disabled={loading}
             />
