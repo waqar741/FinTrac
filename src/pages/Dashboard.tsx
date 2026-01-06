@@ -668,6 +668,17 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+
+          {/* Analytics Entry Button (Mobile) */}
+          <div className="flex justify-center pt-4 pb-8">
+            <Link
+              to="/app/analytics"
+              className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-700 dark:to-gray-600 rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+              <span className="mr-2">View Advanced Analytics</span>
+              <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -1045,6 +1056,16 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+        {/* Analytics Entry Button (Desktop) */}
+        <div className="flex justify-center pt-8 pb-12">
+          <Link
+            to="/app/analytics"
+            className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-700 dark:to-gray-600 rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <span className="mr-2">View Advanced Analytics</span>
+            <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
       </div>
     </div>
   )

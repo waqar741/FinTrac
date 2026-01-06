@@ -15,6 +15,7 @@ import GroupExpenses from './pages/GroupExpenses'
 import DebtsCredits from './pages/DebtsCredits'
 import Goals from './pages/Goals'
 import Settings from './pages/Settings'
+import Analytics from './pages/Analytics'
 import HomePage from './pages/HomePage'
 import { supabase } from './lib/supabase'
 
@@ -74,6 +75,7 @@ function AppContent() {
           <Route path="debts-credits" element={<DebtsCredits />} />
           <Route path="goals" element={<Goals />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="analytics" element={<Analytics />} />
         </Route>
 
         {/* Fallback route */}
