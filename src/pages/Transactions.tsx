@@ -9,6 +9,7 @@ import { format, subDays, isBefore, subMonths } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { useDateFormat } from '../hooks/useDateFormat'
+import SEO from '../components/SEO'
 
 
 
