@@ -3,6 +3,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AIChat from './components/AIChat'
@@ -89,11 +90,13 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <HelmetProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </HelmetProvider>
+        <NotificationProvider>
+          <HelmetProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </HelmetProvider>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   )

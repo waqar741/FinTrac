@@ -235,6 +235,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useNotifications } from '../contexts/NotificationContext'
+import NotificationDropdown from './NotificationDropdown'
 import {
   Home,
   Wallet,
@@ -246,13 +248,16 @@ import {
   X,
   ChevronDown,
   User,
-  Settings
+  Settings,
+  Bell
 } from 'lucide-react'
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
   const { user, signOut, profile } = useAuth()
+  const { unreadCount } = useNotifications()
   const navigate = useNavigate()
 
   // Create a ref for the dropdown with proper type
@@ -415,6 +420,23 @@ export default function Layout() {
 
             <div className="flex-1 lg:flex-none lg:ml-auto">
               <div className="flex items-center justify-end space-x-4">
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button
+                    onClick={() => setNotificationOpen(!notificationOpen)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+                  >
+                    <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+                    )}
+                  </button>
+                  <NotificationDropdown
+                    isOpen={notificationOpen}
+                    onClose={() => setNotificationOpen(false)}
+                  />
+                </div>
+
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}

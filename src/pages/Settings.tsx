@@ -319,7 +319,7 @@ export default function Settings() {
     { code: 'CAD', name: 'Canadian Dollar' },
   ]
 
-  const dateFormats = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']
+  // const dateFormats = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']
 
   const TabButton = ({ name, icon: Icon }: any) => (
     <button
@@ -602,6 +602,29 @@ export default function Settings() {
                   ))}
                 </select>
               </SettingItem> */}
+              <SettingItem icon={Monitor} title="AI Model Switcher" subtitle="Show button to switch between AI and Offline models.">
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-700 dark:text-gray-300">Show Model Switcher</p>
+                  <button
+                    onClick={() => {
+                      const current = localStorage.getItem('show_model_switcher') === 'true'
+                      const newValue = !current
+                      localStorage.setItem('show_model_switcher', String(newValue))
+                      // Dispatch event for immediate update
+                      window.dispatchEvent(new Event('settings:modelSwitcher'))
+                      // Force re-render of this component (simple way)
+                      navigate('.', { replace: true })
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${localStorage.getItem('show_model_switcher') === 'true' ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${localStorage.getItem('show_model_switcher') === 'true' ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                  </button>
+                </div>
+              </SettingItem>
             </div>
           </div>
         )}
@@ -778,6 +801,8 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+
       </main>
     </div>
   )

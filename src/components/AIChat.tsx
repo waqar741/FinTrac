@@ -20,6 +20,19 @@ export default function AIChat() {
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [useModel, setUseModel] = useState(false) // Changed default to false (offline mode)
+  const [showModelSwitcher, setShowModelSwitcher] = useState(() => localStorage.getItem('show_model_switcher') === 'true')
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setShowModelSwitcher(localStorage.getItem('show_model_switcher') === 'true')
+    }
+    window.addEventListener('settings:modelSwitcher', handleStorageChange)
+    window.addEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('settings:modelSwitcher', handleStorageChange)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -614,14 +627,17 @@ export default function AIChat() {
             </div>
           </div>
 
+
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setUseModel(!useModel)}
-              className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
-              title={useModel ? "Switch to Offline Mode" : "Switch to AI Model"}
-            >
-              {useModel ? <Cpu className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-            </button>
+            {showModelSwitcher && (
+              <button
+                onClick={() => setUseModel(!useModel)}
+                className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
+                title={useModel ? "Switch to Offline Mode" : "Switch to AI Model"}
+              >
+                {useModel ? <Cpu className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+              </button>
+            )}
             <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors">
               <X className="w-4 h-4 text-gray-500" />
             </button>
