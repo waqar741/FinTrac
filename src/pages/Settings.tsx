@@ -91,6 +91,21 @@ export default function Settings() {
     }
   }, [user])
 
+  // Sync state with profile changes
+  useEffect(() => {
+    if (profile) {
+      setCurrency(profile.currency || 'INR')
+      setNotificationsEnabled(profile.notifications_enabled ?? true)
+      setShowArchivedAccounts(profile.show_archived_accounts ?? false)
+      if (!isEditing) {
+        setFullName(profile.full_name || user?.user_metadata?.full_name || '')
+      }
+      if (!uploadingAvatar) {
+        setAvatarUrl(profile.avatar_url || '')
+      }
+    }
+  }, [profile, user, isEditing, uploadingAvatar])
+
   const fetchAccounts = async () => {
     setLoadingAccounts(true)
     try {
@@ -286,8 +301,11 @@ export default function Settings() {
     try {
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ [field]: value })
-        .eq('id', user?.id)
+        .upsert({
+          id: user?.id,
+          [field]: value,
+        })
+        .select()
 
       if (updateError) throw updateError
 

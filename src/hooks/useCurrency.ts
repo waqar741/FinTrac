@@ -6,7 +6,18 @@ export function useCurrency() {
     const currencyCode = profile?.currency || 'INR'
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
+        const localeMap: { [key: string]: string } = {
+            'INR': 'en-IN',
+            'USD': 'en-US',
+            'EUR': 'de-DE', // or en-IE
+            'GBP': 'en-GB',
+            'JPY': 'ja-JP',
+            'AUD': 'en-AU',
+            'CAD': 'en-CA',
+        }
+        const locale = localeMap[currencyCode] || 'en-US'
+
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currencyCode,
             minimumFractionDigits: 0,
