@@ -9,14 +9,14 @@ interface SEOProps {
 
 export default function SEO({
     title,
-    description = "FinTrac - Track your expenses with ease",
+    description = "Traxos - Track your expenses with ease",
     type = 'website',
-    name = 'FinTrac'
+    name = 'Traxos'
 }: SEOProps) {
     return (
         <Helmet>
             {/* Standard metadata tags */}
-            <title>{title} | FinTrac</title>
+            <title>{title} | Traxos</title>
             <meta name='description' content={description} />
 
             {/* Facebook tags */}

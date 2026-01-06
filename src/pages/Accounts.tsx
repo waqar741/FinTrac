@@ -252,10 +252,7 @@ export default function Accounts() {
     }
   }
 
-  const deleteAccount = async (id: string) => {
-    // Deprecated in favor of initiateDeleteAccount, keeping for interface compatibility if needed momentarily
-    // But we will replace usage in JSX
-  }
+
 
   const handleCloseModal = () => {
     setShowModal(false)
@@ -312,7 +309,7 @@ export default function Accounts() {
       <div className="space-y-6">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to FinTrac!</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to Traxos!</h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
               Let's get started by creating your main account.
             </p>

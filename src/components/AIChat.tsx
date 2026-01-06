@@ -25,7 +25,7 @@ export default function AIChat() {
     {
       id: '1',
       type: 'assistant',
-      content: 'Hello! I am Fintrac AI. How can I help?',
+      content: 'Hello! I am Traxos AI. How can I help?',
       timestamp: new Date(),
       quickReplies: [
         'What is my balance?',
@@ -154,7 +154,7 @@ export default function AIChat() {
       const creditList = debtsCredits.filter(d => d.type === 'credit').map(c => `${c.person_name || 'Unknown'}: ${formatCurrency(c.amount)}`).join(', ')
 
       const context = `
-      You are Fintrac AI. Answer strictly based on the provided data.
+      You are Traxos AI. Answer strictly based on the provided data.
       User Name: ${profile?.full_name || 'User'}
       
       **FINANCIAL DATA (${periodLabel}):**
@@ -266,7 +266,7 @@ export default function AIChat() {
 
     // --- Greetings & Identity ---
     if (matches(['hi', 'hello', 'hey', 'yo', 'greetings', 'good morning', 'good afternoon'])) {
-      return "Hello! I'm Fintrac AI. How can I help you with your finances today?"
+      return "Hello! I'm Traxos AI. How can I help you with your finances today?"
     }
 
     if (matches(['thanks', 'thank you', 'appreciate'])) {
@@ -274,7 +274,7 @@ export default function AIChat() {
     }
 
     if (matches(['who are you', 'what are you', 'your name'])) {
-      return "I'm Fintrac AI, your personal finance assistant. How can I help you?"
+      return "I'm Traxos AI, your personal finance assistant. How can I help you?"
     }
 
     if (matches(['who am i', 'my name', 'what is my name'])) {
@@ -602,7 +602,7 @@ export default function AIChat() {
             </svg>
 
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Fintrac AI</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Traxos AI</h3>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${useModel && isBackendReachable ? 'bg-green-500' : 'bg-blue-500'}`}></span>

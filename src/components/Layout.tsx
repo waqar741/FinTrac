@@ -20,7 +20,7 @@
 //   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
 //   const { user, signOut, profile } = useAuth()
 //   const navigate = useNavigate()
-  
+
 //   // Create a ref for the dropdown with proper type
 //   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -96,7 +96,7 @@
 //             <X className="w-5 h-5" />
 //           </button>
 //         </div>
-        
+
 //         <nav className="flex-1 px-4 py-6 space-y-2">
 //           {navItems.map((item) => (
 //             <NavLink
@@ -167,7 +167,7 @@
 //             >
 //               <Menu className="w-5 h-5" />
 //             </button>
-            
+
 //             <div className="flex-1 lg:flex-none lg:ml-auto">
 //               <div className="flex items-center justify-end space-x-4">
 //                 <div className="relative" ref={dropdownRef}>
@@ -191,7 +191,7 @@
 //                     </span>
 //                     <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
 //                   </button>
-                  
+
 //                   {profileDropdownOpen && (
 //                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
 //                       <div className="p-3 border-b border-gray-200 dark:border-gray-700">
@@ -235,7 +235,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { 
+import {
   Home,
   Wallet,
   List,
@@ -254,7 +254,7 @@ export default function Layout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const { user, signOut, profile } = useAuth()
   const navigate = useNavigate()
-  
+
   // Create a ref for the dropdown with proper type
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -304,7 +304,7 @@ export default function Layout() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -318,7 +318,7 @@ export default function Layout() {
       `}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-           <svg
+            <svg
               className="w-8 h-8 text-green-600"
               fill="none"
               stroke="currentColor"
@@ -332,7 +332,7 @@ export default function Layout() {
                 d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
               />
             </svg>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">Fintrac</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">Traxos</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -341,7 +341,7 @@ export default function Layout() {
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navItems.map((item) => (
             <NavLink
@@ -350,8 +350,8 @@ export default function Layout() {
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `
                 flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
-                ${isActive 
-                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-r-2 border-green-600' 
+                ${isActive
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-r-2 border-green-600'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                 }
               `}
@@ -366,9 +366,9 @@ export default function Layout() {
           <div className="px-4 py-3">
             <div className="flex items-center space-x-3">
               {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
-                <img 
-                  src={profile?.avatar_url || user?.user_metadata?.avatar_url} 
-                  alt="Profile" 
+                <img
+                  src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                  alt="Profile"
                   className="w-8 h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600"
                 />
               ) : (
@@ -389,7 +389,7 @@ export default function Layout() {
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => `
               w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
-              ${ isActive
+              ${isActive
                 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-r-2 border-green-600'
                 : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
               }
@@ -412,7 +412,7 @@ export default function Layout() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            
+
             <div className="flex-1 lg:flex-none lg:ml-auto">
               <div className="flex items-center justify-end space-x-4">
                 <div className="relative" ref={dropdownRef}>
@@ -421,9 +421,9 @@ export default function Layout() {
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
-                      <img 
-                        src={profile?.avatar_url || user?.user_metadata?.avatar_url} 
-                        alt="Profile" 
+                      <img
+                        src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                        alt="Profile"
                         className="w-8 h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600"
                       />
                     ) : (
@@ -436,7 +436,7 @@ export default function Layout() {
                     </span>
                     <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   </button>
-                  
+
                   {profileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                       <div className="p-3 border-b border-gray-200 dark:border-gray-700">

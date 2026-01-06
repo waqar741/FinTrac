@@ -270,7 +270,7 @@ export default function Settings() {
       const ws = XLSX.utils.json_to_sheet(exportData)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'Financial Data')
-      XLSX.writeFile(wb, `FinTrac-Export-${formatDate(new Date())}.xlsx`)
+      XLSX.writeFile(wb, `Traxos-Export-${formatDate(new Date())}.xlsx`)
 
       setSuccess('Data exported successfully!')
       setTimeout(() => setSuccess(''), 3000)

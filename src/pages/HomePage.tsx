@@ -70,7 +70,7 @@ const HomePage = () => {
 
   return (
     <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
-      <SEO title="Home" description="FinTrac - Free Personal Finance Tracker" />
+      <SEO title="Home" description="Traxos - Free Personal Finance Tracker" />
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -91,7 +91,7 @@ const HomePage = () => {
               />
             </svg>
             <span className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors duration-300">
-              FinTrac
+              Traxos
             </span>
           </a>
 
@@ -202,13 +202,13 @@ const HomePage = () => {
               {/* Light Theme Image */}
               <img
                 src="/image/image.png"
-                alt="FinTrac Dashboard - Light Theme"
+                alt="Traxos Dashboard - Light Theme"
                 className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full dark:hidden transform hover:scale-105 transition-transform duration-500"
               />
               {/* Dark Theme Image */}
               <img
                 src="/image/dark.png"
-                alt="FinTrac Dashboard - Dark Theme"
+                alt="Traxos Dashboard - Dark Theme"
                 className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full hidden dark:block transform hover:scale-105 transition-transform duration-500"
               />
             </div>
@@ -261,7 +261,7 @@ const HomePage = () => {
             <div className="bg-gradient-to-r from-green-500 to-green-400 rounded-2xl shadow-xl text-center py-16 px-8 transform hover:scale-105 transition-transform duration-500">
               <h2 className="text-3xl md:text-4xl font-extrabold text-white animate-bounce-slow">Ready to Take Control?</h2>
               <p className="mt-4 max-w-2xl mx-auto text-lg text-green-100 animate-fadeInUp">
-                Join thousands building a better financial future with FinTrac.
+                Join thousands building a better financial future with Traxos.
               </p>
               <div className="mt-8 animate-fadeInUp delay-300">
                 <a
@@ -310,7 +310,7 @@ const HomePage = () => {
           {/* Developer Social Links */}
           <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">&copy; 2025 FinTrac. All rights reserved.</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">&copy; 2025 Traxos. All rights reserved.</p>
 
               {/* Social Media Links with animations */}
               <div className="flex space-x-4 mt-4 md:mt-0">

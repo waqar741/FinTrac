@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Trash2, X, Search, Download, FileText, Clock, Loader, Eye, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, X, Search, Download, FileText, Clock, Loader, ChevronDown, ChevronUp } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
 import { format, subDays, isBefore, subMonths } from 'date-fns'
@@ -145,14 +146,14 @@ export default function Transactions() {
       let query = supabase
         .from('transactions')
         .select(`
-      *,
-      accounts (
-      id,
-      name,
-      color,
-      balance
-      )
-      `)
+  *,
+  accounts(
+    id,
+    name,
+    color,
+    balance
+  )
+    `)
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
 
@@ -202,7 +203,7 @@ export default function Transactions() {
             ...transfer,
             type: 'transfer',
             category: 'Transfer',
-            description: transfer.description || `Transfer from ${fromAccount?.name || 'Unknown'} to ${toAccount?.name || 'Unknown'}`,
+            description: transfer.description || `Transfer from ${fromAccount?.name || 'Unknown'} to ${toAccount?.name || 'Unknown'} `,
             account_id: transfer.from_account_id,
             is_recurring: false,
             recurring_frequency: null,
@@ -345,7 +346,7 @@ export default function Transactions() {
 
           // If it's an expense that causes negative balance, show helpful message
           if (data.type === 'expense') {
-            setError('amount', { message: `Max available: ${currentBalance}` })
+            setError('amount', { message: `Max available: ${currentBalance} ` })
           }
           return
         }
@@ -455,7 +456,7 @@ export default function Transactions() {
 
     } catch (error: any) {
       console.error('Error deleting transaction:', error)
-      alert(`Error deleting transaction: ${error.message}`)
+      alert(`Error deleting transaction: ${error.message} `)
     } finally {
       setDeletingTransactionId(null)
       setTransactionToDelete(null)
@@ -500,14 +501,14 @@ export default function Transactions() {
         let query = supabase
           .from('transactions')
           .select(`
-      *,
-      accounts (
-      id,
-      name,
-      color,
-      balance
-      )
-      `)
+  *,
+  accounts(
+    id,
+    name,
+    color,
+    balance
+  )
+    `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
 
@@ -524,7 +525,7 @@ export default function Transactions() {
           query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
         }
         if (debouncedSearchTerm) {
-          query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
+          query = query.or(`description.ilike.% ${debouncedSearchTerm}%, category.ilike.% ${debouncedSearchTerm}% `)
         }
 
         const { data: allTransactions, error } = await query
@@ -544,7 +545,7 @@ export default function Transactions() {
         const ws = XLSX.utils.json_to_sheet(exportData)
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Transactions')
-        XLSX.writeFile(wb, `FinTrac-Report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+        XLSX.writeFile(wb, `Traxos - Report - ${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
       } catch (error) {
         console.error('Error exporting to Excel:', error)
         alert('Error exporting data. Please try again.')
@@ -561,14 +562,14 @@ export default function Transactions() {
         let query = supabase
           .from('transactions')
           .select(`
-      *,
-      accounts (
-      id,
-      name,
-      color,
-      balance
-      )
-      `)
+  *,
+  accounts(
+    id,
+    name,
+    color,
+    balance
+  )
+    `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
 
@@ -585,7 +586,7 @@ export default function Transactions() {
           query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
         }
         if (debouncedSearchTerm) {
-          query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
+          query = query.or(`description.ilike.% ${debouncedSearchTerm}%, category.ilike.% ${debouncedSearchTerm}% `)
         }
 
         const { data: allTransactions, error } = await query
@@ -621,9 +622,9 @@ export default function Transactions() {
 
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'normal');
-          pdf.text(`Generated on: ${formatDate(new Date())}`, 20, 35);
-          pdf.text(`Total Transactions: ${allTransactions?.length || 0}`, 20, 42);
-          pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 30, 35);
+          pdf.text(`Generated on: ${formatDate(new Date())} `, 20, 35);
+          pdf.text(`Total Transactions: ${allTransactions?.length || 0} `, 20, 42);
+          pdf.text(`Page ${pageNum} of ${totalPages} `, pageWidth - 30, 35);
         };
 
         const addTableHeader = (yPos: number) => {
@@ -699,13 +700,13 @@ export default function Transactions() {
         yPos += 12;
 
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`Total Income: INR ${totalIncome.toFixed(2)}`, 30, yPos);
+        pdf.text(`Total Income: INR ${totalIncome.toFixed(2)} `, 30, yPos);
         yPos += 10;
-        pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)}`, 30, yPos);
+        pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)} `, 30, yPos);
         yPos += 10;
-        pdf.text(`Balance: INR ${balance.toFixed(2)}`, 30, yPos);
+        pdf.text(`Balance: INR ${balance.toFixed(2)} `, 30, yPos);
 
-        pdf.save(`FinTrac-Report-${formatDate(new Date())}.pdf`);
+        pdf.save(`Traxos - Report - ${formatDate(new Date())}.pdf`);
       } catch (error) {
         console.error('Error exporting to PDF:', error)
         alert('Error exporting data. Please try again.')
@@ -934,7 +935,7 @@ export default function Transactions() {
                               </span>
                               {isGoalTransaction && (
                                 <span className="flex items-center px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
-                                  {goal ? `Goal: ${goal.name}` : 'Goal'}
+                                  {goal ? `Goal: ${goal.name} ` : 'Goal'}
                                 </span>
                               )}
                               {isOld && (
@@ -989,7 +990,7 @@ export default function Transactions() {
                         <div className="text-right">
                           <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' :
                             transaction.type === 'expense' ? 'text-red-600' : 'text-blue-600'
-                            }`}>
+                            } `}>
                             {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}{formatCurrency(transaction.amount)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
@@ -1048,7 +1049,7 @@ export default function Transactions() {
                             </h3>
                             {isGoalTransaction && (
                               <span className="flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
-                                {goal ? `Goal: ${goal.name}` : 'Goal Contribution'}
+                                {goal ? `Goal: ${goal.name} ` : 'Goal Contribution'}
                               </span>
                             )}
                             {isOld && (
@@ -1074,7 +1075,7 @@ export default function Transactions() {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            } `}>
                             {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
@@ -1173,7 +1174,7 @@ export default function Transactions() {
                       Loading...
                     </div>
                   ) : (
-                    `Load More (${pageSize} more)`
+                    `Load More(${pageSize} more)`
                   )}
                 </button>
               </div>

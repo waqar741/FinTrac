@@ -87,7 +87,7 @@ export default function Login() {
             </svg>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to Fintrac</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to Traxos</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">Track your expenses with ease</p>
         </div>
 
