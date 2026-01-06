@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft } from 'lucide-react'
+import SEO from '../components/SEO'
 
 interface SignUpForm {
   email: string
@@ -17,7 +18,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
-  
+
   const {
     register,
     handleSubmit,
@@ -52,7 +53,8 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <SEO title="Sign Up" description="Create a new FinTrac account." />
       {/* Back Button */}
       <button
         onClick={handleGoBack}
@@ -90,7 +92,7 @@ export default function SignUp() {
               />
             </svg>
           </div>
-          
+
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Create Account
           </h1>

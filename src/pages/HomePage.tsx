@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import SEO from '../components/SEO';
 
 const HomePage = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,6 +70,7 @@ const HomePage = () => {
 
   return (
     <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
+      <SEO title="Home" description="FinTrac - Free Personal Finance Tracker" />
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">

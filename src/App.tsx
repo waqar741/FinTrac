@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { HelmetProvider } from 'react-helmet-async'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -41,7 +42,7 @@ function SessionRecoveryHandler() {
 
     // Check session periodically (every 10 minutes)
     const interval = setInterval(handleGlobalAuthError, 10 * 60 * 1000)
-    
+
     return () => clearInterval(interval)
   }, [user, navigate])
 
@@ -57,7 +58,7 @@ function AppContent() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
-        
+
         {/* Protected App Routes */}
         <Route path="/app" element={
           <ProtectedRoute>
@@ -74,7 +75,7 @@ function AppContent() {
           <Route path="goals" element={<Goals />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-        
+
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -86,9 +87,11 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <HelmetProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </HelmetProvider>
       </AuthProvider>
     </ThemeProvider>
   )

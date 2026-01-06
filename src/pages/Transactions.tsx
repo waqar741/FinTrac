@@ -98,6 +98,8 @@ export default function Transactions() {
   const isRecurring = watch('is_recurring', false)
 
   // Debounce search term
+
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
@@ -142,14 +144,14 @@ export default function Transactions() {
       let query = supabase
         .from('transactions')
         .select(`
-          *,
-          accounts (
-            id,
-            name,
-            color,
-            balance
-          )
-        `)
+      *,
+      accounts (
+      id,
+      name,
+      color,
+      balance
+      )
+      `)
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
 
@@ -497,14 +499,14 @@ export default function Transactions() {
         let query = supabase
           .from('transactions')
           .select(`
-            *,
-            accounts (
-              id,
-              name,
-              color,
-              balance
-            )
-          `)
+      *,
+      accounts (
+      id,
+      name,
+      color,
+      balance
+      )
+      `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
 
@@ -558,14 +560,14 @@ export default function Transactions() {
         let query = supabase
           .from('transactions')
           .select(`
-            *,
-            accounts (
-              id,
-              name,
-              color,
-              balance
-            )
-          `)
+      *,
+      accounts (
+      id,
+      name,
+      color,
+      balance
+      )
+      `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
 
@@ -733,6 +735,7 @@ export default function Transactions() {
 
   return (
     <div className="p-4 space-y-3 sm:p-6">
+      <SEO title="Transactions" description="Manage your income and expenses." />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -918,7 +921,7 @@ export default function Transactions() {
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <div
                             className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
-                            style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : transaction.accounts?.color }}
+                            style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
                           />
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-gray-900 dark:text-white truncate">
