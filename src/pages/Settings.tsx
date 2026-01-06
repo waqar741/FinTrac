@@ -71,7 +71,7 @@ export default function Settings() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const [currency, setCurrency] = useState(profile?.currency || 'INR')
-  const [dateFormat, setDateFormat] = useState(profile?.date_format || 'DD/MM/YYYY')
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.notifications_enabled ?? true)
 
   const [accounts, setAccounts] = useState<Account[]>([])

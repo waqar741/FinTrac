@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import Layout from './components/Layout'
@@ -18,43 +17,10 @@ import Goals from './pages/Goals'
 import Settings from './pages/Settings'
 import Analytics from './pages/Analytics'
 import HomePage from './pages/HomePage'
-import { supabase } from './lib/supabase'
-
-// Component to handle global session recovery
-function SessionRecoveryHandler() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const handleGlobalAuthError = async () => {
-      // This can catch any global auth errors that might occur
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) {
-          console.error('Global auth error detected:', error)
-          await supabase.auth.signOut()
-          if (window.location.pathname !== '/login') {
-            navigate('/login', { replace: true })
-          }
-        }
-      } catch (error) {
-        console.error('Global session check failed:', error)
-      }
-    }
-
-    // Check session periodically (every 10 minutes)
-    const interval = setInterval(handleGlobalAuthError, 10 * 60 * 1000)
-
-    return () => clearInterval(interval)
-  }, [user, navigate])
-
-  return null
-}
 
 function AppContent() {
   return (
     <>
-      <SessionRecoveryHandler />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />

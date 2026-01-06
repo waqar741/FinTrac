@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send, Cpu, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { startOfMonth, subMonths, startOfYear, subYears, format, differenceInDays } from 'date-fns'
+import { startOfMonth, subMonths, startOfYear, format } from 'date-fns'
 
 interface Message {
   id: string
@@ -439,7 +439,7 @@ export default function AIChat() {
       if (matches(['goal', 'goals', 'target', 'save', 'saving', 'progress', 'achievement'])) {
         if (goals.length === 0) return 'No active goals. Set up financial goals to track your progress!'
 
-        const goalList = goals.map(g => {
+        const goalList = goals.map((g: any) => {
           const progress = g.current_amount || 0
           const target = g.target_amount
           const percent = target > 0 ? Math.min(100, (progress / target) * 100).toFixed(1) : '0'
@@ -454,7 +454,7 @@ export default function AIChat() {
         const expenses = transactions.filter(t => t.type === 'expense')
         if (expenses.length === 0) return 'No expense data available.'
 
-        const catMap = expenses.reduce((acc, t) => {
+        const catMap = expenses.reduce((acc: Record<string, number>, t: any) => {
           const c = t.category || 'Other'
           acc[c] = (acc[c] || 0) + Number(t.amount)
           return acc
@@ -462,7 +462,7 @@ export default function AIChat() {
 
         const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1])
         const top = sorted.slice(0, 5)
-          .map(([k, v], i) => `${i + 1}. ${k}: ${formatCurrency(v)} (${((v / totalExpenses) * 100).toFixed(1)}%)`)
+          .map(([k, v], i) => `${i + 1}. ${k}: ${formatCurrency(v as number)} (${((Number(v) / totalExpenses) * 100).toFixed(1)}%)`)
           .join('\n')
 
         return `Top Spending Categories\n\n${top}`
@@ -572,7 +572,26 @@ export default function AIChat() {
         // Simulate "Processing" time briefly
         await new Promise(r => setTimeout(r, 400))
 
-        const response = await processOffline(query)
+        let response = await processOffline(query)
+
+        // --- Dues Reminder Feature (Once per session) ---
+        // Check for dues/credits ONLY if this is the first interaction or hasn't been checked yet
+        if (!sessionStorage.getItem('dues_reminded') && user) {
+          const { data: debts } = await supabase.from('debts_credits').select('amount, type').eq('user_id', user.id).eq('is_settled', false)
+
+          if (debts && debts.length > 0) {
+            const totalDebt = debts.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
+            const totalCredit = debts.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+
+            if (totalDebt > 0 || totalCredit > 0) {
+              response += `\n\n(Reminder: You have ${formatCurrency(totalDebt)} in debts and ${formatCurrency(totalCredit)} in credits pending.)`
+              sessionStorage.setItem('dues_reminded', 'true')
+            }
+          }
+        }
+
+
+        //const response = await processOffline(query)
 
         // Simulate Typing Effect for Offline Mode
         let currentText = ''

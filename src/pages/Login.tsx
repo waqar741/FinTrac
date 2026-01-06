@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom' // 🔑 added 
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft } from 'lucide-react'
-import SEO from '../components/SEO'
+
 
 interface LoginForm {
   email: string
