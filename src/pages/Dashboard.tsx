@@ -681,10 +681,10 @@ export default function Dashboard() {
           <div className="flex justify-center pt-4 pb-8">
             <Link
               to="/app/analytics"
-              className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-700 dark:to-gray-600 rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+              className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-gray-900 dark:text-white transition-all duration-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 dark:focus:ring-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
             >
               <span className="mr-2">View Advanced Analytics</span>
-              <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1 text-gray-500 dark:text-gray-400" />
             </Link>
           </div>
         </div>
@@ -1075,10 +1075,10 @@ export default function Dashboard() {
         <div className="flex justify-center pt-8 pb-12">
           <Link
             to="/app/analytics"
-            className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-700 dark:to-gray-600 rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-gray-900 dark:text-white transition-all duration-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 dark:focus:ring-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           >
             <span className="mr-2">View Advanced Analytics</span>
-            <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            <TrendingUp className="w-5 h-5 transition-transform group-hover:translate-x-1 text-gray-500 dark:text-gray-400" />
           </Link>
         </div>
       </div>

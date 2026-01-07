@@ -219,8 +219,36 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 md:p-8 p-4">
+        <div className="animate-pulse space-y-8">
+          {/* Header Skeleton */}
+          <div className="flex justify-between items-center">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+          </div>
+
+          {/* KPI Cards Skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 h-32 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-4"></div>
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+            <div className="bg-white dark:bg-gray-800 h-[300px] rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-6"></div>
+              <div className="h-[200px] bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 h-[300px] rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-6"></div>
+              <div className="h-[200px] bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
