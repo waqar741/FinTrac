@@ -16,7 +16,7 @@ import DebtsCredits from './pages/DebtsCredits'
 import Goals from './pages/Goals'
 import Settings from './pages/Settings'
 import Analytics from './pages/Analytics'
-import HomePage from './pages/HomePage'
+import Home from './pages/Home'
 import Info from './pages/Info'
 import ForgotPassword from './pages/ForgotPassword'
 import UpdatePassword from './pages/UpdatePassword'
@@ -26,7 +26,7 @@ function AppContent() {
     <>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

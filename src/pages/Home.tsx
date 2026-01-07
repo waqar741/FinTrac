@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import SEO from '../components/SEO';
 
-const HomePage = () => {
+const Home = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { isDark, toggleTheme } = useTheme();
 
@@ -440,4 +440,4 @@ const HomePage = () => {
     );
 };
 
-export default HomePage;
+export default Home;
