@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Trash2, X, Search, Download, FileText, Clock, Loader, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, X, Search, Download, FileText, Loader, ChevronDown, ChevronUp } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
-import { format, subDays, isBefore, subMonths } from 'date-fns'
+import { format, subHours, isBefore, subMonths } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { useDateFormat } from '../hooks/useDateFormat'
@@ -261,11 +261,11 @@ export default function Transactions() {
     setLoadingMore(false)
   }
 
-  // Check if transaction is older than 1 day
+  // Check if transaction is older than 6 hours
   const isTransactionOld = (transactionDate: string) => {
-    const oneDayAgo = subDays(new Date(), 1)
+    const sixHoursAgo = subHours(new Date(), 6)
     const transactionDateObj = new Date(transactionDate)
-    return isBefore(transactionDateObj, oneDayAgo)
+    return isBefore(transactionDateObj, sixHoursAgo)
   }
 
   const onSubmit = async (data: TransactionForm) => {
@@ -386,7 +386,7 @@ export default function Transactions() {
 
   const initiateDeleteTransaction = (transaction: Transaction) => {
     if (isTransactionOld(transaction.created_at)) {
-      alert('Cannot delete transactions older than 1 day')
+      alert('Cannot delete transactions older than 6 hours')
       return
     }
     setTransactionToDelete(transaction)
@@ -471,24 +471,7 @@ export default function Transactions() {
     reset()
   }
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    if (isTransactionOld(transaction.created_at)) {
-      alert('Cannot edit transactions older than 1 day')
-      return
-    }
 
-    setEditingTransaction(transaction)
-    reset({
-      account_id: transaction.account_id,
-      amount: transaction.amount,
-      type: transaction.type,
-      description: transaction.description,
-      category: transaction.category,
-      is_recurring: transaction.is_recurring,
-      recurring_frequency: transaction.recurring_frequency || ''
-    })
-    setShowModal(true)
-  }
 
   const toggleTransactionDetails = (transactionId: string) => {
     setExpandedTransactionId(expandedTransactionId === transactionId ? null : transactionId)
@@ -716,10 +699,6 @@ export default function Transactions() {
     exportAllForPDF()
   };
 
-
-
-  const categories = Array.from(new Set(transactions.map(t => t.category)))
-
   if (loading) {
     return (
       <div className="p-6">
@@ -934,14 +913,8 @@ export default function Transactions() {
                                 {transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}
                               </span>
                               {isGoalTransaction && (
-                                <span className="flex items-center px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+                                <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
                                   {goal ? `Goal: ${goal.name} ` : 'Goal'}
-                                </span>
-                              )}
-                              {isOld && (
-                                <span className="flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Archived
                                 </span>
                               )}
                             </div>
@@ -958,19 +931,23 @@ export default function Transactions() {
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
 
+
+
                           {/* Delete Button */}
-                          <button
-                            onClick={() => initiateDeleteTransaction(transaction)}
-                            disabled={isOld || isDeleting}
-                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title={isOld ? "Cannot delete transactions older than 7 days" : "Delete transaction"}
-                          >
-                            {isDeleting ? (
-                              <Loader className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {!isOld && (
+                            <button
+                              onClick={() => initiateDeleteTransaction(transaction)}
+                              disabled={isDeleting}
+                              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                              title="Delete transaction"
+                            >
+                              {isDeleting ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -979,7 +956,7 @@ export default function Transactions() {
                           <div className="flex items-center space-x-2">
                             <span className="capitalize">{transaction.category}</span>
                             {transaction.is_recurring && (
-                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                              <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium">
                                 {transaction.recurring_frequency}
                               </span>
                             )}
@@ -1048,14 +1025,8 @@ export default function Transactions() {
                               {transaction.description}
                             </h3>
                             {isGoalTransaction && (
-                              <span className="flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex-shrink-0">
+                              <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
                                 {goal ? `Goal: ${goal.name} ` : 'Goal Contribution'}
-                              </span>
-                            )}
-                            {isOld && (
-                              <span className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex-shrink-0">
-                                <Clock className="w-3 h-3 mr-1" />
-                                Archived
                               </span>
                             )}
                           </div>
@@ -1064,7 +1035,7 @@ export default function Transactions() {
                             <span className="truncate">{transaction.category}</span>
                             <span>{formatDate(transaction.created_at)}</span>
                             {transaction.is_recurring && (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex-shrink-0">
+                              <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium flex-shrink-0">
                                 {transaction.recurring_frequency}
                               </span>
                             )}
@@ -1091,19 +1062,23 @@ export default function Transactions() {
                             <ChevronDown className="w-4 h-4" />
                           </button>
 
+
+
                           {/* Delete Button */}
-                          <button
-                            onClick={() => initiateDeleteTransaction(transaction)}
-                            disabled={isOld || isDeleting}
-                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title={isOld ? "Cannot delete transactions older than 7 days" : "Delete transaction"}
-                          >
-                            {isDeleting ? (
-                              <Loader className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {!isOld && (
+                            <button
+                              onClick={() => initiateDeleteTransaction(transaction)}
+                              disabled={isDeleting}
+                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                              title="Delete transaction"
+                            >
+                              {isDeleting ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

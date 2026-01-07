@@ -17,6 +17,7 @@ import Goals from './pages/Goals'
 import Settings from './pages/Settings'
 import Analytics from './pages/Analytics'
 import HomePage from './pages/HomePage'
+import Info from './pages/Info'
 
 function AppContent() {
   return (
@@ -26,6 +27,7 @@ function AppContent() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/info" element={<Info />} />
 
         {/* Protected App Routes */}
         <Route path="/app" element={

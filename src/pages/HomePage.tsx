@@ -1,320 +1,382 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import SEO from '../components/SEO';
 
 const HomePage = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isDark, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { isDark, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const features = [
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-        </svg>
-      ),
-      title: "Smart Analytics",
-      description: "Get insights into your spending with beautiful tables and detailed reports."
-    },
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
-        </svg>
-      ),
-      title: "Savings Goals",
-      description: "Set and track savings goals with progress visualization."
-    },
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
-        </svg>
-      ),
-      title: "Budget Management",
-      description: "Create flexible budgets and get alerts when approaching limits."
-    },
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-        </svg>
-      ),
-      title: "Multiple Accounts",
-      description: "Manage all your accounts in one place with unified tracking."
-    },
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-        </svg>
-      ),
-      title: "Debt Tracking",
-      description: "Track money you owe and money owed to you with reminders."
-    },
-    {
-      icon: (
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-        </svg>
-      ),
-      title: "AI Assistant",
-      description: "Get instant answers about your finances with intelligent chat."
-    }
-  ];
-
-  return (
-    <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
-      <SEO title="Home" description="Traxos - Free Personal Finance Tracker" />
-      {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          {/* Logo with hover animation */}
-          <a href="/" className="flex items-center space-x-2 group">
-            <svg
-              className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform duration-300"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
-              />
-            </svg>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors duration-300">
-              Traxos
-            </span>
-          </a>
-
-          {/* Desktop Navigation */}
-          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">Features</a>
-            <a href="#about" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">About</a>
-          </nav>
-
-          {/* Action Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Theme Toggle with animation */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 hover:scale-110"
-              aria-label="Toggle theme"
-            >
-              {isDark ? (
-                <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    const features = [
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                 </svg>
-              ) : (
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            ),
+            title: "Smart Transactions",
+            description: "Track income & expenses with recurring options. Export reports to PDF & Excel instantly."
+        },
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                 </svg>
-              )}
-            </button>
+            ),
+            title: "Savings Goals",
+            description: "Set targets with deadlines. Contribute directly from your accounts and visualize progress."
+        },
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                </svg>
+            ),
+            title: "Budget & Health",
+            description: "Get a financial health check based on your savings rate and debt-to-income ratio."
+        },
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+            ),
+            title: "Unified Accounts",
+            description: "Manage multiple bank and cash accounts in one dashboard with real-time balance updates."
+        },
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+            ),
+            title: "Debts & Settlements",
+            description: "Track 'Who Owes You' vs 'You Owe'. Settle debts directly with linked transaction records."
+        },
+        {
+            icon: (
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+            ),
+            title: "Rule-Based AI",
+            description: "Instant answers about your finances using a secure, rule-based engine. No data leaves your device."
+        }
+    ];
 
-            <a href="/login" className="text-gray-600 dark:text-gray-300 font-medium hover:text-green-500 transition-all duration-300 hover:scale-105">Sign In</a>
-            <a href="/signup" className="bg-gradient-to-r from-green-500 to-green-400 text-white font-medium px-5 py-2.5 rounded-lg shadow-md hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
-              Start for Free
-            </a>
-          </div>
+    return (
+        <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
+            <SEO title="Home" description="Traxos - Free Personal Finance Tracker" />
+            {/* Header */}
+            <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
+                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+                    {/* Logo with hover animation */}
+                    <a href="/" className="flex items-center space-x-2 group">
+                        <svg
+                            className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform duration-300"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
+                            />
+                        </svg>
+                        <span className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors duration-300">
+                            Traxos
+                        </span>
+                    </a>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300"
-          >
-            {isMobileMenuOpen ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
-              </svg>
-            )}
-          </button>
-        </div>
+                    {/* Desktop Navigation */}
+                    <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:flex items-center space-x-8">
+                        <a href="#features" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">Features</a>
+                        <a href="/info" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">How it Works</a>
+                        <a href="#about" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">About</a>
+                    </nav>
 
-        {/* Mobile Menu with slide animation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden px-6 pb-4 space-y-4 animate-slideDown">
-            <a href="#features" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">Features</a>
-            <a href="#about" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">About</a>
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
-              {/* Mobile Theme Toggle */}
-              <div className="flex items-center justify-center space-x-2 py-2">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Theme:</span>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  aria-label="Toggle theme"
-                >
-                  {isDark ? (
-                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              <a href="/login" className="block text-center text-gray-600 dark:text-gray-300 font-medium hover:text-green-500 transition-colors">Sign In</a>
-              <a href="/signup" className="block text-center bg-gradient-to-r from-green-500 to-green-400 text-white font-medium px-5 py-2.5 rounded-lg shadow-md hover:opacity-90 transition-all duration-300 transform hover:scale-105">
-                Start for Free
-              </a>
-            </div>
-          </div>
-        )}
-      </header>
+                    {/* Action Buttons */}
+                    <div className="hidden md:flex items-center space-x-4">
+                        {/* Theme Toggle with animation */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 hover:scale-110"
+                            aria-label="Toggle theme"
+                        >
+                            {isDark ? (
+                                <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                            )}
+                        </button>
 
-      <main>
-        {/* Hero Section */}
-        <section className="bg-gray-50 dark:bg-gray-900">
-          <div className="container mx-auto px-6 py-20 md:py-32 text-center">
-            <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight">
-              Achieve Financial Clarity,{' '}
-              <span className="bg-gradient-to-r from-green-500 to-green-400 bg-clip-text text-transparent">
-                Completely Free.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300 animate-fadeInUp delay-200">
-              Track expenses, manage budgets, and achieve your financial goals with our intelligent personal finance platform.
-            </p>
-            <div className="mt-10 flex justify-center animate-fadeInUp delay-400">
-              <a
-                href="/login"
-                className="bg-gradient-to-r from-green-500 to-green-400 text-white font-bold text-lg px-8 py-4 rounded-lg shadow-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl animate-pulse-slow"
-              >
-                Start for Free &rarr;
-              </a>
-            </div>
-            <div className="mt-20 animate-fadeInUp delay-600">
-              {/* Light Theme Image */}
-              <img
-                src="/image/image.png"
-                alt="Traxos Dashboard - Light Theme"
-                className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full dark:hidden transform hover:scale-105 transition-transform duration-500"
-              />
-              {/* Dark Theme Image */}
-              <img
-                src="/image/dark.png"
-                alt="Traxos Dashboard - Dark Theme"
-                className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full hidden dark:block transform hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-          </div>
-        </section>
+                        <a href="/login" className="text-gray-600 dark:text-gray-300 font-medium hover:text-green-500 transition-all duration-300 hover:scale-105">Sign In</a>
+                        <a href="/signup" className="bg-gradient-to-r from-green-500 to-green-400 text-white font-medium px-5 py-2.5 rounded-lg shadow-md hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
+                            Start for Free
+                        </a>
+                    </div>
 
-        {/* Features Section */}
-        <section id="features" className="py-20 md:py-28">
-          <div className="container mx-auto px-6">
-            <div className="text-center mb-16 animate-fadeInUp">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Everything You Need to Succeed</h2>
-              <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">
-                Powerful features to help you take control of your finances.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 animate-fadeInUp"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-lg group hover:scale-110 transition-transform duration-300">
-                    {feature.icon}
-                  </div>
-                  <h3 className="mt-6 text-xl font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors duration-300">{feature.title}</h3>
-                  <p className="mt-2 text-gray-600 dark:text-gray-400">{feature.description}</p>
+                    {/* Mobile Menu Button */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="md:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300"
+                    >
+                        {isMobileMenuOpen ? (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                            </svg>
+                        )}
+                    </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        {/* About Us Section */}
-        <section id="about" className="py-20 md:py-28">
-          <div className="container mx-auto px-6 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white animate-fadeInUp">Our Mission</h2>
-            <div className="max-w-4xl mx-auto mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed animate-fadeInUp delay-200">
-              <p className="transform hover:scale-105 transition-transform duration-300">
-                We're breaking down barriers to financial independence by providing comprehensive,
-                intuitive financial tools that are free for everyone, forever.
-              </p>
-            </div>
-          </div>
-        </section>
+                {/* Mobile Menu with slide animation */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden px-6 pb-4 space-y-4 animate-slideDown">
+                        <a href="#features" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">Features</a>
+                        <a href="/info" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">How it Works</a>
+                        <a href="#about" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">About</a>
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                            {/* Mobile Theme Toggle */}
+                            <div className="flex items-center justify-center space-x-2 py-2">
+                                <span className="text-sm text-gray-600 dark:text-gray-300">Theme:</span>
+                                <button
+                                    onClick={toggleTheme}
+                                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    aria-label="Toggle theme"
+                                >
+                                    {isDark ? (
+                                        <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                            <a href="/login" className="block text-center text-gray-600 dark:text-gray-300 font-medium hover:text-green-500 transition-colors">Sign In</a>
+                            <a href="/signup" className="block text-center bg-gradient-to-r from-green-500 to-green-400 text-white font-medium px-5 py-2.5 rounded-lg shadow-md hover:opacity-90 transition-all duration-300 transform hover:scale-105">
+                                Start for Free
+                            </a>
+                        </div>
+                    </div>
+                )}
+            </header>
 
-        {/* Final CTA Section */}
-        <section className="py-20">
-          <div className="container mx-auto px-6">
-            <div className="bg-gradient-to-r from-green-500 to-green-400 rounded-2xl shadow-xl text-center py-16 px-8 transform hover:scale-105 transition-transform duration-500">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white animate-bounce-slow">Ready to Take Control?</h2>
-              <p className="mt-4 max-w-2xl mx-auto text-lg text-green-100 animate-fadeInUp">
-                Join thousands building a better financial future with Traxos.
-              </p>
-              <div className="mt-8 animate-fadeInUp delay-300">
-                <a
-                  href="/signup"
-                  className="bg-white text-green-600 font-bold text-lg px-8 py-4 rounded-lg shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-110 hover:shadow-2xl inline-block"
-                >
-                  Get Started for Free &rarr;
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+            <main>
+                {/* Hero Section */}
+                <section className="bg-gray-50 dark:bg-gray-900">
+                    <div className="container mx-auto px-6 py-12 md:py-32 text-center">
+                        <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight">
+                            Achieve Financial Clarity,{' '}
+                            <span className="bg-gradient-to-r from-green-500 to-green-400 bg-clip-text text-transparent">
+                                Completely Free.
+                            </span>
+                        </h1>
+                        <p className="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300 animate-fadeInUp delay-200">
+                            Track expenses, manage budgets, and achieve your financial goals with our intelligent personal finance platform.
+                        </p>
+                        <div className="mt-10 flex justify-center animate-fadeInUp delay-400">
+                            <a
+                                href="/login"
+                                className="bg-gradient-to-r from-green-500 to-green-400 text-white font-bold text-lg px-8 py-4 rounded-lg shadow-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl animate-pulse-slow"
+                            >
+                                Start for Free &rarr;
+                            </a>
+                        </div>
+                        <div className="mt-20 animate-fadeInUp delay-600">
+                            {/* Light Theme Image */}
+                            <img
+                                src="/image/image.png"
+                                alt="Traxos Dashboard - Light Theme"
+                                className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full dark:hidden transform hover:scale-105 transition-transform duration-500"
+                            />
+                            {/* Dark Theme Image */}
+                            <img
+                                src="/image/dark.png"
+                                alt="Traxos Dashboard - Dark Theme"
+                                className="mx-auto rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full hidden dark:block transform hover:scale-105 transition-transform duration-500"
+                            />
+                        </div>
+                    </div>
+                </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-6 py-12">
-          <div className="flex justify-center">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 max-w-2xl">
-              <div className="text-center sm:text-left">
-                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Product</h3>
-                <nav className="mt-4 space-y-3">
-                  <a href="#features" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
-                    Features
-                  </a>
-                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
-                    Security
-                  </a>
-                </nav>
-              </div>
+                {/* Features Section */}
+                <section id="features" className="py-20 md:py-28">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16 animate-fadeInUp">
+                            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Everything You Need to Succeed</h2>
+                            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">
+                                Powerful features to help you take control of your finances.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-[1fr]">
+                            {/* Feature 1: Smart Transactions (Wide) */}
+                            <div className="md:col-span-2 p-8 rounded-3xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-green-500/30 dark:hover:border-green-500/30 transition-all duration-300 group overflow-hidden relative h-full">
+                                <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <svg className="w-64 h-64" fill="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                </div>
+                                <div className="mb-6 w-fit">
+                                    <svg className="w-12 h-12 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Smart Transactions</h3>
+                                <p className="text-gray-600 dark:text-gray-200 leading-relaxed">
+                                    Log income and expenses with ease. Set up <span className="text-gray-900 dark:text-white font-medium">recurring transactions</span> for subscriptions and salary.
+                                    Need reports? <span className="text-green-600 dark:text-green-400 font-medium">Export to PDF & Excel</span> instantly for your records.
+                                </p>
+                            </div>
 
-              <div className="text-center sm:text-left">
-                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Legal</h3>
-                <nav className="mt-4 space-y-3">
-                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
-                    Privacy Policy
-                  </a>
-                  <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
-                    Terms of Service
-                  </a>
-                </nav>
-              </div>
-            </div>
-          </div>
+                            {/* Feature 2: Unified Accounts (Tall/Standard) */}
+                            <div className="md:col-span-1 p-8 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                                <div className="mb-6 w-fit">
+                                    <svg className="w-12 h-12 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unified Accounts</h3>
+                                <p className="text-gray-600 dark:text-gray-200 text-sm">
+                                    Bank, Cash, Savings - manage them all in one unified dashboard with real-time balance tracking.
+                                </p>
+                            </div>
 
-          {/* Developer Social Links */}
-          <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">&copy; 2025 Traxos. All rights reserved.</p>
+                            {/* Feature 3: Debts & Settlements */}
+                            <div className="md:col-span-1 p-8 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                                <div className="mb-6 w-fit">
+                                    <svg className="w-12 h-12 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Debts & Settlements</h3>
+                                <p className="text-gray-600 dark:text-gray-200 text-sm">
+                                    Track "Who Owes You" vs "You Owe". Settle debts easily with <span className="font-semibold text-gray-900 dark:text-white">linked transaction records</span>.
+                                </p>
+                            </div>
 
-              {/* Social Media Links with animations */}
-              <div className="flex space-x-4 mt-4 md:mt-0">
-                {/* <a 
+                            {/* Feature 4: Savings Goals */}
+                            <div className="md:col-span-1 p-8 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                                <div className="mb-6 w-fit">
+                                    <svg className="w-12 h-12 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Savings Goals</h3>
+                                <p className="text-gray-600 dark:text-gray-200 text-sm">
+                                    Visualize your dreams. Contribute directly from your accounts and watch your progress bar grow.
+                                </p>
+                            </div>
+
+                            {/* Feature 5: Budget Checks */}
+                            <div className="md:col-span-1 p-8 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                                <div className="mb-6 w-fit">
+                                    <svg className="w-12 h-12 text-yellow-500 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Budget Health</h3>
+                                <p className="text-gray-600 dark:text-gray-200 text-sm">
+                                    Instant analysis of your savings rate and debt-to-income ratios to keep you financially healthy.
+                                </p>
+                            </div>
+
+                            {/* Feature 6: AI Assistant (Wide) */}
+                            <div className="md:col-span-2 p-8 rounded-3xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-900 dark:to-black border border-green-100 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-500/50 transition-all duration-300 group relative overflow-hidden h-full">
+                                <div className="absolute bottom-0 right-0 opacity-10 dark:opacity-5 group-hover:scale-110 transition-transform duration-500">
+                                    <svg className="w-80 h-80 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                </div>
+                                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
+                                    <div className="mb-0">
+                                        <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Rule-Based AI Assistant</h3>
+                                        <p className="text-gray-600 dark:text-gray-200 leading-relaxed max-w-lg">
+                                            Get instant answers using our offline-capable, <span className="font-semibold text-gray-900 dark:text-white">rule-based engine</span>.
+                                            Your financial data stays secure on your device. No cloud uploads.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                {/* About Us Section */}
+                <section id="about" className="py-20 md:py-28">
+                    <div className="container mx-auto px-6 text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white animate-fadeInUp">Our Mission</h2>
+                        <div className="max-w-4xl mx-auto mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed animate-fadeInUp delay-200">
+                            <p className="transform hover:scale-105 transition-transform duration-300">
+                                We're breaking down barriers to financial independence by providing comprehensive,
+                                intuitive financial tools that are free for everyone, forever.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Final CTA Section */}
+                <section className="py-20">
+                    <div className="container mx-auto px-6">
+                        <div className="bg-gradient-to-r from-green-500 to-green-400 rounded-2xl shadow-xl text-center py-16 px-8 transform hover:scale-105 transition-transform duration-500">
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-white animate-bounce-slow">Ready to Take Control?</h2>
+                            <p className="mt-4 max-w-2xl mx-auto text-lg text-green-100 animate-fadeInUp">
+                                Join thousands building a better financial future with Traxos.
+                            </p>
+                            <div className="mt-8 animate-fadeInUp delay-300">
+                                <a
+                                    href="/signup"
+                                    className="bg-white text-green-600 font-bold text-lg px-8 py-4 rounded-lg shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-110 hover:shadow-2xl inline-block"
+                                >
+                                    Get Started for Free &rarr;
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <div className="container mx-auto px-6 py-12">
+                    <div className="flex justify-center">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 max-w-2xl">
+                            <div className="text-center sm:text-left">
+                                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Product</h3>
+                                <nav className="mt-4 space-y-3">
+                                    <a href="#features" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
+                                        Features
+                                    </a>
+                                    <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
+                                        Security
+                                    </a>
+                                </nav>
+                            </div>
+
+                            <div className="text-center sm:text-left">
+                                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Legal</h3>
+                                <nav className="mt-4 space-y-3">
+                                    <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
+                                        Privacy Policy
+                                    </a>
+                                    <a href="#" className="block text-gray-600 dark:text-gray-400 hover:text-green-500 transition-all duration-300 transform hover:translate-x-1">
+                                        Terms of Service
+                                    </a>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Developer Social Links */}
+                    <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">&copy; 2025 Traxos. All rights reserved.</p>
+
+                            {/* Social Media Links with animations */}
+                            <div className="flex space-x-4 mt-4 md:mt-0">
+                                {/* <a 
                   href="https://github.com/waqar741/fintrac" 
                   target="_blank" 
                   rel="noopener noreferrer"
@@ -326,32 +388,32 @@ const HomePage = () => {
                   </svg>
                 </a> */}
 
-                <a
-                  href="https://linkedin.com/in/shaikh-waquar"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-110"
-                  aria-label="LinkedIn"
-                >
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
+                                <a
+                                    href="https://linkedin.com/in/shaikh-waquar"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-110"
+                                    aria-label="LinkedIn"
+                                >
+                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
 
-            {/* Developer Credit */}
-            <div className="mt-4 text-center md:text-left">
-              <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">
-                Developed with ❤️ by Waqar Shaikh
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
+                        {/* Developer Credit */}
+                        <div className="mt-4 text-center md:text-left">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">
+                                Developed with ❤️ by Waqar Shaikh
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
 
-      {/* Animation Styles */}
-      <style>{`
+            {/* Animation Styles */}
+            <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
@@ -429,8 +491,8 @@ const HomePage = () => {
           animation-delay: 600ms;
         }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default HomePage;

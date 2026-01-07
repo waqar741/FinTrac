@@ -142,6 +142,11 @@ export default function Accounts() {
 
         if (error) throw error
       } else {
+        if (accounts.length >= 10) {
+          setError('root', { message: 'You can only create up to 10 accounts. Please delete an existing account to create a new one.' })
+          return
+        }
+
         const { error } = await supabase
           .from('accounts')
           .insert({
@@ -328,7 +333,7 @@ export default function Accounts() {
         </header>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-800 rounded-lg flex items-center justify-center mb-4">
             <Wallet className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Accounts Yet</h3>
@@ -428,7 +433,7 @@ export default function Accounts() {
                           register('color').onChange(event)
                           // Verify visual selection logic in main component or use watch to highlight
                         }}
-                        className={`w-8 h-8 rounded-full border-2 ${
+                        className={`w-8 h-8 rounded-lg border-2 ${
                           // This logic relies on watch() which we need to ensure is available if we copy-paste
                           // For simplicity in this block we can just use the register returned onChange or just rely on standard form handling
                           // Let's assume standard behavior for now, but better to use a proper color picker component logic if existing.
@@ -597,7 +602,7 @@ export default function Accounts() {
                 } relative`}>
 
                 {isDefaultAccount && (
-                  <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <div className="absolute -top-2 -left-2 bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center">
                     <Shield className="w-3 h-3 mr-1" />
                     Default
                   </div>
@@ -606,7 +611,7 @@ export default function Accounts() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div
-                      className="p-3 rounded-full"
+                      className="p-3 rounded-lg"
                       style={{ backgroundColor: account.color + '20' }}
                     >
                       <IconComponent
@@ -684,7 +689,7 @@ export default function Accounts() {
                 } relative`}>
 
                 {isDefaultAccount && (
-                  <div className="absolute -top-1 -left-1 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <div className="absolute -top-1 -left-1 bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center">
                     <Shield className="w-2 h-2 mr-1" />
                     Default
                   </div>
@@ -693,7 +698,7 @@ export default function Accounts() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <div
-                      className="p-2 rounded-full flex-shrink-0"
+                      className="p-2 rounded-lg flex-shrink-0"
                       style={{ backgroundColor: account.color + '20' }}
                     >
                       <IconComponent
@@ -752,9 +757,15 @@ export default function Accounts() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {editingAccount ? 'Edit Account' : 'Add Account'}
               </h2>
+              {/* Show counter */}
+              {!editingAccount && (
+                <span className={`text-sm ${accounts.length >= 10 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                  {accounts.length}/10
+                </span>
+              )}
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg ml-auto mr-0"
               >
                 <X className="w-5 h-5" />
               </button>

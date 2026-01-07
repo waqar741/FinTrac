@@ -19,7 +19,12 @@ interface DebtCredit {
   created_at: string
   settlement_transaction_id: string | null
   settlement_account_id: string | null
+  settlement_transaction?: {
+    created_at: string
+  }
 }
+
+const ITEMS_PER_PAGE = 10
 
 interface Account {
   id: string
@@ -59,6 +64,7 @@ export default function DebtsCredits() {
 
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [visibleItems, setVisibleItems] = useState(ITEMS_PER_PAGE)
 
   const {
     register,
@@ -83,9 +89,37 @@ export default function DebtsCredits() {
 
   const fetchDebtsCredits = async () => {
     try {
+      // First, perform cleanup of old settled items
+      // fetch strictly for cleanup first to avoid UI flash or stale data
+      const { data: oldSettled } = await supabase
+        .from('debts_credits')
+        .select('id, settlement_transaction_id, is_settled, transactions!settlement_transaction_id(created_at)')
+        .eq('user_id', user?.id)
+        .eq('is_settled', true)
+
+      if (oldSettled) {
+        const now = new Date()
+        const idsToDelete = oldSettled
+          .filter((item: any) => {
+            if (!item.transactions?.created_at) return false // Keep if no date found for safety
+            const settledDate = new Date(item.transactions.created_at)
+            const diffInHours = (now.getTime() - settledDate.getTime()) / (1000 * 60 * 60)
+            return diffInHours > 24 // Delete if settled more than 24 hours ago
+          })
+          .map((item: any) => item.id)
+
+        if (idsToDelete.length > 0) {
+          await supabase
+            .from('debts_credits')
+            .delete()
+            .in('id', idsToDelete)
+        }
+      }
+
+      // Then fetch clean list
       const { data, error } = await supabase
         .from('debts_credits')
-        .select('*')
+        .select('*, settlement_transaction:transactions!settlement_transaction_id(created_at)')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
 
@@ -585,53 +619,63 @@ export default function DebtsCredits() {
             {debts.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding debts</p>
             ) : (
-              debts.map((debt) => (
-                <div key={debt.id} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">{debt.person_name}</h3>
-                    <span className="text-lg font-bold text-red-600">{formatCurrency(debt.amount)}</span>
+              <>
+                {debts.slice(0, visibleItems).map((debt) => (
+                  <div key={debt.id} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900 dark:text-white">{debt.person_name}</h3>
+                      <span className="text-lg font-bold text-red-600">{formatCurrency(debt.amount)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{debt.description}</p>
+                    {debt.due_date && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Due: {format(new Date(debt.due_date), 'MMM d, yyyy')}
+                      </p>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => initiateSettlement(debt.id, debt.is_settled)}
+                        disabled={processingIds.has(debt.id)}
+                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {debt.is_settled ? (
+                          <>
+                            <ToggleRight className="w-3 h-3 mr-1" />
+                            Settled
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-3 h-3 mr-1" />
+                            {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleEditItem(debt)}
+                        disabled={processingIds.has(debt.id)}
+                        className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteItem(debt.id)}
+                        disabled={processingIds.has(debt.id)}
+                        className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{debt.description}</p>
-                  {debt.due_date && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Due: {format(new Date(debt.due_date), 'MMM d, yyyy')}
-                    </p>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => initiateSettlement(debt.id, debt.is_settled)}
-                      disabled={processingIds.has(debt.id)}
-                      className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {debt.is_settled ? (
-                        <>
-                          <ToggleRight className="w-3 h-3 mr-1" />
-                          Settled
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="w-3 h-3 mr-1" />
-                          {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleEditItem(debt)}
-                      disabled={processingIds.has(debt.id)}
-                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteItem(debt.id)}
-                      disabled={processingIds.has(debt.id)}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
+                ))}
+                {debts.length > visibleItems && (
+                  <button
+                    onClick={() => setVisibleItems(prev => prev + ITEMS_PER_PAGE)}
+                    className="w-full py-2 text-sm text-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+                  >
+                    Load More Debts
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -643,53 +687,63 @@ export default function DebtsCredits() {
             {credits.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding credits</p>
             ) : (
-              credits.map((credit) => (
-                <div key={credit.id} className="p-4 border border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">{credit.person_name}</h3>
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(credit.amount)}</span>
+              <>
+                {credits.slice(0, visibleItems).map((credit) => (
+                  <div key={credit.id} className="p-4 border border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900 dark:text-white">{credit.person_name}</h3>
+                      <span className="text-lg font-bold text-green-600">{formatCurrency(credit.amount)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{credit.description}</p>
+                    {credit.due_date && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Due: {format(new Date(credit.due_date), 'MMM d, yyyy')}
+                      </p>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => initiateSettlement(credit.id, credit.is_settled)}
+                        disabled={processingIds.has(credit.id)}
+                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {credit.is_settled ? (
+                          <>
+                            <ToggleRight className="w-3 h-3 mr-1" />
+                            Settled
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-3 h-3 mr-1" />
+                            {processingIds.has(credit.id) ? 'Processing...' : 'Mark Received'}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleEditItem(credit)}
+                        disabled={processingIds.has(credit.id)}
+                        className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteItem(credit.id)}
+                        disabled={processingIds.has(credit.id)}
+                        className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{credit.description}</p>
-                  {credit.due_date && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Due: {format(new Date(credit.due_date), 'MMM d, yyyy')}
-                    </p>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => initiateSettlement(credit.id, credit.is_settled)}
-                      disabled={processingIds.has(credit.id)}
-                      className="flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {credit.is_settled ? (
-                        <>
-                          <ToggleRight className="w-3 h-3 mr-1" />
-                          Settled
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="w-3 h-3 mr-1" />
-                          {processingIds.has(credit.id) ? 'Processing...' : 'Mark Received'}
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleEditItem(credit)}
-                      disabled={processingIds.has(credit.id)}
-                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteItem(credit.id)}
-                      disabled={processingIds.has(credit.id)}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
+                ))}
+                {credits.length > visibleItems && (
+                  <button
+                    onClick={() => setVisibleItems(prev => prev + ITEMS_PER_PAGE)}
+                    className="w-full py-2 text-sm text-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+                  >
+                    Load More Credits
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -715,14 +769,14 @@ export default function DebtsCredits() {
                     </p>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-lg">
                       ✓ Settled
                     </span>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => deleteItem(item.id)}
                         disabled={processingIds.has(item.id)}
-                        className="flex items-center px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <Trash2 className="w-3 h-3 mr-1" />
                         {processingIds.has(item.id) ? 'Removing...' : 'Remove'}

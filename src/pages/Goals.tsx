@@ -115,6 +115,11 @@ export default function Goals() {
 
         if (error) throw error
       } else {
+        if (goals.length >= 10) {
+          setError('root', { message: 'You can only create up to 10 goals. Please delete or complete an existing goal to create a new one.' })
+          return
+        }
+
         const { error } = await supabase
           .from('goals')
           .insert({
@@ -189,7 +194,7 @@ export default function Goals() {
       console.log('Transaction created:', transactionData)
 
       // **Then update goal current_amount**
-      const { data: goalData, error: goalError } = await supabase
+      const { error: goalError } = await supabase
         .from('goals')
         .update({
           current_amount: selectedGoal.current_amount + amount
@@ -337,7 +342,7 @@ export default function Goals() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div
-                      className="p-3 rounded-full"
+                      className="p-3 rounded-lg"
                       style={{ backgroundColor: goal.color + '20' }}
                     >
                       <Target
@@ -377,9 +382,9 @@ export default function Goals() {
                       {progress.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-lg h-2">
                     <div
-                      className="h-2 rounded-full transition-all duration-300"
+                      className="h-2 rounded-lg transition-all duration-300"
                       style={{
                         width: `${progress}%`,
                         backgroundColor: isCompleted ? '#10B981' : goal.color
@@ -442,9 +447,15 @@ export default function Goals() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {editingGoal ? 'Edit Goal' : 'Add Goal'}
               </h2>
+              {/* Show counter in Add mode */}
+              {!editingGoal && (
+                <span className={`text-sm ${goals.length >= 10 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                  {goals.length}/10 Goals
+                </span>
+              )}
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg ml-auto mr-0"
               >
                 <X className="w-5 h-5" />
               </button>
