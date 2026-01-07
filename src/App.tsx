@@ -18,6 +18,8 @@ import Settings from './pages/Settings'
 import Analytics from './pages/Analytics'
 import HomePage from './pages/HomePage'
 import Info from './pages/Info'
+import ForgotPassword from './pages/ForgotPassword'
+import UpdatePassword from './pages/UpdatePassword'
 
 function AppContent() {
   return (
@@ -27,6 +29,8 @@ function AppContent() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
         <Route path="/info" element={<Info />} />
 
         {/* Protected App Routes */}

@@ -8,6 +8,8 @@ import {
   Moon,
   Sun,
   LogOut,
+  Lock,
+  X,
   Save,
   Mail,
   Settings as SettingsIcon,
@@ -27,6 +29,7 @@ import {
 import * as XLSX from 'xlsx'
 import { useDateFormat } from '../hooks/useDateFormat'
 import PageGuide from '../components/PageGuide'
+import ConfirmModal from '../components/ConfirmModal'
 
 interface Account {
   id: string
@@ -35,6 +38,114 @@ interface Account {
   balance: number
   is_active: boolean
   is_default: boolean
+}
+
+const ChangePasswordModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
+                <Lock className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Change Password</h3>
+            </div>
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              const form = e.currentTarget
+              const formData = new FormData(form)
+              const password = formData.get('password') as string
+              const confirmPassword = formData.get('confirmPassword') as string
+
+              if (password !== confirmPassword) {
+                setError('Passwords do not match')
+                return
+              }
+              if (password.length < 8) {
+                setError('Password must be at least 8 characters')
+                return
+              }
+
+              try {
+                setLoading(true)
+                setError('')
+                setSuccess('')
+                const { error } = await supabase.auth.updateUser({ password })
+                if (error) throw error
+                setSuccess('Password updated successfully!')
+                setTimeout(() => {
+                  setSuccess('')
+                  onClose()
+                }, 2000)
+                form.reset()
+              } catch (err: any) {
+                setError(err.message || 'Failed to update password')
+              } finally {
+                setLoading(false)
+              }
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <input
+                name="password"
+                type="password"
+                placeholder="New Password"
+                required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <input
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirm New Password"
+                required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            {(error || success) && (
+              <div className={`p-3 rounded-lg text-sm ${error ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'}`}>
+                {error || success}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors flex items-center"
+              >
+                {loading ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const SettingItem = ({ icon: Icon, title, subtitle, children }: any) => (
@@ -79,6 +190,10 @@ export default function Settings() {
   const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [showArchivedAccounts, setShowArchivedAccounts] = useState(profile?.show_archived_accounts ?? false)
   const [exporting, setExporting] = useState(false)
+
+  // Modals
+  const [showAIModal, setShowAIModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   // Click protection states
   const [themeChanging, setThemeChanging] = useState(false)
@@ -560,6 +675,27 @@ export default function Settings() {
                   <span className="text-sm text-gray-500 dark:text-gray-400">Cannot be changed</span>
                 </div>
               </div>
+
+              {/* Password Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <Lock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Change Password</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update your password to keep your account secure.</p>
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Change Password
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -638,12 +774,15 @@ export default function Settings() {
                   <button
                     onClick={() => {
                       const current = localStorage.getItem('show_model_switcher') === 'true'
-                      const newValue = !current
-                      localStorage.setItem('show_model_switcher', String(newValue))
-                      // Dispatch event for immediate update
-                      window.dispatchEvent(new Event('settings:modelSwitcher'))
-                      // Force re-render of this component (simple way)
-                      navigate('.', { replace: true })
+                      if (!current) {
+                        // Turning ON -> Show Warning
+                        setShowAIModal(true)
+                      } else {
+                        // Turning OFF -> Just do it
+                        localStorage.setItem('show_model_switcher', 'false')
+                        window.dispatchEvent(new Event('settings:modelSwitcher'))
+                        navigate('.', { replace: true })
+                      }
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${localStorage.getItem('show_model_switcher') === 'true' ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
@@ -658,6 +797,26 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        {/* Modals */}
+        <ConfirmModal
+          isOpen={showAIModal}
+          onClose={() => setShowAIModal(false)}
+          onConfirm={() => {
+            localStorage.setItem('show_model_switcher', 'true')
+            window.dispatchEvent(new Event('settings:modelSwitcher'))
+            navigate('.', { replace: true })
+            setShowAIModal(false)
+          }}
+          title="Enable AI Features?"
+          message="By enabling AI features, you acknowledge that your conversation data may be sent to external servers for processing and training purposes. Please review our privacy policy for more details."
+          confirmText="Enable & Agree"
+          type="warning"
+        />
+        <ChangePasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+        />
 
         {/* Notifications Tab */}
         {activeTab === 'Notifications' && (
