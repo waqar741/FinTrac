@@ -510,7 +510,7 @@ export default function Accounts() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="px-4 pb-4 pt-2 sm:p-6 space-y-4 sm:space-y-6">
       {/* Desktop Header - Your original code */}
       <div className="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -548,7 +548,7 @@ export default function Accounts() {
       </div>
 
       {/* Mobile Header */}
-      <div className="sm:hidden flex items-center justify-between mb-2">
+      <div className="sm:hidden flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Accounts</h1>

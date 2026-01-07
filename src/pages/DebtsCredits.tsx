@@ -473,12 +473,12 @@ export default function DebtsCredits() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
             <PageGuide
               title="Debts & Credits"
               description="Track every penny. Record who owes you (Credits) and who you owe (Debts). Settle up easily when payments are made."
@@ -496,7 +496,7 @@ export default function DebtsCredits() {
           className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Entry
+          Add
         </button>
       </div>
 
