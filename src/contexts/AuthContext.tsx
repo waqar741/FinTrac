@@ -12,6 +12,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
   refreshProfile: () => Promise<void>
+  deleteAccount: (password: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -151,6 +152,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
+  const deleteAccount = async (password: string) => {
+    // 1. Re-authenticate to verify password
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user?.email || '',
+      password,
+    })
+    if (signInError) throw new Error('Incorrect password')
+
+    // 2. Try to delete via RPC (if configured)
+    const { error: rpcError } = await supabase.rpc('delete_user')
+
+    if (rpcError) {
+      console.warn('RPC delete_user failed or not found, falling back to manual cleanup', rpcError)
+      // 3. Fallback: Manual Data Cleanup (policies must allow this)
+      const tables = [
+        'transactions',
+        'accounts',
+        'goals',
+        'group_expenses',
+        'debts_credits',
+        'notifications',
+        'profiles'
+      ]
+
+      for (const table of tables) {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .delete()
+          .eq(table === 'profiles' ? 'id' : 'user_id', user?.id)
+
+        if (deleteError) console.error(`Failed to delete from ${table}:`, deleteError)
+      }
+    }
+
+    // 4. Sign out
+    await signOut()
+  }
+
   const value = {
     user,
     profile,
@@ -162,7 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePassword,
     refreshProfile: async () => {
       if (user) await fetchProfile(user.id)
-    }
+    },
+    deleteAccount
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

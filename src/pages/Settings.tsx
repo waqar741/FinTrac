@@ -166,7 +166,7 @@ const SettingItem = ({ icon: Icon, title, subtitle, children }: any) => (
 )
 
 export default function Settings() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile, deleteAccount } = useAuth()
   const { isDark, toggleTheme } = useTheme()
   const { formatDate } = useDateFormat()
   const navigate = useNavigate()
@@ -192,8 +192,12 @@ export default function Settings() {
   const [exporting, setExporting] = useState(false)
 
   // Modals
+  // Modals
   const [showAIModal, setShowAIModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeletePassword, setShowDeletePassword] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   // Click protection states
   const [themeChanging, setThemeChanging] = useState(false)
@@ -818,6 +822,94 @@ export default function Settings() {
           onClose={() => setShowPasswordModal(false)}
         />
 
+        {/* Delete Account Confirmation Steps */}
+        {/* Step 1: Initial Warning */}
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={() => {
+            setShowDeleteConfirm(false)
+            setShowDeletePassword(true)
+          }}
+          title="Delete Account?"
+          message="This action cannot be undone. This will permanently delete your account and remove your data from our servers."
+          confirmText="Yes, delete my account"
+          type="danger"
+        />
+
+        {/* Step 2: Password Verification */}
+        {showDeletePassword && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Verify Password</h3>
+                  <button
+                    onClick={() => setShowDeletePassword(false)}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  Please enter your password to confirm account deletion.
+                </p>
+
+                <form onSubmit={async (e) => {
+                  e.preventDefault()
+                  const form = e.currentTarget
+                  const formData = new FormData(form)
+                  const password = formData.get('password') as string
+
+                  if (!password) {
+                    setError('Password is required')
+                    return
+                  }
+
+                  setDeletingAccount(true)
+                  try {
+                    await deleteAccount(password)
+                    // Navigation handled in AuthContext but failsafe here
+                    navigate('/login')
+                  } catch (err: any) {
+                    setError(err.message || 'Failed to delete account')
+                    setDeletingAccount(false)
+                  }
+                }}>
+                  <div className="mb-4">
+                    <input
+                      name="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeletePassword(false)}
+                      disabled={deletingAccount}
+                      className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={deletingAccount}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 font-medium flex items-center"
+                    >
+                      {deletingAccount ? 'Deleting...' : 'Delete Account'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Notifications Tab */}
         {activeTab === 'Notifications' && (
           <div className="space-y-6">
@@ -971,7 +1063,10 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="mt-6">
-                  <button className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 transition-colors text-sm font-medium">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 transition-colors text-sm font-medium"
+                  >
                     <Trash2 className="w-4 h-4" />
                     <span>Delete All Data</span>
                   </button>
