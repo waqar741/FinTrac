@@ -484,8 +484,6 @@ export default function Accounts() {
     )
   }
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
-
   const sortedAccounts = [...accounts]
     .filter(a => a.is_active)
     .sort((a, b) => {
@@ -493,6 +491,8 @@ export default function Accounts() {
       if (!a.is_default && b.is_default) return 1
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
+
+  const totalBalance = sortedAccounts.reduce((sum, account) => sum + account.balance, 0)
 
   if (loading) {
     return (
@@ -515,19 +515,19 @@ export default function Accounts() {
       <div className="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Accounts</h1>
             <PageGuide
               title="Accounts"
               description="Manage your physical and digital wallets. Track balances across different banks and keep your net worth updated."
               tips={[
                 "Add all your bank accounts for a complete picture.",
-                "Update cash balances regularly.",
-                "Set a default account for quick transactions.",
-                "Note: You can only edit Name, Type, and Color. Balance changes are restricted."
+                "You cannot edit an account's balance directly.",
+                "Initial balance can only be set when creating a new account. This entry will not appear in your transactions.",
+                "To delete an account, its balance must be 0. Transfer or withdraw funds first.",
+                "Set a default account for quick transactions."
               ]}
             />
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your money sources and balances</p>
         </div>
         <div className="flex space-x-2 mt-4 sm:mt-0">
           <button
@@ -555,9 +555,13 @@ export default function Accounts() {
             <PageGuide
               title="Accounts"
               description="Manage your money sources and balances."
+              tips={[
+                "Balance cannot be edited directly.",
+                "Initial balance is only set on creation (hidden from transactions).",
+                "Accounts must have 0 balance to be deleted."
+              ]}
             />
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage your money sources</p>
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -581,7 +585,7 @@ export default function Accounts() {
       <div className="hidden sm:block bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-6 text-white">
         <h2 className="text-lg font-medium opacity-90">Total Balance</h2>
         <p className="text-3xl font-bold mt-2">{formatCurrency(totalBalance)}</p>
-        <p className="text-sm opacity-75 mt-1">{accounts.length} active accounts</p>
+        <p className="text-sm opacity-75 mt-1">{sortedAccounts.length} active accounts</p>
       </div>
 
       {/* Mobile Total Balance */}
@@ -594,7 +598,7 @@ export default function Accounts() {
           <div>
             <h2 className="text-base font-medium opacity-90">Total Balance</h2>
             <p className="text-3xl font-bold tracking-tight mt-1">{formatCurrency(totalBalance)}</p>
-            <p className="text-xs opacity-80 mt-2">{accounts.length} accounts</p>
+            <p className="text-xs opacity-80 mt-2">{sortedAccounts.length} active accounts</p>
           </div>
 
           {/* Icon on the right as a visual anchor */}
