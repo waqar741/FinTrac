@@ -6,6 +6,7 @@ import { Plus, Target, X, CreditCard as Edit2, Trash2, TrendingUp, Loader } from
 import ConfirmModal from '../components/ConfirmModal'
 import { format } from 'date-fns'
 import { useCurrency } from '../hooks/useCurrency'
+import PageGuide from '../components/PageGuide'
 
 interface Goal {
   id: string
@@ -307,7 +308,19 @@ export default function Goals() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Goals</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Goals</h1>
+            <PageGuide
+              title="Saving Goals"
+              description="Visualize your dreams. Create goals for vacations, gadgets, or emergency funds and track your contributions."
+              tips={[
+                "Set realistic target dates.",
+                "Contribute small amounts regularly.",
+                "Use custom colors to organize goals.",
+                "Note: Goals can only be deleted if they are completed or have a zero balance."
+              ]}
+            />
+          </div>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Set and track your financial goals</p>
         </div>
         <button
@@ -444,18 +457,23 @@ export default function Goals() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {editingGoal ? 'Edit Goal' : 'Add Goal'}
-              </h2>
-              {/* Show counter in Add mode */}
-              {!editingGoal && (
-                <span className={`text-sm ${goals.length >= 10 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                  {goals.length}/10 Goals
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingGoal ? 'Edit Goal' : 'Add Goal'}
+                </h2>
+                {/* Show counter in Add mode */}
+                {!editingGoal && (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${goals.length >= 10
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}>
+                    {goals.length}/10 Used
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg ml-auto mr-0"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>

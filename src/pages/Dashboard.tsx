@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PlusCircle, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react'
 import { useCurrency } from '../hooks/useCurrency'
+import PageGuide from '../components/PageGuide'
 import {
   format,
   startOfToday,
@@ -361,7 +362,14 @@ export default function Dashboard() {
           {/* Header with Filter */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                <PageGuide
+                  title="Dashboard"
+                  description="Your financial command center. View net worth, recent activity, and quick stats."
+                  tips={["Review your Net Worth daily.", "Check recent transactions for errors.", "Use the simple charts for quick health checks."]}
+                />
+              </div>
             </div>
 
             {/* Mobile Time Filter Dropdown */}
@@ -688,7 +696,14 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+              <PageGuide
+                title="Dashboard"
+                description="Your financial command center. View net worth, recent activity, and quick stats."
+                tips={["Review your Net Worth daily.", "Check recent transactions for errors.", "Use the simple charts for quick health checks."]}
+              />
+            </div>
             <p className="text-gray-600 dark:text-gray-300 mt-1">Your financial dashboard is ready.</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Last Updated: {format(new Date(), 'MMM d, yyyy h:mm a')}

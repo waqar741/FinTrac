@@ -652,7 +652,7 @@ export default function AIChat() {
               <button
                 onClick={() => setUseModel(!useModel)}
                 className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
-                title={useModel ? "Switch to Offline Mode" : "Switch to AI Model"}
+                title={useModel ? "Switch to Rule Based Model" : "Switch to AI Model"}
               >
                 {useModel ? <Cpu className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
               </button>

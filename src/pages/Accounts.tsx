@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader, Shield } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
+import PageGuide from '../components/PageGuide'
 
 interface Account {
   id: string
@@ -76,7 +77,6 @@ export default function Accounts() {
         .from('accounts')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('is_active', true)
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -243,10 +243,15 @@ export default function Accounts() {
 
       const { error } = await supabase
         .from('accounts')
-        .update({ is_active: false })
+        .delete()
         .eq('id', accountToDelete.id)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === '23503') { // Foreign key violation
+          throw new Error('Cannot delete account because it has associated transactions or goals. Please delete them first.')
+        }
+        throw error
+      }
       await fetchAccounts()
     } catch (error: any) {
       console.error('Error deleting account:', error)
@@ -481,11 +486,13 @@ export default function Accounts() {
 
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
 
-  const sortedAccounts = [...accounts].sort((a, b) => {
-    if (a.is_default && !b.is_default) return -1
-    if (!a.is_default && b.is_default) return 1
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  })
+  const sortedAccounts = [...accounts]
+    .filter(a => a.is_active)
+    .sort((a, b) => {
+      if (a.is_default && !b.is_default) return -1
+      if (!a.is_default && b.is_default) return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
 
   if (loading) {
     return (
@@ -507,7 +514,19 @@ export default function Accounts() {
       {/* Desktop Header - Your original code */}
       <div className="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+            <PageGuide
+              title="Accounts"
+              description="Manage your physical and digital wallets. Track balances across different banks and keep your net worth updated."
+              tips={[
+                "Add all your bank accounts for a complete picture.",
+                "Update cash balances regularly.",
+                "Set a default account for quick transactions.",
+                "Note: You can only edit Name, Type, and Color. Balance changes are restricted."
+              ]}
+            />
+          </div>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your money sources and balances</p>
         </div>
         <div className="flex space-x-2 mt-4 sm:mt-0">
@@ -531,7 +550,13 @@ export default function Accounts() {
       {/* Mobile Header */}
       <div className="sm:hidden flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+            <PageGuide
+              title="Accounts"
+              description="Manage your money sources and balances."
+            />
+          </div>
           <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage your money sources</p>
         </div>
         <div className="flex items-center space-x-2">
@@ -754,18 +779,23 @@ export default function Accounts() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {editingAccount ? 'Edit Account' : 'Add Account'}
-              </h2>
-              {/* Show counter */}
-              {!editingAccount && (
-                <span className={`text-sm ${accounts.length >= 10 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                  {accounts.length}/10
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingAccount ? 'Edit Account' : 'Add Account'}
+                </h2>
+                {/* Show counter */}
+                {!editingAccount && (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${accounts.length >= 10
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}>
+                    {accounts.length}/10 Used
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg ml-auto mr-0"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -850,13 +880,7 @@ export default function Accounts() {
                 </div>
               </div>
 
-              {editingAccount && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                  <p className="text-yellow-700 dark:text-yellow-400 text-sm">
-                    ⚠️ You can edit account name, type, and color. Balance changes are restricted to maintain transaction accuracy.
-                  </p>
-                </div>
-              )}
+              {/* Warning removed and moved to PageGuide */}
 
               {errors.root && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">

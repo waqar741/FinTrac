@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { Plus, Users, Copy, Check, X, UserPlus, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCurrency } from '../hooks/useCurrency'
+import PageGuide from '../components/PageGuide'
 
 interface Group {
   id: string
@@ -388,7 +389,14 @@ export default function GroupExpenses() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Group Expenses</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Group Expenses</h1>
+            <PageGuide
+              title="Group Expenses"
+              description="Split bills stress-free. Create groups for trips or roommates, add expenses, and let the app calculate who owes who."
+              tips={["Invite friends using the unique group code.", "Settlements are calculated automatically to minimize transactions.", "You can track multiple groups at once."]}
+            />
+          </div>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Split expenses with friends and family</p>
         </div>
         <div className="flex space-x-2 mt-4 sm:mt-0">

@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { useDateFormat } from '../hooks/useDateFormat'
 import SEO from '../components/SEO'
+import PageGuide from '../components/PageGuide'
 
 
 
@@ -720,7 +721,19 @@ export default function Transactions() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+            <PageGuide
+              title="Transactions"
+              description="Log income, expenses, and transfers. Use filters to find old records and export data."
+              tips={[
+                "Use filters to find specific entries.",
+                "Export to PDF for tax season.",
+                "Recurring transactions save time.",
+                "Security: Transactions cannot be edited after 6 hours to prevent data manipulation."
+              ]}
+            />
+          </div>
         </div>
         <button
           onClick={() => setShowModal(true)}

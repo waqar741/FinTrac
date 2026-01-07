@@ -7,6 +7,7 @@ import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet } fr
 import { format } from 'date-fns'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
+import PageGuide from '../components/PageGuide'
 
 interface DebtCredit {
   id: string
@@ -476,7 +477,18 @@ export default function DebtsCredits() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
+            <PageGuide
+              title="Debts & Credits"
+              description="Track every penny. Record who owes you (Credits) and who you owe (Debts). Settle up easily when payments are made."
+              tips={[
+                "Use the 'Settle Up' feature to record payments.",
+                "Keep track of informal loans with friends.",
+                "Warning: Deleting an entry removes it permanently. Settle it to keep the history."
+              ]}
+            />
+          </div>
           {/* <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p> */}
         </div>
         <button

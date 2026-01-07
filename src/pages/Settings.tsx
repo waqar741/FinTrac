@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useDateFormat } from '../hooks/useDateFormat'
+import PageGuide from '../components/PageGuide'
 
 interface Account {
   id: string
@@ -399,7 +400,18 @@ export default function Settings() {
   return (
     <div className="p-4 md:p-8 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <header>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <PageGuide
+            title="Settings & Privacy"
+            description="Manage your profile, preferences, and data privacy."
+            tips={[
+              "Toggle Dark Mode for better nighttime visibility.",
+              "Privacy Alert: Switching to the Online AI Model sends data to external servers for training/processing.",
+              "Use Offline mode for 100% privacy."
+            ]}
+          />
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your account and application preferences</p>
       </header>
 
@@ -620,7 +632,7 @@ export default function Settings() {
                   ))}
                 </select>
               </SettingItem> */}
-              <SettingItem icon={Monitor} title="AI Model Switcher" subtitle="Show button to switch between AI and Offline models.">
+              <SettingItem icon={Monitor} title="AI Model Switcher" subtitle="Show button to switch between AI and Rule Based models.">
                 <div className="flex items-center justify-between">
                   <p className="text-gray-700 dark:text-gray-300">Show Model Switcher</p>
                   <button

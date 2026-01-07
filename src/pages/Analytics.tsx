@@ -36,6 +36,7 @@ import {
   subWeeks,
 } from 'date-fns'
 import SEO from '../components/SEO'
+import PageGuide from '../components/PageGuide'
 
 type TimeFilter = 'today' | 'yesterday' | 'week' | 'last_week' | 'month' | 'last_month' | 'year' | 'last_7_days' | 'last_30_days' | 'last_90_days'
 
@@ -231,9 +232,16 @@ export default function Analytics() {
       {/* Header & Filter */}
       <div className="flex flex-row justify-between items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-blue-600">
-            Analytics
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-blue-600">
+              Analytics
+            </h1>
+            <PageGuide
+              title="Analytics"
+              description="Deep dive into your financial data. Analyze spending trends, income vs expenses, and category breakdowns."
+              tips={["Check your 'Savings Rate' to gauge financial health.", "Use time filters to spot seasonal trends.", "Identify high-spending categories to cut costs."]}
+            />
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {getFilterLabel(timeFilter)} Overview
           </p>
