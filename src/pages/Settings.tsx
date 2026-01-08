@@ -526,8 +526,8 @@ export default function Settings() {
             description="Manage your profile, preferences, and data privacy."
             tips={[
               "Toggle Dark Mode for better nighttime visibility.",
-              "Privacy Alert: Switching to the Online AI Model sends data to external servers for training/processing.",
-              "Use Rule Based AI for 100% privacy."
+              "Security: Online AI Model (Green) uses strict data masking. Your personal identity is never exposed.",
+              "Rule Based AI (Blue) runs entirely on your device for maximum privacy."
             ]}
           />
         </div>
@@ -813,7 +813,7 @@ export default function Settings() {
             setShowAIModal(false)
           }}
           title="Enable AI Features?"
-          message="By enabling AI features, you acknowledge that your conversation data may be sent to external servers for processing and training purposes. Please review our privacy policy for more details."
+          message="By enabling AI features, your queries will be processed by external servers. Your personal data (Names, Accounts, Identities) is strictly masked and anonymized before sending to ensure your privacy."
           confirmText="Enable & Agree"
           type="warning"
         />

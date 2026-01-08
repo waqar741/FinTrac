@@ -19,20 +19,43 @@ export default function AIChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
-  const [useModel, setUseModel] = useState(false) // Changed default to false (offline mode)
+  const [useModel, setUseModel] = useState(() => localStorage.getItem('use_ai_model') === 'true')
   const [showModelSwitcher, setShowModelSwitcher] = useState(() => localStorage.getItem('show_model_switcher') === 'true')
+
+  const toggleModel = () => {
+    setUseModel(prev => {
+      const newVal = !prev
+      localStorage.setItem('use_ai_model', String(newVal))
+      return newVal
+    })
+  }
 
   useEffect(() => {
     const handleStorageChange = () => {
-      setShowModelSwitcher(localStorage.getItem('show_model_switcher') === 'true')
+      const isSwitcherEnabled = localStorage.getItem('show_model_switcher') === 'true'
+      setShowModelSwitcher(isSwitcherEnabled)
+
+      // If switcher is turned OFF, force Rule Based mode
+      if (!isSwitcherEnabled) {
+        setUseModel(false)
+        localStorage.setItem('use_ai_model', 'false')
+      }
     }
+
+    // Initial check on mount
+    const isSwitcherEnabled = localStorage.getItem('show_model_switcher') === 'true'
+    if (!isSwitcherEnabled && useModel) {
+      setUseModel(false)
+      localStorage.setItem('use_ai_model', 'false')
+    }
+
     window.addEventListener('settings:modelSwitcher', handleStorageChange)
     window.addEventListener('storage', handleStorageChange)
     return () => {
       window.removeEventListener('settings:modelSwitcher', handleStorageChange)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [])
+  }, [useModel])
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -105,9 +128,64 @@ export default function AIChat() {
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
-  // --- 2. DATA BUILDER (Returns context string for immediate use) ---
-  const refreshFinancialContext = async (query: string = ''): Promise<string> => {
+  // --- 4. DATA MASKING SYSTEM ---
+
+  // Storage for current session's masking map
+  const [tokenMap, setTokenMap] = useState<Map<string, string>>(new Map())
+
+  const maskData = (text: string | number, type: 'NAME' | 'AMOUNT' | 'ACCOUNT' | 'DATE', map: Map<string, string>): string => {
+    const value = String(text).trim()
+    if (!value) return value
+
+    // Check if already masked to ensure consistency (e.g., "John" always -> "[[PERSON_1]]")
+    // We need a reverse lookup or just checking the values? 
+    // For simplicity, we regenerate or cache. Best to cache based on value.
+    const existingEntry = Array.from(map.entries()).find(([, v]) => v === value)
+    if (existingEntry) return existingEntry[0] // Return existing placeholder (Wait, map is Placeholder -> Real)
+
+    // Correct Map Structure: Placeholder -> Real Value
+    // But we need Real -> Placeholder for masking.
+
+    // Let's use two maps or check values.
+    // For a small session, iterating is fine.
+
+    const existingPlaceholder = Array.from(map.entries()).find(([, real]) => real === value)?.[0]
+    if (existingPlaceholder) return existingPlaceholder
+
+    // Generate new placeholder
+    const count = map.size + 1
+    let prefix = 'VAL'
+    if (type === 'NAME') prefix = 'PERSON'
+    if (type === 'AMOUNT') prefix = 'AMT'
+    if (type === 'ACCOUNT') prefix = 'ACCT'
+    if (type === 'DATE') prefix = 'DATE'
+
+    const placeholder = `[[${prefix}_${count}]]`
+    map.set(placeholder, value)
+    return placeholder
+  }
+
+  const unmaskContent = (content: string, map: Map<string, string>): string => {
+    let unmasked = content
+    // Sort keys by length desc to avoid partial replacement issues if any
+    const placeholders = Array.from(map.keys()).sort((a, b) => b.length - a.length)
+
+    placeholders.forEach(placeholder => {
+      const realValue = map.get(placeholder)
+      if (realValue) {
+        // Global replace of the placeholder
+        unmasked = unmasked.split(placeholder).join(realValue)
+      }
+    })
+    return unmasked
+  }
+
+  // --- 2. DATA BUILDER (Returns context string and map for immediate use) ---
+  const refreshFinancialContext = async (query: string = ''): Promise<{ context: string; map: Map<string, string> }> => {
     try {
+      // Create new map for this request context
+      const currentMap = new Map<string, string>()
+
       const lowerQ = query.toLowerCase()
       let startDate = startOfMonth(new Date()) // Default: Current Month
 
@@ -121,6 +199,10 @@ export default function AIChat() {
       } else if (lowerQ.includes('last 2 months')) {
         startDate = subMonths(new Date(), 2)
       }
+
+      // Detect "Last Month Transaction" intent specifically for Online Mode context
+      // (The instructions below will handle the response generation, but we ensure the data is there)
+
 
       const [trRes, acRes, dcRes, glRes] = await Promise.all([
         supabase.from('transactions')
@@ -138,12 +220,26 @@ export default function AIChat() {
       const debtsCredits = dcRes.data || []
       const goals = glRes.data || []
 
-      const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+      // --- MASKING BEGINS HERE ---
+      const mask = (val: string | number, type: 'NAME' | 'AMOUNT' | 'ACCOUNT' | 'DATE') => maskData(val, type, currentMap)
+
+      // 1. Mask Profile Name
+      const maskedUserName = mask(profile?.full_name || 'User', 'NAME')
+
+      // 2. Calculations (Perform on REAL values, then mask the result)
+      const totalBalanceReal = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+      const totalBalance = mask(formatCurrency(totalBalanceReal), 'AMOUNT') // Mask the formatted string
+
+      // Mask Lists
+      const accountList = accounts.map(a =>
+        `${mask(a.name, 'ACCOUNT')} (${mask(a.bank_name || 'Bank', 'ACCOUNT')}): ${mask(formatCurrency(a.balance), 'AMOUNT')}`
+      ).join(', ')
+
+      // Calculations for period
       let totalIncome = 0
       let totalExpenses = 0
       let periodLabel = `From ${formatDate(startDate.toISOString())} to Now`
 
-      // Refined Calculation: Handle "Last Month" specific filtering
       if (lowerQ.includes('last month') || lowerQ.includes('previous month')) {
         const lastMonthStart = startOfMonth(subMonths(new Date(), 1))
         const thisMonthStart = startOfMonth(new Date())
@@ -157,64 +253,94 @@ export default function AIChat() {
         totalExpenses = lastMonthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
         periodLabel = `Last Month (${format(lastMonthStart, 'MMMM yyyy')})`
       } else {
-        // Default: Sum everything in the fetched range
         totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
         totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
       }
 
-      const accountList = accounts.map(a => `${a.name} (${a.bank_name || 'Bank'}): ${formatCurrency(a.balance)}`).join(', ')
+      // Mask Totals
+      const maskedIncome = mask(formatCurrency(totalIncome), 'AMOUNT')
+      const maskedExpenses = mask(formatCurrency(totalExpenses), 'AMOUNT')
 
-      // Enhanced Debt/Credit List with Due Dates
+      // Debts/Credits
       const debtList = debtsCredits.filter(d => d.type === 'debt').map(d =>
-        `${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}${d.due_date ? ` (Due: ${formatDate(d.due_date)})` : ''}`
+        `${mask(d.person_name || 'Unknown', 'NAME')}: ${mask(formatCurrency(d.amount), 'AMOUNT')}${d.due_date ? ` (Due: ${mask(formatDate(d.due_date), 'DATE')})` : ''}`
       ).join(', ')
 
       const creditList = debtsCredits.filter(d => d.type === 'credit').map(c =>
-        `${c.person_name || 'Unknown'}: ${formatCurrency(c.amount)}${c.due_date ? ` (Due: ${formatDate(c.due_date)})` : ''}`
+        `${mask(c.person_name || 'Unknown', 'NAME')}: ${mask(formatCurrency(c.amount), 'AMOUNT')}${c.due_date ? ` (Due: ${mask(formatDate(c.due_date), 'DATE')})` : ''}`
       ).join(', ')
 
-      const goalList = goals.map(g => `${g.name} (${formatCurrency(g.current_amount || 0)}/${formatCurrency(g.target_amount)})`).join(', ')
+      // Goals
+      const goalList = goals.map(g => `${mask(g.name, 'NAME')} (${mask(formatCurrency(g.current_amount || 0), 'AMOUNT')}/${mask(formatCurrency(g.target_amount), 'AMOUNT')})`).join(', ')
+
+      // Recent Transactions (Mask Description and Amount)
+      const recentTxns = transactions.slice(0, 10).map(t =>
+        `${mask(formatDate(t.created_at), 'DATE')}: ${mask(t.description, 'NAME')} (${mask(formatCurrency(t.amount), 'AMOUNT')})`
+      ).join('\n')
+
+      // Store map
+      setTokenMap(currentMap)
 
       const context = `
-      You are Traxos AI. Answer strictly based on the provided data.
-      User Name: ${profile?.full_name || 'User'}
+      You are Traxos AI.
+      The data below contains masked placeholders (like [[VAL_1]], [[AMT_2]]).
+      CRITICAL: You MUST use these placeholders EXACTLY as they appear in your response. Do not change them or make up values.
+      
+      User Name: ${maskedUserName}
       
       **FINANCIAL DATA (${periodLabel}):**
-      - Total Balance: ${formatCurrency(totalBalance)}
-      - Accounts (${accounts.length}): [${accountList}]
-      - Income (in selected period): ${formatCurrency(totalIncome)}
-      - Expenses (in selected period): ${formatCurrency(totalExpenses)}
+      - Income: ${maskedIncome}
+      - Expenses: ${maskedExpenses}
       
-      - DEBTS (I Owe/Dues): [${debtList || 'None'}]
+      - DEBTS (I Owe): [${debtList || 'None'}]
       - CREDITS (Owes Me): [${creditList || 'None'}]
       - GOALS: [${goalList || 'None'}]
+      - Accounts (${accounts.length}): [${accountList}]
+      - Total Balance: ${totalBalance}
+
       
-      **RECENT TRANSACTIONS (Selected Period):**
-      ${transactions.slice(0, 10).map(t => `${formatDate(t.created_at)}: ${t.description} (${formatCurrency(t.amount)})`).join('\n')}
+      **RECENT TRANSACTIONS:**
+      ${recentTxns}
       
-      IMPORTANT:
-      1. IF ASKED "what is my dues" or "my debts": List items from DEBTS. default to "You owe [Name]: [Amount] (Due Date)".
-      2. IF ASKED "due date for [Name]": Check DEBTS for that name and provide the date. If no date, say "No due date set".
-      3. IF ASKED ABOUT GOALS: List items from GOALS with progress.
-      4. IF THE USER SAYS GIBBERISH (e.g. "sdfg"): Reply "I'm sorry, I don't understand."
-      5. Always refer to the user as 'You'.
-      6. Provide plain text responses only.
-      7. Do NOT use markdown formatting (no bold **, no italics *).
-      8. Do NOT use the name '${profile?.full_name}' in your response.
-      9. Be concise and helpful.
+      INSTRUCTIONS:
+      1. If asked about "Balance": Reply "Your total balance is ${totalBalance}."
+      2. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
+      3. If asked about "Credits": List the items from CREDITS exactly.
+      4. If asked about "Goals": List items from GOALS.
+      5. If asked about "Recent", "Transactions", or "History": List items from RECENT TRANSACTIONS.
+      6. If asked about "Income", "Expense", or "Spending": State the Income and Expenses from the data.
+      7. If asked about "Last Month" (or "Previous Month"):
+         - STRICTLY provide the Income, Expenses, and Net (Income - Expense) Summary.
+         - DO NOT mention "Total Balance" unless explicitly asked.
+         - If asked for "Transactions": LIST them from RECENT TRANSACTIONS.
+      8. If asked about "Summary" or "Report": Provide the Income, Expenses, and Net.
+
+      9. Keep responses short and plain text.
+
+      9. Do NOT use markdown.
+      10. Do NOT use the name '${maskedUserName}' in the response.
       `
       setSystemContext(context)
-      return context
+      return { context, map: currentMap }
     } catch (e) {
       console.error("Context build error", e)
-      return systemContext // Start with old context if fail
+      return { context: systemContext, map: tokenMap } // Start with old context if fail
     }
   }
 
   // --- 3. ONLINE ENGINE ---
-  const processOnline = async (query: string, messageId: string, currentContext: string) => {
+  const processOnline = async (query: string, messageId: string, currentContext: string, currentMap: Map<string, string>) => {
     let responseText = ''
     try {
+      // 1. Mask the Query as well to protect names in user input
+      let maskedQuery = query
+      currentMap.forEach((real, placeholder) => {
+        // Simple replace - careful with partial matches, but good enough for now
+        if (maskedQuery.includes(real)) {
+          maskedQuery = maskedQuery.split(real).join(placeholder)
+        }
+      })
+
       const res = await fetch(`${API_URL}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -222,7 +348,7 @@ export default function AIChat() {
           model: onlineModelId,
           messages: [
             { role: 'system', content: currentContext },
-            { role: 'user', content: query }
+            { role: 'user', content: maskedQuery }
           ],
           stream: true,
           temperature: 0.1,
@@ -250,8 +376,10 @@ export default function AIChat() {
               const content = data.choices[0]?.delta?.content || ''
               if (content) {
                 responseText += content
+                // Unmask the stream on the fly so user sees real data immediately using the FRESH map
+                const unmaskedText = unmaskContent(responseText, currentMap)
                 setMessages(prev =>
-                  prev.map(m => m.id === messageId ? { ...m, content: responseText } : m)
+                  prev.map(m => m.id === messageId ? { ...m, content: unmaskedText } : m)
                 )
               }
             } catch (e) { console.error(e) }
@@ -259,8 +387,8 @@ export default function AIChat() {
         }
       }
     } catch (e) {
+      // ... existing fallback ...
       const fallback = await processOffline(query)
-      // Simulate typing for fallback too
       let currentText = ''
       for (let i = 0; i < fallback.length; i++) {
         currentText += fallback[i]
@@ -362,10 +490,38 @@ export default function AIChat() {
           `${net >= 0 ? 'Good job! You are saving money.' : 'You are spending more than you earn.'}`
       }
 
+
+      // --- Last Month Transactions (Offline Specific Priority) ---
+      if (
+        (lowerQuery.includes('last month') || lowerQuery.includes('previous month')) &&
+        (matches(['transaction', 'history', 'activity', 'spending log']))
+      ) {
+        const now = new Date()
+        const lastMonthDate = subMonths(now, 1)
+        const lastMonth = lastMonthDate.getMonth()
+        const lastYear = lastMonthDate.getFullYear()
+
+        const lastMonthTxns = transactions.filter(t => {
+          const d = new Date(t.created_at || t.transaction_date)
+          return d.getMonth() === lastMonth && d.getFullYear() === lastYear
+        })
+
+        if (lastMonthTxns.length === 0) return 'No transactions found for last month.'
+
+        const list = lastMonthTxns.slice(0, 8).map(t =>
+          `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)}) ${t.type === 'income' ? '(+)' : '(-)'}`
+        ).join('\n')
+
+        return `Last Month's Transactions (${format(lastMonthDate, 'MMMM yyyy')})\n\n${list}\n\nTop 8 shown.`
+      }
+
+
+
       // --- Recent Transactions ---
       if (matches(['recent', 'latest', 'history', 'transaction', 'activity'])) {
         const recent = transactions.slice(0, 8)
         if (recent.length === 0) return 'No recent transactions found.'
+
 
         const recentList = recent.map(t =>
           `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)}) ${t.type === 'income' ? '(+)' : '(-)'}`
@@ -628,9 +784,9 @@ export default function AIChat() {
 
     try {
       if (useModel && isBackendReachable) {
-        // Refresh context BEFORE asking
-        const freshContext = await refreshFinancialContext(query)
-        await processOnline(query, assistantId, freshContext)
+        // Refresh context BEFORE asking and GET THE MAP
+        const { context: freshContext, map: freshMap } = await refreshFinancialContext(query)
+        await processOnline(query, assistantId, freshContext, freshMap)
       } else {
         // Simulate "Processing" time briefly
         await new Promise(r => setTimeout(r, 400))
@@ -676,7 +832,7 @@ export default function AIChat() {
     }
   }
 
-  const cleanContent = (content: string) => content
+  const cleanContent = (content: string) => content.replace(/\*/g, '')
 
   return (
     <>
@@ -713,7 +869,7 @@ export default function AIChat() {
           <div className="flex items-center space-x-2">
             {showModelSwitcher && (
               <button
-                onClick={() => setUseModel(!useModel)}
+                onClick={toggleModel}
                 className={`p-1.5 rounded-lg transition-colors ${useModel ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
                 title={useModel ? "Switch to Rule Based Model" : "Switch to AI Model"}
               >
