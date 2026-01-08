@@ -260,6 +260,7 @@ export default function AIChat() {
       // Mask Totals
       const maskedIncome = mask(formatCurrency(totalIncome), 'AMOUNT')
       const maskedExpenses = mask(formatCurrency(totalExpenses), 'AMOUNT')
+      const maskedNet = mask(formatCurrency(totalIncome - totalExpenses), 'AMOUNT')
 
       // Debts/Credits
       const debtList = debtsCredits.filter(d => d.type === 'debt').map(d =>
@@ -291,6 +292,7 @@ export default function AIChat() {
       **FINANCIAL DATA (${periodLabel}):**
       - Income: ${maskedIncome}
       - Expenses: ${maskedExpenses}
+      - Net: ${maskedNet}
       
       - DEBTS (I Owe): [${debtList || 'None'}]
       - CREDITS (Owes Me): [${creditList || 'None'}]
@@ -311,6 +313,7 @@ export default function AIChat() {
       6. If asked about "Income", "Expense", or "Spending": State the Income and Expenses from the data.
       7. If asked about "Last Month" (or "Previous Month"):
          - STRICTLY provide the Income, Expenses, and Net (Income - Expense) Summary.
+         - Use the provided "Net" value. DO NOT try to calculate it yourself.
          - DO NOT mention "Total Balance" unless explicitly asked.
          - If asked for "Transactions": LIST them from RECENT TRANSACTIONS.
       8. If asked about "Summary" or "Report": Provide the Income, Expenses, and Net.
