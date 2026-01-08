@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Trash2, X, Search, Download, FileText, Loader, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, X, Search, Download, FileText, Loader, ChevronDown, ChevronUp, Mic } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
 import { format, subHours, isBefore, subMonths } from 'date-fns'
@@ -12,6 +12,13 @@ import jsPDF from 'jspdf'
 import { useDateFormat } from '../hooks/useDateFormat'
 import SEO from '../components/SEO'
 import PageGuide from '../components/PageGuide'
+
+// --- Voice Recognition Types ---
+interface Window {
+  SpeechRecognition: any;
+  webkitSpeechRecognition: any;
+}
+declare var window: Window;
 
 
 
@@ -94,11 +101,102 @@ export default function Transactions() {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
     setError
   } = useForm<TransactionForm>()
 
   const isRecurring = watch('is_recurring', false)
+
+  // --- Voice Input Logic ---
+  const [isListening, setIsListening] = useState(false)
+
+  const parseVoiceCommand = (text: string) => {
+    const lowerText = text.toLowerCase()
+    let amount = 0
+    let description = text
+    let category = 'Other'
+    let type: 'income' | 'expense' = 'expense'
+
+    // 1. Extract Amount (Post-fix or mid)
+    const amountMatch = text.match(/[\d,]+(\.\d{1,2})?/)
+    if (amountMatch) {
+      amount = parseFloat(amountMatch[0].replace(/,/g, ''))
+    }
+
+    // 2. Determine Type
+    if (lowerText.includes('income') || lowerText.includes('earned') || lowerText.includes('salary') || lowerText.includes('received')) {
+      type = 'income'
+    }
+
+    // 3. Category Mapping (Simple Keywords)
+    const categoryMap: Record<string, string> = {
+      'food': 'Food & Dining', 'lunch': 'Food & Dining', 'dinner': 'Food & Dining', 'breakfast': 'Food & Dining', 'swiggy': 'Food & Dining', 'zomato': 'Food & Dining', 'eat': 'Food & Dining',
+      'taxi': 'Transportation', 'uber': 'Transportation', 'ola': 'Transportation', 'bus': 'Transportation', 'train': 'Transportation', 'fuel': 'Transportation', 'cab': 'Transportation',
+      'shopping': 'Shopping', 'clothes': 'Shopping', 'amazon': 'Shopping', 'flipkart': 'Shopping', 'buy': 'Shopping',
+      'grocery': 'Groceries', 'vegetables': 'Groceries', 'milk': 'Groceries',
+      'bill': 'Bills & Utilities', 'electricity': 'Bills & Utilities', 'water': 'Bills & Utilities', 'wifi': 'Bills & Utilities',
+      'movie': 'Entertainment', 'netflix': 'Entertainment',
+      'medicine': 'Healthcare', 'doctor': 'Healthcare',
+      'rent': 'Rent',
+      'salary': 'Salary',
+    }
+
+    // Find first matching category
+    for (const [key, cat] of Object.entries(categoryMap)) {
+      if (lowerText.includes(key)) {
+        category = cat
+        break
+      }
+    }
+
+    // 4. Clean Description (Capitalize first letter)
+    return { amount, category, type, description: description.charAt(0).toUpperCase() + description.slice(1) }
+  }
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Voice recognition is not supported in this browser.')
+      return
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      console.log('Voice Input:', transcript)
+
+      const parsed = parseVoiceCommand(transcript)
+
+      // Set values only
+      setValue('amount', parsed.amount || undefined as any)
+      setValue('description', parsed.description)
+      setValue('category', parsed.category)
+      setValue('type', parsed.type)
+
+      if (accounts.length > 0) {
+        setValue('account_id', accounts[0].id)
+      }
+
+      setIsListening(false)
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognition.start()
+  }
 
   // Debounce search term
 
@@ -744,6 +842,56 @@ export default function Transactions() {
         </button>
       </div>
 
+      {/* Voice Assistant Tip */}
+      {isListening && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
+                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
+              Try saying: <br />
+              <span className="font-medium text-green-600 dark:text-green-400">"Lunch 500"</span> or <span className="font-medium text-green-600 dark:text-green-400">"Taxi 200"</span>
+            </p>
+            <button
+              onClick={() => setIsListening(false)}
+              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Assistant Tip */}
+      {isListening && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
+                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
+              Try saying: <br />
+              <span className="font-medium text-green-600 dark:text-green-400">"Lunch 500"</span> or <span className="font-medium text-green-600 dark:text-green-400">"Taxi 200"</span>
+            </p>
+            <button
+              onClick={() => setIsListening(false)}
+              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
         {/* Mobile View */}
@@ -1184,12 +1332,25 @@ export default function Transactions() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
               </h2>
-              <button
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={startListening}
+                  className={`p-2 rounded-lg transition-colors ${isListening
+                      ? 'bg-red-100 text-red-600 animate-pulse'
+                      : 'hover:bg-green-50 text-green-600 dark:text-green-400 dark:hover:bg-green-900/20'
+                    }`}
+                  title="Auto-fill with Voice"
+                >
+                  <Mic className={`w-5 h-5 ${isListening ? 'animate-bounce' : ''}`} />
+                </button>
+                <button
+                  onClick={handleCloseModal}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

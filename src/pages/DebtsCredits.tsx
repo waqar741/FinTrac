@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet } from 'lucide-react'
+import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet, Mic } from 'lucide-react'
 
 import { format } from 'date-fns'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
 import PageGuide from '../components/PageGuide'
+
+// --- Voice Recognition Types ---
+interface Window {
+  SpeechRecognition: any;
+  webkitSpeechRecognition: any;
+}
+declare var window: Window;
 
 interface DebtCredit {
   id: string
@@ -78,6 +85,98 @@ export default function DebtsCredits() {
   } = useForm<DebtCreditForm>()
 
   const watchType = watch('type', 'debt')
+
+  // --- Voice Input Logic ---
+  const [isListening, setIsListening] = useState(false)
+
+  const parseVoiceCommand = (text: string) => {
+    const lowerText = text.toLowerCase()
+    let amount = 0
+    let person_name = ''
+    let type: 'debt' | 'credit' = 'debt'
+    let description = text
+
+    // 1. Extract Amount
+    const amountMatch = text.match(/[\d,]+(\.\d{1,2})?/)
+    if (amountMatch) {
+      amount = parseFloat(amountMatch[0].replace(/,/g, ''))
+    }
+
+    // 2. Determine Type (Who owes whom?)
+    // "Owe" -> I owe them (Debt)
+    // "Owes me", "Credit" -> They owe me (Credit)
+    if (lowerText.includes('owes me') || lowerText.includes('credit') || lowerText.includes('receive')) {
+      type = 'credit'
+    } else if (lowerText.includes('owe') || lowerText.includes('debt') || lowerText.includes('pay')) {
+      type = 'debt'
+    }
+
+    // 3. Extract Person Name (Simple Heuristic: First capitalized word or first word if not "Owe"/"Credit")
+    // Let's try to remove known keywords and numbers
+    const words = text.split(' ')
+    const keywords = ['owe', 'owes', 'me', 'credit', 'debt', 'for', 'to', 'pay', 'rupees', 'rs']
+
+    for (const word of words) {
+      const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '')
+      if (!keywords.includes(cleanWord) && isNaN(Number(word.replace(/,/g, ''))) && word.length > 2) {
+        // Assume this might be the name. Capitalize it.
+        person_name = word.charAt(0).toUpperCase() + word.slice(1)
+        break
+      }
+    }
+
+    // Fallback if empty name
+    if (!person_name) person_name = 'Unknown'
+
+    // 4. Description
+    // Clean description a bit (optional)
+    description = text.charAt(0).toUpperCase() + text.slice(1)
+
+    return { amount, person_name, type, description }
+  }
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Voice recognition is not supported in this browser.')
+      return
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      console.log('Voice Input:', transcript)
+
+      const parsed = parseVoiceCommand(transcript)
+
+      // Auto-fill form
+      setValue('amount', parsed.amount || undefined as any)
+      setValue('person_name', parsed.person_name)
+      setValue('type', parsed.type)
+      setValue('description', parsed.description)
+
+      // Set default due date
+      setValue('due_date', format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'))
+
+      setIsListening(false)
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognition.start()
+  }
 
 
 
@@ -865,6 +964,33 @@ export default function DebtsCredits() {
         </div>
       )}
 
+      {/* Voice Assistant Overlay */}
+      {isListening && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
+                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
+              Try saying: <br />
+              <span className="font-medium text-green-600 dark:text-green-400">"Owe John 500 for lunch"</span> <br />
+              or <br />
+              <span className="font-medium text-green-600 dark:text-green-400">"Mike owes me 200"</span>
+            </p>
+            <button
+              onClick={() => setIsListening(false)}
+              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -873,12 +999,28 @@ export default function DebtsCredits() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {editingItem ? 'Edit Entry' : 'Add Debt/Credit'}
               </h2>
-              <button
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {editingItem ? 'Edit Entry' : 'Add Debt/Credit'}
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={startListening}
+                  className={`p-2 rounded-lg transition-colors ${isListening
+                    ? 'bg-red-100 text-red-600 animate-pulse'
+                    : 'hover:bg-green-50 text-green-600 dark:text-green-400 dark:hover:bg-green-900/20'
+                    }`}
+                  title="Auto-fill with Voice"
+                >
+                  <Mic className={`w-5 h-5 ${isListening ? 'animate-bounce' : ''}`} />
+                </button>
+                <button
+                  onClick={handleCloseModal}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
