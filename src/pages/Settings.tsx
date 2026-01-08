@@ -772,7 +772,7 @@ export default function Settings() {
                   ))}
                 </select>
               </SettingItem> */}
-              <SettingItem icon={Monitor} title="AI Model Switcher" subtitle="Show button to switch between AI and Rule Based models.">
+              <SettingItem icon={Monitor} title="AI Model Switcher" subtitle="Enable to allow switching between AI and Rule Based models. Disabling this restricts Chat to Rule Based mode.">
                 <div className="flex items-center justify-between">
                   <p className="text-gray-700 dark:text-gray-300">Show Model Switcher</p>
                   <button
