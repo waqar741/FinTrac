@@ -527,7 +527,7 @@ export default function Settings() {
             tips={[
               "Toggle Dark Mode for better nighttime visibility.",
               "Privacy Alert: Switching to the Online AI Model sends data to external servers for training/processing.",
-              "Use Offline mode for 100% privacy."
+              "Use Rule Based AI for 100% privacy."
             ]}
           />
         </div>

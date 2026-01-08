@@ -79,7 +79,7 @@ export default function Transactions() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterAccount, setFilterAccount] = useState<string>('all')
-  const [dateFrom, setDateFrom] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'))
+  const [dateFrom, setDateFrom] = useState(format(subMonths(new Date(), 12), 'yyyy-MM-dd'))
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -1149,27 +1149,32 @@ export default function Transactions() {
             </div>
 
             {/* Load More Button */}
-            {hasMore && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <button
-                  onClick={loadMoreTransactions}
-                  disabled={loadingMore}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <div className="flex items-center justify-center">
-                      <Loader className="w-4 h-4 animate-spin mr-2" />
-                      Loading...
-                    </div>
-                  ) : (
-                    `Load More(${pageSize} more)`
-                  )}
-                </button>
-              </div>
-            )}
+            {/* Load More Button moved outside */}
           </>
         )}
       </div>
+
+      {hasMore && (
+        <div className="flex justify-center pb-4">
+          <button
+            onClick={loadMoreTransactions}
+            disabled={loadingMore}
+            className="group relative inline-flex items-center justify-center px-4 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 transition-all duration-200 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-800/50 rounded-full hover:border-green-600 dark:hover:border-green-500 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? (
+              <div className="flex items-center justify-center">
+                <Loader className="w-4 h-4 animate-spin mr-2" />
+                Loading...
+              </div>
+            ) : (
+              <>
+                <span className="mr-2">Load More ({pageSize} more)</span>
+                <ChevronDown className="w-4 h-4 transition-transform group-hover:translate-y-1" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

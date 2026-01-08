@@ -163,8 +163,17 @@ export default function AIChat() {
       }
 
       const accountList = accounts.map(a => `${a.name} (${a.bank_name || 'Bank'}): ${formatCurrency(a.balance)}`).join(', ')
-      const debtList = debtsCredits.filter(d => d.type === 'debt').map(d => `${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}`).join(', ')
-      const creditList = debtsCredits.filter(d => d.type === 'credit').map(c => `${c.person_name || 'Unknown'}: ${formatCurrency(c.amount)}`).join(', ')
+
+      // Enhanced Debt/Credit List with Due Dates
+      const debtList = debtsCredits.filter(d => d.type === 'debt').map(d =>
+        `${d.person_name || 'Unknown'}: ${formatCurrency(d.amount)}${d.due_date ? ` (Due: ${formatDate(d.due_date)})` : ''}`
+      ).join(', ')
+
+      const creditList = debtsCredits.filter(d => d.type === 'credit').map(c =>
+        `${c.person_name || 'Unknown'}: ${formatCurrency(c.amount)}${c.due_date ? ` (Due: ${formatDate(c.due_date)})` : ''}`
+      ).join(', ')
+
+      const goalList = goals.map(g => `${g.name} (${formatCurrency(g.current_amount || 0)}/${formatCurrency(g.target_amount)})`).join(', ')
 
       const context = `
       You are Traxos AI. Answer strictly based on the provided data.
@@ -176,24 +185,23 @@ export default function AIChat() {
       - Income (in selected period): ${formatCurrency(totalIncome)}
       - Expenses (in selected period): ${formatCurrency(totalExpenses)}
       
-      - DEBTS (I Owe): [${debtList || 'None'}]
+      - DEBTS (I Owe/Dues): [${debtList || 'None'}]
       - CREDITS (Owes Me): [${creditList || 'None'}]
-      - Goals: ${goals.map(g => `${g.name} (${formatCurrency(g.current_amount || 0)}/${formatCurrency(g.target_amount)})`).join(', ') || 'None'}
+      - GOALS: [${goalList || 'None'}]
       
       **RECENT TRANSACTIONS (Selected Period):**
       ${transactions.slice(0, 10).map(t => `${formatDate(t.created_at)}: ${t.description} (${formatCurrency(t.amount)})`).join('\n')}
       
       IMPORTANT:
-      1. IF THE USER SAYS GIBBERISH OR RANDOM CHARACTERS (e.g. "sdfg", "hig"): Reply "I'm sorry, I don't understand."
-      2. IF ASKED ABOUT DEBTS: Only then say "You owe [Name]".
-      3. IF ASKED ABOUT CREDITS: Only then say "[Name] owes you".
-      4. Always refer to the user as 'You'.
-      5. Provide plain text responses only.
-      6. Do NOT use markdown formatting(no bold **, no italics *)..
-      7. Do NOT use the name '${profile?.full_name}' in your response.
-      8. IF QUERY IS UNCLEAR/UNRELATED: Ask for clarification or what they want to know about their finances.
-      9. Provide plain text responses only. 
-      10.Be concise and helpful.
+      1. IF ASKED "what is my dues" or "my debts": List items from DEBTS. default to "You owe [Name]: [Amount] (Due Date)".
+      2. IF ASKED "due date for [Name]": Check DEBTS for that name and provide the date. If no date, say "No due date set".
+      3. IF ASKED ABOUT GOALS: List items from GOALS with progress.
+      4. IF THE USER SAYS GIBBERISH (e.g. "sdfg"): Reply "I'm sorry, I don't understand."
+      5. Always refer to the user as 'You'.
+      6. Provide plain text responses only.
+      7. Do NOT use markdown formatting (no bold **, no italics *).
+      8. Do NOT use the name '${profile?.full_name}' in your response.
+      9. Be concise and helpful.
       `
       setSystemContext(context)
       return context
@@ -411,7 +419,31 @@ export default function AIChat() {
       }
 
 
-      // --- Debts ---
+      // --- Due Debts / Dues (Show Dates) ---
+      if (matches(['due debts', 'dues', 'due debt', 'debt due', 'upcoming debt', 'my dues'])) {
+        const debts = debtsCredits.filter(d => d.type === 'debt')
+        if (debts.length === 0) return 'No active dues! You are debt-free!'
+
+        const list = debts.map(d =>
+          `• You owe ${d.person_name || 'Someone'}: ${formatCurrency(d.amount)}${d.due_date ? ` (Due: ${formatDate(d.due_date)})` : ''}`
+        ).join('\n')
+
+        return `Your Dues (With Dates)\n\n${list}\n\nTotal Debt: ${formatCurrency(totalDebt)}`
+      }
+
+      // --- Due Credits (Show Dates) ---
+      if (matches(['due credits', 'due credit', 'credit due', 'upcoming credit', 'owed to me due'])) {
+        const credits = debtsCredits.filter(d => d.type === 'credit')
+        if (credits.length === 0) return 'No one owes you money currently.'
+
+        const list = credits.map(c =>
+          `• ${c.person_name || 'Someone'} owes you: ${formatCurrency(c.amount)}${c.due_date ? ` (Due: ${formatDate(c.due_date)})` : ''}`
+        ).join('\n')
+
+        return `Credits Due to You (With Dates)\n\n${list}\n\nTotal Owed: ${formatCurrency(totalCredit)}`
+      }
+
+      // --- General Debts (No Dates) ---
       if (exactMatch([/owe|debt|payable|liability|borrow|loan/i]) && !lowerQuery.includes('owes me')) {
         const debts = debtsCredits.filter(d => d.type === 'debt')
         if (debts.length === 0) return 'No active debts! You are debt-free!'
@@ -423,7 +455,7 @@ export default function AIChat() {
         return `Your Debts\n\n${list}\n\nTotal Debt: ${formatCurrency(totalDebt)}`
       }
 
-      // --- Credits (Who owes me) ---
+      // --- General Credits (No Dates) ---
       if (exactMatch([/owes me|credit|receivable|owed to me|who owes|lend/i])) {
         const credits = debtsCredits.filter(d => d.type === 'credit')
         if (credits.length === 0) return 'No one owes you money currently.'
@@ -433,6 +465,37 @@ export default function AIChat() {
         ).join('\n')
 
         return `Money Owed to You\n\n${list}\n\nTotal Owed: ${formatCurrency(totalCredit)}`
+      }
+
+      // --- Due Date Specific Query ---
+      // Matches: "due date for [Name]" or "when is [Name] due"
+      if (lowerQuery.includes('due date')) {
+        const debts = debtsCredits.filter(d => d.type === 'debt')
+        const credits = debtsCredits.filter(d => d.type === 'credit')
+        const all = [...debts, ...credits]
+
+        // Find if any person's name matches part of the query
+        const found = all.find(item => lowerQuery.includes(item.person_name.toLowerCase()))
+
+        if (found) {
+          const dateStr = found.due_date ? formatDate(found.due_date) : "No due date set"
+          const typeStr = found.type === 'debt' ? `You owe ${found.person_name}` : `${found.person_name} owes you`
+          return `${typeStr} ${formatCurrency(found.amount)}. Due Date: ${dateStr}.`
+        } else {
+          // Fallback: List all upcoming due dates
+          const withDates = all.filter(i => i.due_date).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+
+          if (withDates.length === 0) {
+            return "You don't have any specific due dates set for your active debts or credits."
+          }
+
+          const list = withDates.slice(0, 5).map(i => {
+            const typeStr = i.type === 'debt' ? `You owe ${i.person_name}` : `${i.person_name} owes you`
+            return `• ${typeStr}: ${formatCurrency(i.amount)} (Due: ${formatDate(i.due_date!)})`
+          }).join('\n')
+
+          return `Upcoming Due Dates:\n\n${list}\n\nAsk 'due date for [Name]' for a specific person.`
+        }
       }
 
       // --- Goals ---

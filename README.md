@@ -35,7 +35,7 @@ Follow these steps to run the project locally.
 
 1.  **Clone the repository**
     ```bash
-    git clone [https://github.com/waqar741/FinTrac.git](https://github.com/waqar741/FinTrac.git)
+    git clone https://github.com/waqar741/FinTrac.git
     cd FinTrac
     ```
 
