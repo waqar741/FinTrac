@@ -842,55 +842,7 @@ export default function Transactions() {
         </button>
       </div>
 
-      {/* Voice Assistant Tip */}
-      {isListening && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
-            <div className="relative">
-              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
-              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
-                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
-              Try saying: <br />
-              <span className="font-medium text-green-600 dark:text-green-400">"Lunch 500"</span> or <span className="font-medium text-green-600 dark:text-green-400">"Taxi 200"</span>
-            </p>
-            <button
-              onClick={() => setIsListening(false)}
-              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Voice Assistant Tip */}
-      {isListening && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
-            <div className="relative">
-              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
-              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
-                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
-              Try saying: <br />
-              <span className="font-medium text-green-600 dark:text-green-400">"Lunch 500"</span> or <span className="font-medium text-green-600 dark:text-green-400">"Taxi 200"</span>
-            </p>
-            <button
-              onClick={() => setIsListening(false)}
-              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -1324,6 +1276,31 @@ export default function Transactions() {
         </div>
       )}
 
+      {/* Voice Assistant Overlay */}
+      {isListening && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+              <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
+                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
+              Try saying: <br />
+              <span className="font-medium text-green-600 dark:text-green-400">"Lunch 500"</span> or <span className="font-medium text-green-600 dark:text-green-400">"Taxi 200"</span>
+            </p>
+            <button
+              onClick={() => setIsListening(false)}
+              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -1337,8 +1314,8 @@ export default function Transactions() {
                   type="button"
                   onClick={startListening}
                   className={`p-2 rounded-lg transition-colors ${isListening
-                      ? 'bg-red-100 text-red-600 animate-pulse'
-                      : 'hover:bg-green-50 text-green-600 dark:text-green-400 dark:hover:bg-green-900/20'
+                    ? 'bg-red-100 text-red-600 animate-pulse'
+                    : 'hover:bg-green-50 text-green-600 dark:text-green-400 dark:hover:bg-green-900/20'
                     }`}
                   title="Auto-fill with Voice"
                 >

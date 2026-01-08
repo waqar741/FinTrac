@@ -999,9 +999,6 @@ export default function DebtsCredits() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {editingItem ? 'Edit Entry' : 'Add Debt/Credit'}
               </h2>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {editingItem ? 'Edit Entry' : 'Add Debt/Credit'}
-              </h2>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
