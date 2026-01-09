@@ -699,7 +699,7 @@ export default function Transactions() {
         const addHeader = (pageNum: number, totalPages: number) => {
           pdf.setFontSize(18);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('FinTrac Report', pageWidth / 2, 20, { align: 'center' });
+          pdf.text('Traxos Report', pageWidth / 2, 20, { align: 'center' });
 
 
           pdf.setFontSize(10);
