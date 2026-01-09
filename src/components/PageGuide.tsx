@@ -4,7 +4,7 @@ import { HelpCircle, X, Lightbulb } from 'lucide-react'
 interface PageGuideProps {
     title: string
     description: string
-    tips?: string[]
+    tips?: (string | React.ReactNode)[]
 }
 
 export default function PageGuide({ title, description, tips }: PageGuideProps) {

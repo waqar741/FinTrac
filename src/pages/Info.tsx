@@ -36,6 +36,22 @@ const faqs = [
     {
         question: 'Can I export my transaction history?',
         answer: 'Yes, you can export your transaction data in CSV or PDF format from the Settings page for your own records or analysis.'
+    },
+    {
+        question: 'How does the Online AI Model process my data?',
+        answer: (
+            <span>
+                Your data is strictly masked before processing to ensure privacy. For detailed technical information, you can view our{' '}
+                <a
+                    href="/docs/TraxosOnlinePayloadProcessing.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-600 dark:text-green-400 hover:underline font-medium"
+                >
+                    AI Data Processing Documentation
+                </a>.
+            </span>
+        )
     }
 ]
 

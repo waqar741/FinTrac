@@ -309,7 +309,9 @@ export default function AIChat() {
       2. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
       3. If asked about "Credits": List the items from CREDITS exactly.
       4. If asked about "Goals": List items from GOALS.
-      5. If asked about "Recent", "Transactions", or "History": List items from RECENT TRANSACTIONS.
+      5. If asked about "Recent", "Transactions", "History", or "All":
+         - Reply "I can't access the whole history, but here are the last 10 transactions:"
+         - Then LIST items from RECENT TRANSACTIONS.
       6. If asked about "Income", "Expense", or "Spending": State the Income and Expenses from the data.
       7. If asked about "Last Month" (or "Previous Month"):
          - STRICTLY provide the Income, Expenses, and Net (Income - Expense) Summary.
@@ -762,6 +764,23 @@ export default function AIChat() {
   }
 
   // --- 5. HANDLE SEND ---
+  // --- 5.1 CONSTANTS ---
+  const QUESTION_SET_1 = [
+    'Balance?', 'My Accounts?', 'Recent?',
+    'Inc vs Exp?', 'Debt?', 'Credits?', 'last month?'
+  ]
+
+  const QUESTION_SET_2 = [
+    'Goals?', 'Spending?', 'Budget?',
+    'Health?', 'My Dues?', 'Credits Due?', 'Help?'
+  ]
+
+  // Track which set to show NEXT. 
+  // Initial Display is "Original Set" (Static in state).
+  // First AI Response should show SET 1.
+  // Second AI Response should show SET 2.
+  const [nextQuestionSet, setNextQuestionSet] = useState<number>(1)
+
   const handleSendMessage = async (msg?: string) => {
     const query = msg || inputValue
     if (!query.trim() || loading) return
@@ -777,12 +796,19 @@ export default function AIChat() {
     setLoading(true)
 
     const assistantId = (Date.now() + 1).toString()
+
+    // Determine which set to use for this new response
+    const replies = nextQuestionSet === 1 ? QUESTION_SET_1 : QUESTION_SET_2
+
+    // Toggle for NEXT time
+    setNextQuestionSet(prev => prev === 1 ? 2 : 1)
+
     setMessages(prev => [...prev, {
       id: assistantId,
       type: 'assistant',
       content: '', // Will stream in
       timestamp: new Date(),
-      quickReplies: ['Balance?', 'My Accounts?', 'Recent?', 'Inc vs Exp?', 'Debt?', 'Credits?', 'last month?']
+      quickReplies: replies
     }])
 
     try {
