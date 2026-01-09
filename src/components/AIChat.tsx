@@ -305,25 +305,24 @@ export default function AIChat() {
       ${recentTxns}
       
       INSTRUCTIONS:
-      1. If asked about "Balance": Reply "Your total balance is ${totalBalance}."
-      2. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
-      3. If asked about "Credits": List the items from CREDITS exactly.
-      4. If asked about "Goals": List items from GOALS.
-      5. If asked about "Recent", "Transactions", "History", or "All":
-         - Reply "I can't access the whole history, but here are the last 10 transactions:"
-         - Then LIST items from RECENT TRANSACTIONS.
-      6. If asked about "Income", "Expense", or "Spending": State the Income and Expenses from the data.
-      7. If asked about "Last Month" (or "Previous Month"):
+      1. If asked about "Last Month" (or "Previous Month"):
          - STRICTLY provide the Income, Expenses, and Net (Income - Expense) Summary.
          - Use the provided "Net" value. DO NOT try to calculate it yourself.
          - DO NOT mention "Total Balance" unless explicitly asked.
          - If asked for "Transactions": LIST them from RECENT TRANSACTIONS.
+      2. If asked about "Recent", "Transactions", "History", or "All":
+         - Reply "I can't access the whole history, but here are the last 10 transactions:"
+         - Then LIST items from RECENT TRANSACTIONS.
+      3. If asked about "Balance": Reply "Your total balance is ${totalBalance}."
+      4. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
+      5. If asked about "Credits": List the items from CREDITS exactly.
+      6. If asked about "Goals": List items from GOALS.
+      7. If asked about "Income", "Expense", or "Spending": State the Income and Expenses from the data.
       8. If asked about "Summary" or "Report": Provide the Income, Expenses, and Net.
 
       9. Keep responses short and plain text.
-
-      9. Do NOT use markdown.
-      10. Do NOT use the name '${maskedUserName}' in the response.
+      10. Do NOT use markdown.
+      11. Do NOT use the name '${maskedUserName}' in the response.
       `
       setSystemContext(context)
       return { context, map: currentMap }
@@ -357,7 +356,7 @@ export default function AIChat() {
           ],
           stream: true,
           temperature: 0.1,
-          max_tokens: 200
+          max_tokens: 250
         })
       })
 
