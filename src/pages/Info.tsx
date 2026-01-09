@@ -52,6 +52,10 @@ const faqs = [
                 </a>.
             </span>
         )
+    },
+    {
+        question: 'Why can I see my password in the network tab?',
+        answer: 'When you log in, your browser sends your password to our secure server. This request is visible to you in the "Network" tab for debugging, but it is encrypted (HTTPS) before leaving your device, ensuring no one else can see it.'
     }
 ]
 

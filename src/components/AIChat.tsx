@@ -275,7 +275,7 @@ export default function AIChat() {
       const goalList = goals.map(g => `${mask(g.name, 'NAME')} (${mask(formatCurrency(g.current_amount || 0), 'AMOUNT')}/${mask(formatCurrency(g.target_amount), 'AMOUNT')})`).join(', ')
 
       // Recent Transactions (Mask Description and Amount)
-      const recentTxns = transactions.slice(0, 10).map(t =>
+      const recentTxns = transactions.slice(0, 5).map(t =>
         `${mask(formatDate(t.created_at), 'DATE')}: ${mask(t.description, 'NAME')} (${mask(formatCurrency(t.amount), 'AMOUNT')})`
       ).join('\n')
 
@@ -311,7 +311,7 @@ export default function AIChat() {
          - DO NOT mention "Total Balance" unless explicitly asked.
          - If asked for "Transactions": LIST them from RECENT TRANSACTIONS.
       2. If asked about "Recent", "Transactions", "History", or "All":
-         - Reply "I can't access the whole history, but here are the last 10 transactions:"
+         - Reply "I can't access the whole history, but here are the last 5 transactions:"
          - Then LIST items from RECENT TRANSACTIONS.
       3. If asked about "Balance": Reply "Your total balance is ${totalBalance}."
       4. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
@@ -356,7 +356,7 @@ export default function AIChat() {
           ],
           stream: true,
           temperature: 0.1,
-          max_tokens: 250
+          max_tokens: 350
         })
       })
 
