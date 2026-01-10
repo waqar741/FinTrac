@@ -276,7 +276,7 @@ export default function AIChat() {
 
       // Recent Transactions (Mask Description and Amount)
       const recentTxns = transactions.slice(0, 5).map(t =>
-        `${mask(formatDate(t.created_at), 'DATE')}: ${mask(t.description, 'NAME')} (${mask(formatCurrency(t.amount), 'AMOUNT')})`
+        `- ${mask(formatDate(t.created_at), 'DATE')}: ${mask(t.description, 'NAME')} (${mask(formatCurrency(t.amount), 'AMOUNT')})`
       ).join('\n')
 
       // Store map
@@ -310,9 +310,11 @@ export default function AIChat() {
          - Use the provided "Net" value. DO NOT try to calculate it yourself.
          - DO NOT mention "Total Balance" unless explicitly asked.
          - If asked for "Transactions": LIST them from RECENT TRANSACTIONS.
-      2. If asked about "Recent", "Transactions", "History", or "All":
-         - Reply "I can't access the whole history, but here are the last 5 transactions:"
-         - Then LIST items from RECENT TRANSACTIONS.
+      2. If asked about "Recent request", "Recent?", "Transactions", "History", or "All":
+         - Reply EXACTLY:
+           "Recent transactions
+           I can't access the whole history, but here are the last 5 transactions:"
+         - Then list the items from RECENT TRANSACTIONS.
       3. If asked about "Balance": Reply "Your total balance is ${totalBalance}."
       4. If asked about "Debts" or "Dues": List the items from DEBTS exactly.
       5. If asked about "Credits": List the items from CREDITS exactly.
@@ -457,6 +459,26 @@ export default function AIChat() {
         - debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
       const totalDebt = debtsCredits.filter(d => d.type === 'debt').reduce((s, d) => s + Number(d.amount), 0)
       const totalCredit = debtsCredits.filter(d => d.type === 'credit').reduce((s, d) => s + Number(d.amount), 0)
+
+      // --- Amount Search (Offline Range +/- 10) ---
+      if (/^\d+(\.\d+)?$/.test(lowerQuery)) {
+        const amount = parseFloat(lowerQuery)
+        const min = amount - 10
+        const max = amount + 10
+
+        const matching = transactions.filter(t => {
+          const tAmt = Number(t.amount)
+          return tAmt >= min && tAmt <= max
+        })
+
+        if (matching.length === 0) return `No transactions found between ${formatCurrency(min)} and ${formatCurrency(max)}.`
+
+        const list = matching.map(t =>
+          `• ${formatDate(t.created_at || t.transaction_date)}: ${t.description} (${formatCurrency(t.amount)})`
+        ).join('\n')
+
+        return `Transactions matching amount ${amount} (+/- 10):\n\n${list}`
+      }
 
       // --- Account Queries ---
       if (matches(['accounts', 'account', 'bank', 'banks', 'my accounts', 'list accounts'])) {
