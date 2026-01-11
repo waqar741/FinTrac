@@ -13,6 +13,7 @@ import {
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 // FAQ Data
 const faqs = [
@@ -251,6 +252,7 @@ export default function Info() {
                 </div>
 
             </main>
+            <Footer />
         </div>
     )
 }

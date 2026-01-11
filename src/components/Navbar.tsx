@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { isDark, toggleTheme } = useTheme();
+    const location = useLocation();
 
     return (
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">
@@ -30,11 +32,11 @@ export default function Navbar() {
                 </a>
 
                 {/* Desktop Navigation */}
-                <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:flex items-center space-x-8">
+                <nav className="hidden md:flex lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 items-center space-x-8">
                     <a href="/" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">Home</a>
-                    <a href="/#features" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">Features</a>
+                    <a href={location.pathname === '/' ? '#features' : '/#features'} className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">Features</a>
                     <a href="/info" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">How it Works</a>
-                    <a href="/#about" className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">About</a>
+                    <a href={location.pathname === '/' ? '#about' : '/#about'} className="text-gray-600 dark:text-gray-300 hover:text-green-500 transition-all duration-300 hover:scale-105">About</a>
                 </nav>
 
                 {/* Action Buttons */}
@@ -83,9 +85,9 @@ export default function Navbar() {
             {isMobileMenuOpen && (
                 <div className="md:hidden px-6 pb-4 space-y-4 animate-slideDown">
                     <a href="/" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">Home</a>
-                    <a href="/#features" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">Features</a>
+                    <a href={location.pathname === '/' ? '#features' : '/#features'} className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">Features</a>
                     <a href="/info" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">How it Works</a>
-                    <a href="/#about" className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">About</a>
+                    <a href={location.pathname === '/' ? '#about' : '/#about'} className="block text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors py-2 transform hover:translate-x-2 duration-300">About</a>
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
                         {/* Mobile Theme Toggle */}
                         <div className="flex items-center justify-center space-x-2 py-2">

@@ -1,6 +1,7 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import seoTargets from '../data/seo-targets.json';
 import { CheckCircle2, DollarSign, PieChart, Shield } from 'lucide-react';
 
@@ -111,6 +112,8 @@ export default function LandingPage() {
                     </Link>
                 </div>
             </section>
+
+            <Footer />
         </div>
     );
 }
