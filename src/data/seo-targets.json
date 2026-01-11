@@ -1,0 +1,62 @@
+[
+    {
+        "slug": "students",
+        "keyword": "best expense tracker for students",
+        "title": "Free Expense Tracker for Students - Secure & Private",
+        "description": "Stop struggling with pocket money. Traxos helps students track expenses, manage tuition fees, and save for goals without any subscription costs."
+    },
+    {
+        "slug": "freelancers",
+        "keyword": "freelance budget app",
+        "title": "Manage Freelance Income & Debts with Traxos",
+        "description": "Track client debts, variable income, and business expenses. The perfect free financial tool for freelancers and gig workers."
+    },
+    {
+        "slug": "couples",
+        "keyword": "expense tracker for couples",
+        "title": "Shared Budgeting & Expense Tracking for Couples",
+        "description": "Manage household expenses, track shared debts, and save for your future together with Traxos's multi-user friendly features."
+    },
+    {
+        "slug": "small-business",
+        "keyword": "small business cash flow manager",
+        "title": "Simple Cash Flow Management for Small Business",
+        "description": "Keep track of daily sales, vendor payments, and client credits. A seamless, free alternative to complex accounting software."
+    },
+    {
+        "slug": "travelers",
+        "keyword": "travel expense tracker",
+        "title": "Travel Expense Tracker for Globetrotters",
+        "description": "Track your travel spending on the go. Traxos ensures you never miss logging a transaction while exploring the world."
+    },
+    {
+        "slug": "roommates",
+        "keyword": "split bills app alternative",
+        "title": "Track Shared Bills & Debts for Roommates",
+        "description": "The best free alternative to Splitwise. Track who owes what, settle debts, and manage shared household utilities easily."
+    },
+    {
+        "slug": "contractors",
+        "keyword": "contractor payment tracker",
+        "title": "Payment & Debt Tracker for Contractors",
+        "description": "Log client payments, track outstanding invoices (debts), and manage project materials expenses in one place."
+    },
+    {
+        "slug": "debt-payoff",
+        "keyword": "debt payoff tracker app",
+        "title": "Visual Debt Payoff & Savings Tracker",
+        "description": "Visualize your journey to financial freedom. Track debt payments and watch your savings goals grow with intuitive progress bars."
+    },
+    {
+        "slug": "privacy",
+        "keyword": "private finance app no data selling",
+        "title": "Secure, Private Personal Finance Tracker",
+        "description": "Your financial data belongs to you. Traxos uses strictly guarded logic to ensure your privacy is never compromised."
+    },
+    {
+        "slug": "minimalist",
+        "keyword": "minimalist budget app",
+        "title": "Minimalist Expense Manager - No Clutter",
+        "description": "A clean, ad-free interface for users who want to track money without the noise. Simple, fast, and beautiful."
+    }
+]

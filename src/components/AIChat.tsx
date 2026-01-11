@@ -779,7 +779,7 @@ export default function AIChat() {
         "Try asking something like 'What's my balance?' or 'How am I spending my money?'"
 
     } catch (e) {
-      console.error("Error processing offline request:", e)
+      console.error("Error processing request:", e)
       return "I'm having trouble accessing your financial data right now. Please try again or check your connection."
     }
   }

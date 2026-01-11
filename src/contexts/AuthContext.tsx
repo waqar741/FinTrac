@@ -28,10 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Safety timeout to prevent infinite loading
     const safetyTimeout = setTimeout(() => {
       if (mounted && loading) {
-        console.warn('Auth initialization timed out, forcing load completion')
+        // Silently complete loading if it takes too long to prevent blocking the UI
         setLoading(false)
       }
-    }, 5000)
+    }, 10000)
 
     const initAuth = async () => {
       try {

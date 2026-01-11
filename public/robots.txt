@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /api/
 
 Sitemap: https://traxos.vercel.app/sitemap.xml

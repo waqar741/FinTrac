@@ -48,12 +48,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            // 1. Fetch Debts
-            const { data: debts } = await supabase
+            // 1. Fetch Debts AND Credits
+            const { data: debtsAndCredits } = await supabase
                 .from('debts_credits')
                 .select('*')
                 .eq('user_id', user.id)
-                .eq('type', 'debt')
+                .in('type', ['debt', 'credit'])
                 .eq('is_settled', false)
                 .not('due_date', 'is', null)
 
@@ -65,112 +65,85 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 .eq('is_active', true) // Assuming there is an is_active flag as seen in dashboard
                 .not('deadline', 'is', null)
 
-            const newNotifications: Notification[] = []
+            const generatedNotifications: Notification[] = []
             const readIds = getReadIds()
 
-            // Process Debts
-            debts?.forEach(debt => {
-                if (!debt.due_date) return
-                const dueDate = parseISO(debt.due_date)
-                const id = `debt-${debt.id}`
+            // Process Debts & Credits
+            debtsAndCredits?.forEach(item => {
+                if (!item.due_date) return
+                const dueDate = parseISO(item.due_date)
+                const id = `${item.type}-${item.id}`
 
-                if (readIds.includes(id)) return // Skip if already read/dismissed basically
+                if (isPast(dueDate) || isToday(dueDate) || isTomorrow(dueDate)) {
+                    let title = ''
+                    let message = ''
+                    let type: 'warning' | 'info' | 'success' = 'info'
 
-                // Logic: Notify if Overdue, Today, or Tomorrow
-                if (isPast(dueDate) && !isToday(dueDate)) {
-                    newNotifications.push({
+                    if (item.type === 'debt') {
+                        if (isPast(dueDate) && !isToday(dueDate)) {
+                            title = 'Overdue Debt'
+                            message = `You owe ${item.person_name} ${item.amount}. Due was ${format(dueDate, 'MMM d')}.`
+                            type = 'warning'
+                        } else if (isToday(dueDate)) {
+                            title = 'Debt Due Today'
+                            message = `Payment to ${item.person_name} (${item.amount}) is due today.`
+                            type = 'warning'
+                        } else {
+                            title = 'Upcoming Debt'
+                            message = `Payment to ${item.person_name} (${item.amount}) is due tomorrow.`
+                            type = 'info'
+                        }
+                    } else {
+                        // Credit Logic
+                        if (isPast(dueDate) && !isToday(dueDate)) {
+                            title = 'Overdue Credit'
+                            message = `${item.person_name} is late paying you ${item.amount}. Due was ${format(dueDate, 'MMM d')}.`
+                            type = 'warning'
+                        } else if (isToday(dueDate)) {
+                            title = 'Payment Expected Today'
+                            message = `${item.person_name} owes you ${item.amount} today.`
+                            type = 'success'
+                        } else {
+                            title = 'Incoming Payment'
+                            message = `${item.person_name} owes you ${item.amount} tomorrow.`
+                            type = 'info'
+                        }
+                    }
+
+                    generatedNotifications.push({
                         id,
-                        title: 'Overdue Debt',
-                        message: `You owe ${debt.person_name} ${debt.amount}. Due was ${format(dueDate, 'MMM d')}.`,
-                        type: 'warning',
+                        title,
+                        message,
+                        type,
                         date: new Date().toISOString(),
-                        isRead: false,
-                        link: '/app/debts-credits'
-                    })
-                } else if (isToday(dueDate)) {
-                    newNotifications.push({
-                        id,
-                        title: 'Debt Due Today',
-                        message: `Payment to ${debt.person_name} (${debt.amount}) is due today.`,
-                        type: 'warning',
-                        date: new Date().toISOString(),
-                        isRead: false,
-                        link: '/app/debts-credits'
-                    })
-                } else if (isTomorrow(dueDate)) {
-                    newNotifications.push({
-                        id,
-                        title: 'Upcoming Debt',
-                        message: `Payment to ${debt.person_name} (${debt.amount}) is due tomorrow.`,
-                        type: 'info',
-                        date: new Date().toISOString(),
-                        isRead: false,
+                        isRead: readIds.includes(id),
                         link: '/app/debts-credits'
                     })
                 }
             })
 
-            // Process Goals (Deadlines)
+            // Process Goals
             goals?.forEach((goal: any) => {
                 if (!goal.deadline) return
                 const deadline = parseISO(goal.deadline)
                 const id = `goal-${goal.id}`
 
-                if (readIds.includes(id)) return
-
                 const diff = differenceInDays(deadline, new Date())
 
                 if (diff <= 3 && diff >= 0) {
-                    newNotifications.push({
+                    generatedNotifications.push({
                         id,
                         title: 'Goal Deadline Approaching',
                         message: `Goal "${goal.name}" deadline is in ${diff === 0 ? 'today' : diff + ' days'}.`,
                         type: 'info',
                         date: new Date().toISOString(),
-                        isRead: false,
+                        isRead: readIds.includes(id),
                         link: '/app/goals'
                     })
                 }
             })
 
-            setNotifications(_ => {
-                // Merge with existing state logic if complicated, but here we rebuild from source + local storage "read" state
-                // However, we want to keep them in the list but marked as read if they are in local storage?
-                // Actually plan said "Dismissed notifications won't reappear". 
-                // Better UX: Show them as "Read" until explicitly cleared? 
-                // Simplest implementation consistent with plan: 
-                //   - Generate list of ALL potential active notifications.
-                //   - Check against localStorage for "read" status.
-                //   - If in localStorage, either filter out OR mark isRead=true. 
-                //   - Let's mark isRead=true so they stay in history until cleared/irrelevant.
-
-                // Re-evaluating logic:
-                // The "readIds" currently skips them. 
-                // Let's change: generate all, then map isRead based on storage.
-
-                const generatedNotifications: Notification[] = []
-
-                debts?.forEach(debt => {
-                    if (!debt.due_date) return
-                    const dueDate = parseISO(debt.due_date)
-                    const id = `debt-${debt.id}`
-
-                    // Condition to show
-                    if (isPast(dueDate) || isToday(dueDate) || isTomorrow(dueDate)) {
-                        generatedNotifications.push({
-                            id,
-                            title: isPast(dueDate) && !isToday(dueDate) ? 'Overdue Debt' : 'Debt Due Soon',
-                            message: `Pay ${debt.person_name} ${debt.amount}`,
-                            type: isPast(dueDate) && !isToday(dueDate) ? 'warning' : 'info',
-                            date: new Date().toISOString(),
-                            isRead: readIds.includes(id),
-                            link: '/app/debts-credits'
-                        })
-                    }
-                })
-
-                return generatedNotifications
-            })
+            setNotifications(generatedNotifications)
 
         } catch (error) {
             console.error("Error checking notifications", error)

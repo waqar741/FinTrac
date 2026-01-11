@@ -7,13 +7,12 @@ import {
     MessageSquare,
     ChevronDown,
     ChevronUp,
-    HelpCircle,
     CheckCircle,
-    XCircle,
-    ArrowLeft
+    XCircle
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import Navbar from '../components/Navbar'
 
 // FAQ Data
 const faqs = [
@@ -22,16 +21,16 @@ const faqs = [
         answer: 'Yes, Traxos uses industry-standard encryption to protect your financial data and personal information. We never share your data with third parties.'
     },
     {
-        question: 'Can I track debts with multiple people?',
-        answer: 'Absolutely! Our Debts & Credits feature allows you to track individual debts and credits with friends, family, or colleagues easily.'
+        question: 'Can I use Traxos as a debt manager for my business?',
+        answer: 'Absolutely! Our Debts & Credits feature acts as a powerful debt manager, allowing you to track individual debts and credits with friends, family, or clients easily.'
     },
     {
         question: 'How does the AI financial assistant work?',
         answer: "Traxos features an integrated AI assistant that can answer questions about your spending, help set goals, and provide financial insights based on your transaction history."
     },
     {
-        question: 'Is Traxos free to use?',
-        answer: 'Traxos offers a comprehensive free tier for personal use. We also have premium plans for advanced features and larger groups.'
+        question: 'Is Traxos the best free alternative to Splitwise?',
+        answer: 'Traxos offers a comprehensive free tier that many users find to be a superior free alternative to Splitwise for tracking shared expenses and debts without complex subscriptions.'
     },
     {
         question: 'Can I export my transaction history?',
@@ -43,7 +42,7 @@ const faqs = [
             <span>
                 Your data is strictly masked before processing to ensure privacy. For detailed technical information, you can view our{' '}
                 <a
-                    href="/docs/TraxosOnlinePayloadProcessing.pdf"
+                    href="/docs/Traxos-Technical-Data-Processing-Guide.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-green-600 dark:text-green-400 hover:underline font-medium"
@@ -52,49 +51,35 @@ const faqs = [
                 </a>.
             </span>
         )
-    },
-    {
-        question: 'Why can I see my password in the network tab?',
-        answer: 'When you log in, your browser sends your password to our secure server. This request is visible to you in the "Network" tab for debugging, but it is encrypted (HTTPS) before leaving your device, ensuring no one else can see it.'
     }
 ]
 
-// Step by Step Guide
+// Detailed Guide Steps for Zig-Zag Layout
 const guideSteps = [
     {
         title: 'Dashboard',
-        description: 'Your financial command center. See your total balance, recent activity, and quick summaries at a glance. Use this to get a daily health check of your finances.',
+        description: 'Your financial command center. The Dashboard aggregates all your data to give you a real-time health check. View your total current balance, analyze monthly spending trends, and spot recent activity immediately upon logging in.',
         icon: Activity,
-        color: 'text-blue-500',
-        bg: 'bg-blue-50 dark:bg-blue-900/20'
     },
     {
         title: 'Transactions',
-        description: 'Log every expense and income here. Categorize them (e.g., Food, Rent, Salary) to track where your money goes. Regular logging is key to accurate insights.',
+        description: 'Precision is key. Log every expense and income source with ease. Assign specific categories (like Food, Rent, or Salary) and add notes. Consistent logging allows the system to generate accurate reports on where your money is actually going.',
         icon: CreditCard,
-        color: 'text-green-500',
-        bg: 'bg-green-50 dark:bg-green-900/20'
     },
     {
         title: 'Saving Goals',
-        description: 'Dreaming of a new car or vacation? Create a goal, set a target amount, and contribute regularly. Watch the progress bar fill up as you save!',
+        description: 'Turn dreams into reality. Whether it\'s a new laptop, a vacation, or an emergency fund, create specific goals with target amounts. Traxos visualizes your progress bars, motivating you to contribute regularly until you reach 100%.',
         icon: Target,
-        color: 'text-purple-500',
-        bg: 'bg-purple-50 dark:bg-purple-900/20'
     },
     {
         title: 'Debts & Credits',
-        description: 'Never forget who owes you pizza money. Add people and track individual debts. Record payments to settle up and keep relationships stress-free.',
+        description: 'Stop awkward money conversations. Keep a precise ledger of who owes you (Credits) and who you owe (Debts). You can manage multiple people, record partial payments, and settle up cleanly without relying on memory.',
         icon: Users,
-        color: 'text-orange-500',
-        bg: 'bg-orange-50 dark:bg-orange-900/20'
     },
     {
         title: 'AI Assistant',
-        description: 'Stuck? Ask the AI! "How much did I spend on coffee?" or "Suggest a budget." It uses your data to give personalized, intelligent answers.',
+        description: 'Your personal financial analyst. Stuck on how to budget? Wondering how much you spent on coffee last month? Just ask the AI in plain English. It analyzes your unique data to provide personalized insights and actionable advice.',
         icon: MessageSquare,
-        color: 'text-pink-500',
-        bg: 'bg-pink-50 dark:bg-pink-900/20'
     }
 ]
 
@@ -116,7 +101,6 @@ const donts = [
 ]
 
 export default function Info() {
-    // Accordion State for FAQs
     const [openIndex, setOpenIndex] = useState<number | null>(0)
 
     const toggleFaq = (index: number) => {
@@ -125,25 +109,16 @@ export default function Info() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-            <SEO title="How it Works - Traxos" description="Learn how to use Traxos effectively. Step-by-step guides, FAQs, and tips." />
+            <SEO title="How it Works - Traxos" description="Master your finances with Traxos." />
 
             {/* Header / Nav */}
-            <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <Link to="/" className="flex items-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
-                        <ArrowLeft className="w-5 h-5 mr-2" />
-                        Back to Home
-                    </Link>
-                    <span className="font-bold text-xl text-gray-900 dark:text-white">Traxos Guide</span>
-                    <div className="w-20"></div> {/* Spacer for centering */}
-                </div>
-            </header>
+            <Navbar />
 
-            <main className="max-w-4xl mx-auto px-4 py-12 space-y-16 animate-in fade-in duration-500">
+            <main className="max-w-5xl mx-auto px-4 py-12 space-y-24">
 
-                {/* Hero Section */}
-                <div className="text-center space-y-6">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                {/* Hero / Header Section matching image */}
+                <div className="text-center space-y-6 animate-in fade-in duration-700">
+                    <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                         Master Your Finances with <span className="text-green-600">Traxos</span>
                     </h1>
                     <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
@@ -151,41 +126,38 @@ export default function Info() {
                     </p>
                 </div>
 
-                {/* Step-by-Step Guide */}
-                <section>
-                    <div className="flex items-center space-x-3 mb-8 justify-center">
-                        <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1 max-w-[100px]"></div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-wider text-center">Step-by-Step Guide</h2>
-                        <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1 max-w-[100px]"></div>
-                    </div>
+                {/* Detailed Zig-Zag Steps */}
+                <section className="space-y-20 md:space-y-32">
+                    {guideSteps.map((step, index) => (
+                        <div
+                            key={index}
+                            className={`flex flex-col md:flex-row items-center gap-8 md:gap-16 ${index % 2 === 1 ? 'md:flex-row-reverse' : ''
+                                }`}
+                        >
+                            {/* Text Side */}
+                            <div className="flex-1 space-y-4 text-center md:text-left">
+                                <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
+                                    {step.title}
+                                </h3>
+                                <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    {step.description}
+                                </p>
+                            </div>
 
-                    <div className="space-y-6">
-                        {guideSteps.map((step, index) => (
-                            <div
-                                key={index}
-                                className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center gap-6 hover:shadow-md transition-shadow"
-                            >
-                                <div className={`p-4 rounded-xl shrink-0 ${step.bg}`}>
-                                    <step.icon className={`w-8 h-8 ${step.color}`} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center">
-                                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm font-bold px-2 py-0.5 rounded mr-3">STEP {index + 1}</span>
-                                        {step.title}
-                                    </h3>
-                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        {step.description}
-                                    </p>
+                            {/* Icon/Visual Side */}
+                            <div className="flex-1 flex justify-center">
+                                <div className="w-48 h-48 md:w-64 md:h-64 rounded-3xl bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+                                    <step.icon className="w-20 h-20 md:w-28 md:h-28 text-green-600 dark:text-green-500 opacity-90" />
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))}
                 </section>
 
-                {/* Dos and Don'ts */}
+                {/* Dos and Don'ts - CARDS (Preserved layout) */}
                 <section className="grid md:grid-cols-2 gap-8">
                     {/* Dos */}
-                    <div className="bg-green-50 dark:bg-green-900/10 rounded-3xl p-8 border border-green-100 dark:border-green-900/30">
+                    <div className="bg-green-50 dark:bg-green-900/10 rounded-3xl p-8 border border-green-100 dark:border-green-900/30 shadow-sm">
                         <div className="flex items-center space-x-3 mb-6">
                             <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-500" />
                             <h3 className="text-2xl font-bold text-green-900 dark:text-green-100">Do's</h3>
@@ -194,14 +166,14 @@ export default function Info() {
                             {dos.map((item, i) => (
                                 <li key={i} className="flex items-start">
                                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2.5 mr-3 shrink-0"></span>
-                                    <span className="text-green-800 dark:text-green-200 font-medium">{item}</span>
+                                    <span className="text-green-800 dark:text-green-200 font-medium text-lg">{item}</span>
                                 </li>
                             ))}
                         </ul>
                     </div>
 
                     {/* Don'ts */}
-                    <div className="bg-red-50 dark:bg-red-900/10 rounded-3xl p-8 border border-red-100 dark:border-red-900/30">
+                    <div className="bg-red-50 dark:bg-red-900/10 rounded-3xl p-8 border border-red-100 dark:border-red-900/30 shadow-sm">
                         <div className="flex items-center space-x-3 mb-6">
                             <XCircle className="w-8 h-8 text-red-600 dark:text-red-500" />
                             <h3 className="text-2xl font-bold text-red-900 dark:text-red-100">Don'ts</h3>
@@ -210,43 +182,45 @@ export default function Info() {
                             {donts.map((item, i) => (
                                 <li key={i} className="flex items-start">
                                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2.5 mr-3 shrink-0"></span>
-                                    <span className="text-red-800 dark:text-red-200 font-medium">{item}</span>
+                                    <span className="text-red-800 dark:text-red-200 font-medium text-lg">{item}</span>
                                 </li>
                             ))}
                         </ul>
                     </div>
                 </section>
 
-                {/* FAQ Section */}
-                <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center space-x-3 mb-8">
-                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                            <HelpCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Frequently Asked Questions
-                        </h2>
-                    </div>
+                {/* Simple FAQ Section */}
+                <section className="max-w-3xl mx-auto pt-8">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Frequently Asked Questions</h2>
+                    <div className="space-y-2">
+                        {/* FAQPage Schema */}
+                        <script type="application/ld+json">
+                            {JSON.stringify({
+                                "@context": "https://schema.org",
+                                "@type": "FAQPage",
+                                "mainEntity": faqs.map(faq => ({
+                                    "@type": "Question",
+                                    "name": faq.question,
+                                    "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": typeof faq.answer === 'string' ? faq.answer : "Your data is strictly masked before processing to ensure privacy. For detailed technical information, you can view our AI Data Processing Documentation."
+                                    }
+                                }))
+                            })}
+                        </script>
 
-                    <div className="space-y-4">
                         {faqs.map((faq, index) => (
-                            <div
-                                key={index}
-                                className={`border rounded-xl transition-all duration-200 overflow-hidden ${openIndex === index
-                                    ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-green-200 dark:hover:border-green-800'
-                                    }`}
-                            >
+                            <div key={index} className="border-b border-gray-200 dark:border-gray-800 last:border-0">
                                 <button
                                     onClick={() => toggleFaq(index)}
-                                    className="w-full text-left px-6 py-4 flex items-center justify-between focus:outline-none"
+                                    className="w-full text-left py-5 flex items-center justify-between focus:outline-none group"
                                 >
-                                    <span className={`font-semibold ${openIndex === index
-                                        ? 'text-green-700 dark:text-green-400'
-                                        : 'text-gray-900 dark:text-gray-200'
+                                    <h3 className={`font-medium text-lg transition-colors ${openIndex === index
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : 'text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
                                         }`}>
                                         {faq.question}
-                                    </span>
+                                    </h3>
                                     {openIndex === index ? (
                                         <ChevronUp className="w-5 h-5 text-green-600" />
                                     ) : (
@@ -254,8 +228,8 @@ export default function Info() {
                                     )}
                                 </button>
                                 {openIndex === index && (
-                                    <div className="px-6 pb-4 animate-in slide-in-from-top-2 duration-200">
-                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <div className="pb-6 pr-4 animate-in slide-in-from-top-1 duration-200">
+                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base">
                                             {faq.answer}
                                         </p>
                                     </div>
@@ -265,18 +239,17 @@ export default function Info() {
                     </div>
                 </section>
 
-                {/* Footer Call to Action */}
-                <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400 mb-6">
-                        Ready to get started?
-                    </p>
+                {/* Footer CTA */}
+                <div className="text-center pt-8 pb-12">
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">Ready to take control?</p>
                     <Link
                         to="/signup"
-                        className="inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+                        className="inline-flex items-center justify-center px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
                     >
-                        Create Free Account
+                        Get Started Free
                     </Link>
                 </div>
+
             </main>
         </div>
     )

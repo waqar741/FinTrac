@@ -1,0 +1,172 @@
+# Traxos - Full Documentation
+
+> Comprehensive Personal Finance Tracker
+
+Traxos is a modern, high-performance personal finance application designed to help users track expenses, manage debts, and set savings goals with ease. It features real-time synchronization, secure authentication, and an integrated AI assistant for financial insights.
+
+## Core Functionalities
+
+- **Dashboard**: Real-time financial health check (Income vs Expenses).
+- **Transactions**: Log, categorize, and filter daily financial activities.
+- **Debts & Credits**: Track money owed to you and money you owe to others.
+- **Saving Goals**: Visual progress tracking for financial targets.
+- **AI Assistant**: Intelligent financial analyst for natural language queries.
+- **Platform**: Web (PWA), Local-First Architecture
+- **Tech Stack**: React, TypeScript, Vite, TailwindCSS, Supabase (PostgreSQL)
+- **Hosting**: Vercel for scalable deployment.
+
+## Resources
+
+- **Docs**: [https://traxos.vercel.app/info](https://traxos.vercel.app/info)
+- **Repo**: [https://github.com/waqar741/FinTrac](https://github.com/waqar741/FinTrac)
+- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.vercel.app/docs/Traxos-Technical-Data-Processing-Guide.pdf)
+
+---
+
+# README
+
+# Traxos 💰
+
+**Traxos** is a comprehensive personal finance tracker built to help you manage your income and expenses effortlessly. It leverages a modern tech stack for high performance and real-time data synchronization.
+
+**🔗 Live Demo:** [https://traxos.vercel.app/](https://traxos.vercel.app/)
+
+## ✨ Features
+
+*   **Dashboard Analytics:** Visualize your financial health with income vs. expense summaries.
+*   **Transaction Tracking:** Log daily earnings and spendings with ease.
+*   **Real-time Sync:** Powered by Supabase to keep your data updated instantly across devices.
+*   **Secure Authentication:** User management handled securely via Supabase Auth.
+*   **Responsive UI:** Designed with Tailwind CSS to look great on mobile and desktop.
+*   **Category Management:** Organize transactions by customizable categories.
+
+## 🛠️ Tech Stack
+
+* **Language:** [TypeScript](https://www.typescriptlang.org/)
+* **Styling:** [Tailwind CSS](https://tailwindcss.com/) & PostCSS
+* **Backend & Auth:** [Supabase](https://supabase.com/) (PostgreSQL)
+* **Deployment:** [Vercel](https://vercel.com/)
+* **Linting:** ESLint
+
+## 🚀 Getting Started
+
+Follow these steps to run the project locally.
+
+### Prerequisites
+
+* Node.js (v18+ recommended)
+* npm or yarn
+
+### Installation
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/waqar741/FinTrac.git
+    cd FinTrac
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Configuration**
+    Create a `.env` file in the root directory (or rename `.env.example` if it exists). Add your Supabase credentials. 
+    
+    *Note: Since this is a Vite project, variables must start with `VITE_`.*
+
+    ```env
+    VITE_SUPABASE_URL=your_supabase_project_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+4.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+    
+    Access the app at `http://localhost:5173` (default Vite port).
+
+## 🗄️ Database Setup (Supabase)
+
+This project relies on Supabase for data storage. You will likely need:
+
+1.  A `profiles` table (often linked to `auth.users`).
+2.  A `transactions` (or `expenses`) table with columns like:
+    * `id` (uuid, primary key)
+    * `user_id` (foreign key to auth.users)
+    * `amount` (numeric)
+    * `category` (text)
+    * `description` (text)
+    * `date` (timestamp/date)
+    * `type` (text: 'income' or 'expense')
+
+*(Check the `supabase/migrations` folder in the repo for the exact SQL definitions.)*
+
+## 🤝 Contributing
+
+Contributions are welcome!
+1.  Fork the project.
+2.  Create your feature branch (`git checkout -b feature/NewFeature`).
+3.  Commit your changes (`git commit -m 'Add NewFeature'`).
+4.  Push to the branch (`git push origin feature/NewFeature`).
+5.  Open a Pull Request.
+
+## 📄 License
+
+This project is open source. License MIT.
+
+---
+
+Developed by **[Waqar](https://github.com/waqar741)**
+
+---
+
+# User Guide (Info Page)
+
+## Master Your Finances with Traxos
+A simple, step-by-step guide to getting the most out of your personal finance tracker.
+
+### Step-by-Step Guide
+
+1. **Dashboard**: Your financial command center. The Dashboard aggregates all your data to give you a real-time health check. View your total current balance, analyze monthly spending trends, and spot recent activity immediately upon logging in.
+2. **Transactions**: Precision is key. Log every expense and income source with ease. Assign specific categories (like Food, Rent, or Salary) and add notes. Consistent logging allows the system to generate accurate reports on where your money is actually going.
+3. **Saving Goals**: Turn dreams into reality. Whether it's a new laptop, a vacation, or an emergency fund, create specific goals with target amounts. Traxos visualizes your progress bars, motivating you to contribute regularly until you reach 100%.
+4. **Debts & Credits**: Stop awkward money conversations. Keep a precise ledger of who owes you (Credits) and who you owe (Debts). You can manage multiple people, record partial payments, and settle up cleanly without relying on memory.
+5. **AI Assistant**: Your personal financial analyst. Stuck on how to budget? Wondering how much you spent on coffee last month? Just ask the AI in plain English. It analyzes your unique data to provide personalized insights and actionable advice.
+
+### Dos and Don'ts
+
+**Do's:**
+- Log transactions daily for accuracy.
+- Set realistic saving goals.
+- Use categories consistently.
+- Check your dashboard weekly.
+- Settle debts promptly.
+
+**Don'ts:**
+- Share your password with anyone.
+- Ignore small expenses; they add up!
+- Set goals you can't reach.
+- Forget to update debt payments.
+- Mix business and personal expenses.
+
+### Frequently Asked Questions
+
+**Is my financial data secure?**
+Yes, Traxos uses industry-standard encryption to protect your financial data and personal information. We never share your data with third parties.
+
+**Can I track debts with multiple people?**
+Absolutely! Our Debts & Credits feature allows you to track individual debts and credits with friends, family, or colleagues easily.
+
+**How does the AI financial assistant work?**
+Traxos features an integrated AI assistant that can answer questions about your spending, help set goals, and provide financial insights based on your transaction history.
+
+**Is Traxos free to use?**
+Traxos offers a comprehensive free tier for personal use. We also have premium plans for advanced features and larger groups.
+
+**Can I export my transaction history?**
+Yes, you can export your transaction data in CSV or PDF format from the Settings page for your own records or analysis.
+
+**How does the Online AI Model process my data?**
+Your data is strictly masked before processing to ensure privacy. For detailed technical information, you can view our AI Data Processing Documentation.

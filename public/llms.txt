@@ -1,0 +1,49 @@
+# Traxos
+
+> Comprehensive Personal Finance Tracker
+
+Traxos is a modern, high-performance personal finance application designed to help users track expenses, manage debts, and set savings goals with ease. It features real-time synchronization, secure authentication, and an integrated AI assistant for financial insights.
+
+## Core Functionalities
+
+- **Dashboard**: Real-time financial health check (Income vs Expenses).
+- **Transactions**: Log, categorize, and filter daily financial activities.
+- **Debts & Credits**: Track money owed to you and money you owe to others.
+- **Saving Goals**: Visual progress tracking for financial targets.
+- **AI Assistant**: Intelligent financial analyst for natural language queries.
+
+## Tech Stack
+
+- **Frontend**: React, one of the most popular UI libraries.
+- **Build Tool**: Vite, ensuring fast development and optimized builds.
+- **Platform**: Web (PWA), Local-First Architecture
+- **Tech Stack**: React, TypeScript, Vite, TailwindCSS, Supabase (PostgreSQL) for database and real-time features.
+- **Hosting**: Vercel for scalable deployment.
+
+## Resources
+
+- **Docs**: [https://traxos.vercel.app/info](https://traxos.vercel.app/info)
+- **Repo**: [https://github.com/waqar741/FinTrac](https://github.com/waqar741/FinTrac)
+- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.vercel.app/docs/Traxos-Technical-Data-Processing-Guide.pdf)
+
+## Ideal For
+- Students looking for a secure free expense tracker
+- Freelancers managing variable income and client debts
+- Couples sharing expenses and tracking household budgets
+- Small business owners needing simple cash flow management
+- Travelers wanting an offline capable finance app
+- Roommates splitting bills and tracking shared debts
+- Gig economy workers tracking daily earnings and expenses
+- Digital nomads needing a multi-currency ready tracker
+- Privacy-conscious users wanting a secure financial assistant
+- Anyone replacing manual spreadsheets with a modern app
+- Users looking for a free alternative to Splitwise
+- People paying off loans who need a debt payoff tracker
+- Savers visualizing multiple financial goals
+- Budgeting beginners needing simple insights
+- Offline-first users in low connectivity areas
+- Developers analyzing open source fintech code
+- Families planning monthly household expenditures
+- Event planners tracking specific project budgets
+- Contractors issuing credits and tracking payments
+- Minimalists wanting a clean, ad-free finance interface

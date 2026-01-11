@@ -10,12 +10,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation()
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 space-y-4">
-        <div className="w-12 h-12 border-4 border-green-200 rounded-full border-t-green-600 animate-spin"></div>
-        <p className="text-green-600 font-medium">Loading...</p>
-      </div>
-    )
+    return null
   }
 
   if (!user) {
