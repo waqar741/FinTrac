@@ -9,6 +9,7 @@ import { useCurrency } from '../hooks/useCurrency'
 import { format, subHours, isBefore, subMonths } from 'date-fns'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { useDateFormat } from '../hooks/useDateFormat'
 import SEO from '../components/SEO'
 import PageGuide from '../components/PageGuide'
@@ -638,20 +639,19 @@ export default function Transactions() {
   }
 
   const exportToPDF = () => {
-    // Similar to Excel export, we need to fetch all data for PDF
     const exportAllForPDF = async () => {
       try {
         let query = supabase
           .from('transactions')
           .select(`
-  *,
-  accounts(
-    id,
-    name,
-    color,
-    balance
-  )
-    `)
+            *,
+            accounts(
+              id,
+              name,
+              color,
+              balance
+            )
+          `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
 
@@ -668,127 +668,128 @@ export default function Transactions() {
           query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
         }
         if (debouncedSearchTerm) {
-          query = query.or(`description.ilike.% ${debouncedSearchTerm}%, category.ilike.% ${debouncedSearchTerm}% `)
+          query = query.or(`description.ilike.%${debouncedSearchTerm}%, category.ilike.%${debouncedSearchTerm}%`)
         }
 
         const { data: allTransactions, error } = await query
 
         if (error) throw error
 
-        // Continue with PDF generation using allTransactions
-        let totalIncome = 0;
-        let totalExpense = 0;
+        // Calculate Summary
+        let totalIncome = 0
+        let totalExpense = 0
 
         allTransactions?.forEach((t) => {
           if (t.type === 'income') {
-            totalIncome += Number(t.amount);
+            totalIncome += Number(t.amount)
           } else if (t.type === 'expense') {
-            totalExpense += Number(t.amount);
+            totalExpense += Number(t.amount)
           }
-        });
+        })
 
-        const balance = totalIncome - totalExpense;
-        const pdf = new jsPDF();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
+        const balance = totalIncome - totalExpense
 
-        let currentPage = 1;
-        const transactionPages = Math.ceil((allTransactions?.length || 0) / 15);
-        const totalPages = (allTransactions?.length || 0) > 0 ? transactionPages + 1 : 1;
+        // Initialize PDF
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
 
-        const addHeader = (pageNum: number, totalPages: number) => {
-          pdf.setFontSize(18);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Traxos Report', pageWidth / 2, 20, { align: 'center' });
+        // --- Branding & Header ---
+        // Green Banner
+        doc.setFillColor(34, 197, 94) // Tailwind Green-500 (#22c55e)
+        doc.rect(0, 0, pageWidth, 40, 'F')
 
+        // Logo / Title
+        doc.setTextColor(255, 255, 255)
+        doc.setFontSize(24)
+        doc.setFont('helvetica', 'bold')
+        doc.text('TRAXOS', 20, 25)
 
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`Generated on: ${formatDate(new Date())} `, 20, 35);
-          pdf.text(`Total Transactions: ${allTransactions?.length || 0} `, 20, 42);
-          pdf.text(`Page ${pageNum} of ${totalPages} `, pageWidth - 30, 35);
-        };
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.text('Personal Finance Report', 20, 32)
 
-        const addTableHeader = (yPos: number) => {
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Date', 20, yPos);
-          pdf.text('Description', 50, yPos);
-          pdf.text('Amount (INR)', 140, yPos);
-          pdf.text('Type', 170, yPos);
+        // Date Info (Right side of Banner)
+        doc.text(`Generated: ${formatDate(new Date())}`, pageWidth - 20, 25, { align: 'right' })
+        doc.text(`Transactions: ${allTransactions?.length || 0}`, pageWidth - 20, 32, { align: 'right' })
 
-          yPos += 2;
-          pdf.setLineWidth(0.2);
-          pdf.line(20, yPos, pageWidth - 20, yPos);
-          return yPos + 10;
-        };
+        // --- Summary Section ---
+        let colY = 55
+        // Card width calculation
+        const margin = 20
+        const gap = 10
+        const availableWidth = pageWidth - (margin * 2)
+        const cardWidth = (availableWidth - (gap * 2)) / 3
 
-        let yPos = 60;
+        // Helper to draw summary card
+        const drawCard = (x: number, title: string, amount: number, color: [number, number, number]) => {
+          // Card Background
+          doc.setFillColor(249, 250, 251) // Gray-50
+          doc.setDrawColor(229, 231, 235) // Gray-200
+          doc.roundedRect(x, colY, cardWidth, 25, 3, 3, 'FD')
 
-        // --- Transaction Pages ---
-        if (allTransactions && allTransactions.length > 0) {
-          addHeader(currentPage, totalPages);
-          yPos = addTableHeader(yPos);
+          // Title
+          doc.setTextColor(107, 114, 128) // Gray-500
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'bold')
+          doc.text(title.toUpperCase(), x + 5, colY + 8)
 
-          allTransactions.forEach((t, index) => {
-            if (yPos > pageHeight - 30 && index < allTransactions.length - 1) {
-              pdf.addPage();
-              currentPage++;
-              yPos = 40;
-              addHeader(currentPage, totalPages);
-              yPos = addTableHeader(yPos);
-            }
-
-            pdf.setFontSize(9);
-            pdf.setFont('helvetica', 'normal');
-
-            pdf.text(formatDate(t.created_at), 20, yPos);
-
-            let description = t.description || 'No description';
-            if (description.length > 35) {
-              description = description.substring(0, 32) + '...';
-            }
-            pdf.text(description, 50, yPos);
-
-            pdf.text(t.amount.toFixed(2), 140, yPos);
-
-            pdf.text(t.type.charAt(0).toUpperCase() + t.type.slice(1), 170, yPos);
-
-            yPos += 7;
-          });
+          // Amount
+          doc.setTextColor(color[0], color[1], color[2])
+          doc.setFontSize(12)
+          doc.text(`INR ${amount.toFixed(2)}`, x + 5, colY + 18)
         }
 
-        // --- Summary Page ---
-        if (allTransactions && allTransactions.length > 0) {
-          pdf.addPage();
-          currentPage++;
-        }
+        drawCard(margin, 'TOTAL INCOME', totalIncome, [22, 163, 74]) // Green-600
+        drawCard(margin + cardWidth + gap, 'TOTAL EXPENSES', totalExpense, [220, 38, 38]) // Red-600
+        drawCard(margin + (cardWidth + gap) * 2, 'NET BALANCE', balance, balance >= 0 ? [22, 163, 74] : [220, 38, 38])
 
-        addHeader(currentPage, totalPages);
-        yPos = 60;
+        // --- Transactions Table ---
+        const tableBody = allTransactions?.map(t => [
+          formatDate(t.created_at),
+          t.description || 'No description',
+          t.category,
+          t.type.toUpperCase(),
+          t.accounts?.name || 'Unknown',
+          t.amount.toFixed(2)
+        ]) || []
 
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('SUMMARY', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 20;
+        autoTable(doc, {
+          startY: 90,
+          head: [['Date', 'Description', 'Category', 'Type', 'Account', 'Amount']],
+          body: tableBody,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [6, 78, 59], // Emerald-900 (Dark Green)
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [240, 253, 244] // Green-50
+          },
+          styles: {
+            font: 'helvetica',
+            fontSize: 9,
+            cellPadding: 3
+          },
+          columnStyles: {
+            5: { halign: 'right' } // Amount aligned right
+          },
+          didDrawPage: (data) => {
+            // Footer on each page
+            const pageCount = doc.getNumberOfPages()
+            doc.setFontSize(8)
+            doc.setTextColor(156, 163, 175) // Gray-400
+            doc.text(
+              `Generated by Traxos Finance - Page ${pageCount}`,
+              data.settings.margin.left,
+              pageHeight - 10
+            )
+          }
+        })
 
-        pdf.setLineWidth(0.5);
-        pdf.line(20, yPos, pageWidth - 20, yPos);
-        yPos += 15;
+        doc.save(`Traxos_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Summary:', 30, yPos);
-        yPos += 12;
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Total Income: INR ${totalIncome.toFixed(2)} `, 30, yPos);
-        yPos += 10;
-        pdf.text(`Total Expenses: INR ${totalExpense.toFixed(2)} `, 30, yPos);
-        yPos += 10;
-        pdf.text(`Balance: INR ${balance.toFixed(2)} `, 30, yPos);
-
-        pdf.save(`Traxos - Report - ${formatDate(new Date())}.pdf`);
       } catch (error) {
         console.error('Error exporting to PDF:', error)
         alert('Error exporting data. Please try again.')
@@ -796,7 +797,7 @@ export default function Transactions() {
     }
 
     exportAllForPDF()
-  };
+  }
 
   if (loading) {
     return (
