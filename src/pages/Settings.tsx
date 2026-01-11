@@ -526,7 +526,7 @@ export default function Settings() {
             description="Manage your profile, preferences, and data privacy."
             tips={[
               "Toggle Dark Mode for better nighttime visibility.",
-              <span key="masking">Security: Online AI Model (Green) uses strict data masking. <a href="/docs/TraxosOnlinePayloadProcessing.pdf" target="_blank" className="underline hover:text-green-600">Read our Data Processing Docs.</a></span>,
+              <span key="masking">Security: Online AI Model (Green) uses strict data masking. <a href="/docs/Traxos-Technical-Data-Processing-Guide.pdf" target="_blank" className="underline hover:text-green-600">Read our Data Processing Docs.</a></span>,
               "Rule Based AI (Blue) runs entirely on your device for maximum privacy."
             ]}
           />
@@ -817,7 +817,7 @@ export default function Settings() {
             <span>
               By enabling AI features, your queries will be processed by external servers. Your personal data (Names, Accounts, Identities) is strictly masked and anonymized before sending to ensure your privacy.
               <br /><br />
-              <a href="/docs/TraxosOnlinePayloadProcessing.pdf" target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
+              <a href="/docs/Traxos-Technical-Data-Processing-Guide.pdf" target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
                 View Payload Processing Documentation
               </a>
             </span>
