@@ -2,20 +2,14 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, DollarSign, ToggleLeft, ToggleRight, Trash2, Wallet, Mic } from 'lucide-react'
-
+import { Plus, User, X, Trash2, Wallet, Mic, Search, ChevronDown, ChevronUp, Pencil, Calendar, Banknote } from 'lucide-react'
 import { format } from 'date-fns'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
 import PageGuide from '../components/PageGuide'
+import { useVoiceTransaction } from '../hooks/useVoiceTransaction'
 
-// --- Voice Recognition Types ---
-interface Window {
-  SpeechRecognition: any;
-  webkitSpeechRecognition: any;
-}
-declare var window: Window;
-
+// --- Types ---
 interface DebtCredit {
   id: string
   person_name: string
@@ -32,7 +26,15 @@ interface DebtCredit {
   }
 }
 
-const ITEMS_PER_PAGE = 10
+interface PersonGroup {
+  person_name: string
+  items: DebtCredit[]
+  total_debt: number
+  total_credit: number
+  net_amount: number // credit - debt
+}
+
+
 
 interface Account {
   id: string
@@ -62,6 +64,21 @@ export default function DebtsCredits() {
   const [showAccountSelection, setShowAccountSelection] = useState(false)
   const [pendingSettlementItem, setPendingSettlementItem] = useState<DebtCredit | null>(null)
 
+  // Filtering State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'i_owe' | 'owes_me'>('all')
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+
+  // Expanded State for Parent Rows
+  const [expandedPeople, setExpandedPeople] = useState<Set<string>>(new Set())
+  const [expandedChildLists, setExpandedChildLists] = useState<Set<string>>(new Set())
+
+  // Pagination State
+  const [visibleCount, setVisibleCount] = useState(15)
+
+  // Collapsible Settled Section
+  const [showSettled, setShowSettled] = useState(false)
+
   // Custom Alert State
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -72,7 +89,6 @@ export default function DebtsCredits() {
 
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [visibleItems, setVisibleItems] = useState(ITEMS_PER_PAGE)
 
   const {
     register,
@@ -86,98 +102,27 @@ export default function DebtsCredits() {
 
   const watchType = watch('type', 'debt')
 
-  // --- Voice Input Logic ---
-  const [isListening, setIsListening] = useState(false)
+  // --- Voice Input Logic Hook ---
+  const { isListening, voiceData, startListening, resetVoiceData, error: voiceError } = useVoiceTransaction()
 
-  const parseVoiceCommand = (text: string) => {
-    const lowerText = text.toLowerCase()
-    let amount = 0
-    let person_name = ''
-    let type: 'debt' | 'credit' = 'debt'
-    let description = text
-
-    // 1. Extract Amount
-    const amountMatch = text.match(/[\d,]+(\.\d{1,2})?/)
-    if (amountMatch) {
-      amount = parseFloat(amountMatch[0].replace(/,/g, ''))
-    }
-
-    // 2. Determine Type (Who owes whom?)
-    // "Owe" -> I owe them (Debt)
-    // "Owes me", "Credit" -> They owe me (Credit)
-    if (lowerText.includes('owes me') || lowerText.includes('credit') || lowerText.includes('receive')) {
-      type = 'credit'
-    } else if (lowerText.includes('owe') || lowerText.includes('debt') || lowerText.includes('pay')) {
-      type = 'debt'
-    }
-
-    // 3. Extract Person Name (Simple Heuristic: First capitalized word or first word if not "Owe"/"Credit")
-    // Let's try to remove known keywords and numbers
-    const words = text.split(' ')
-    const keywords = ['owe', 'owes', 'me', 'credit', 'debt', 'for', 'to', 'pay', 'rupees', 'rs']
-
-    for (const word of words) {
-      const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '')
-      if (!keywords.includes(cleanWord) && isNaN(Number(word.replace(/,/g, ''))) && word.length > 2) {
-        // Assume this might be the name. Capitalize it.
-        person_name = word.charAt(0).toUpperCase() + word.slice(1)
-        break
-      }
-    }
-
-    // Fallback if empty name
-    if (!person_name) person_name = 'Unknown'
-
-    // 4. Description
-    // Clean description a bit (optional)
-    description = text.charAt(0).toUpperCase() + text.slice(1)
-
-    return { amount, person_name, type, description }
-  }
-
-  const startListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Voice recognition is not supported in this browser.')
-      return
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onstart = () => setIsListening(true)
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript
-      console.log('Voice Input:', transcript)
-
-      const parsed = parseVoiceCommand(transcript)
-
-      // Auto-fill form
-      setValue('amount', parsed.amount || undefined as any)
-      setValue('person_name', parsed.person_name)
-      setValue('type', parsed.type)
-      setValue('description', parsed.description)
-
+  useEffect(() => {
+    if (voiceData) {
+      setValue('amount', voiceData.amount || undefined as any)
+      setValue('person_name', voiceData.person_name)
+      setValue('type', voiceData.type)
+      setValue('description', voiceData.description)
       // Set default due date
       setValue('due_date', format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'))
 
-      setIsListening(false)
+      resetVoiceData() // Clear data after setting
     }
+  }, [voiceData, setValue, resetVoiceData])
 
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error', event.error)
-      setIsListening(false)
+  useEffect(() => {
+    if (voiceError) {
+      alert(voiceError)
     }
-
-    recognition.onend = () => setIsListening(false)
-
-    recognition.start()
-  }
-
+  }, [voiceError])
 
 
   useEffect(() => {
@@ -190,7 +135,6 @@ export default function DebtsCredits() {
   const fetchDebtsCredits = async () => {
     try {
       // First, perform cleanup of old settled items
-      // fetch strictly for cleanup first to avoid UI flash or stale data
       const { data: oldSettled } = await supabase
         .from('debts_credits')
         .select('id, settlement_transaction_id, is_settled, transactions!settlement_transaction_id(created_at)')
@@ -201,10 +145,10 @@ export default function DebtsCredits() {
         const now = new Date()
         const idsToDelete = oldSettled
           .filter((item: any) => {
-            if (!item.transactions?.created_at) return false // Keep if no date found for safety
+            if (!item.transactions?.created_at) return false
             const settledDate = new Date(item.transactions.created_at)
             const diffInHours = (now.getTime() - settledDate.getTime()) / (1000 * 60 * 60)
-            return diffInHours > 24 // Delete if settled more than 24 hours ago
+            return diffInHours > 24
           })
           .map((item: any) => item.id)
 
@@ -315,16 +259,12 @@ export default function DebtsCredits() {
     if (!item) return
 
     if (currentStatus) {
-      // If already settled, just toggle back without account selection
       await toggleSettled(id, currentStatus, null)
     } else {
-      // If not settled, check if we need account selection
       if (accounts.length > 1) {
-        // Show account selection modal
         setPendingSettlementItem(item)
         setShowAccountSelection(true)
       } else if (accounts.length === 1) {
-        // Only one account, use it directly
         await toggleSettled(id, currentStatus, accounts[0].id)
       } else {
         alert('No active accounts found. Please create an account first.')
@@ -348,13 +288,12 @@ export default function DebtsCredits() {
       }
 
       if (!currentStatus) {
-        // Marking as settled - create settlement transaction
+        // Marking as settled
         let settlementAccount: Account | null = null
 
         if (accountId) {
           settlementAccount = accounts.find(acc => acc.id === accountId) || null
         } else {
-          // Fallback to first account
           settlementAccount = accounts[0] || null
         }
 
@@ -365,12 +304,9 @@ export default function DebtsCredits() {
 
         const transactionType = item.type === 'credit' ? 'income' : 'expense'
 
-        // CHECK: Sufficient Balance
         if (transactionType === 'expense' && settlementAccount.balance < item.amount) {
           setErrorMessage(`Insufficient funds in ${settlementAccount.name}.\n\nAvailable: ${formatCurrency(settlementAccount.balance)}\nRequired: ${formatCurrency(item.amount)}`)
           setShowErrorModal(true)
-
-          // Reset processing state
           setProcessingIds(prev => {
             const next = new Set(prev)
             next.delete(id)
@@ -383,7 +319,6 @@ export default function DebtsCredits() {
           ? `Received payment from ${item.person_name}: ${item.description}`
           : `Paid ${item.person_name}: ${item.description}`
 
-        // Create settlement transaction - REMOVED date field
         const { data: newTransaction, error: txError } = await supabase
           .from('transactions')
           .insert({
@@ -399,7 +334,6 @@ export default function DebtsCredits() {
 
         if (txError) throw txError
 
-        // Update account balance
         const balanceChange = item.type === 'credit' ? item.amount : -item.amount
         const newBalance = settlementAccount.balance + balanceChange
 
@@ -412,7 +346,6 @@ export default function DebtsCredits() {
 
         if (balanceError) throw balanceError
 
-        // Update debt/credit with settlement info
         const { error: updateError } = await supabase
           .from('debts_credits')
           .update({
@@ -425,27 +358,22 @@ export default function DebtsCredits() {
         if (updateError) throw updateError
 
       } else {
-        // Marking as unsettled - remove settlement transaction
+        // Marking as unsettled
         if (item.settlement_transaction_id) {
-          // Get the settlement account to reverse the balance
           const settlementAccount = accounts.find(acc => acc.id === item.settlement_account_id)
 
           if (settlementAccount) {
-            // Reverse the balance change
             const balanceChange = item.type === 'credit' ? -item.amount : item.amount
             const newBalance = settlementAccount.balance + balanceChange
 
             const { error: balanceError } = await supabase
               .from('accounts')
-              .update({
-                balance: newBalance
-              })
+              .update({ balance: newBalance })
               .eq('id', settlementAccount.id)
 
             if (balanceError) throw balanceError
           }
 
-          // Delete the settlement transaction
           const { error: deleteError } = await supabase
             .from('transactions')
             .delete()
@@ -454,7 +382,6 @@ export default function DebtsCredits() {
           if (deleteError) throw deleteError
         }
 
-        // Update debt/credit status
         const { error: updateError } = await supabase
           .from('debts_credits')
           .update({
@@ -468,7 +395,7 @@ export default function DebtsCredits() {
       }
 
       await fetchDebtsCredits()
-      await fetchAccounts() // Refresh accounts to get updated balances
+      await fetchAccounts()
     } catch (error: any) {
       console.error('Error updating settlement status:', error)
       alert(`Error: ${error.message || 'Failed to update settlement status'}`)
@@ -490,7 +417,6 @@ export default function DebtsCredits() {
   }
 
   const deleteItem = async (id: string) => {
-    // Determine item to delete
     const item = debtsCredits.find(d => d.id === id)
     if (item) {
       setDeletionItem(item)
@@ -501,7 +427,6 @@ export default function DebtsCredits() {
   const handleConfirmDelete = async () => {
     if (!deletionItem) return
     const id = deletionItem.id
-
     if (processingIds.has(id)) return
 
     setProcessingIds(prev => new Set(prev).add(id))
@@ -545,16 +470,82 @@ export default function DebtsCredits() {
     setShowModal(true)
   }
 
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
+
+  const togglePersonExpansion = (personName: string) => {
+    setExpandedPeople(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(personName)) {
+        newSet.delete(personName)
+      } else {
+        newSet.add(personName)
+      }
+      return newSet
+    })
+  }
+
+  // --- Grouping & Filtering Logic ---
+  const getFilteredGroups = () => {
+    // 1. Initial Filter (Search, Settled, Date)
+    let filtered = debtsCredits.filter(item => {
+      if (item.is_settled) return false // We handle settled separately now
+
+      // Search
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch = item.person_name.toLowerCase().includes(searchLower) ||
+        item.description.toLowerCase().includes(searchLower)
+      if (!matchesSearch) return false
+
+      return true
+    })
+
+    // 2. Group by Person
+    const groups: { [key: string]: PersonGroup } = {}
+    filtered.forEach(item => {
+      if (!groups[item.person_name]) {
+        groups[item.person_name] = {
+          person_name: item.person_name,
+          items: [],
+          total_debt: 0,
+          total_credit: 0,
+          net_amount: 0
+        }
+      }
+      groups[item.person_name].items.push(item)
+      if (item.type === 'debt') {
+        groups[item.person_name].total_debt += item.amount
+      } else {
+        groups[item.person_name].total_credit += item.amount
+      }
+    })
+
+    // 3. Calculate Net & Filter by Status
+    let resultGroups = Object.values(groups).map(g => ({
+      ...g,
+      net_amount: g.total_credit - g.total_debt
+    }))
+
+    if (statusFilter === 'i_owe') {
+      resultGroups = resultGroups.filter(g => g.net_amount < 0)
+    } else if (statusFilter === 'owes_me') {
+      resultGroups = resultGroups.filter(g => g.net_amount > 0)
+    }
+
+    return resultGroups
+  }
 
 
+  const personGroups = getFilteredGroups()
+  const settledItems = debtsCredits.filter(item => item.is_settled)
 
+  // Totals for summary cards (Global)
+  const allDebts = debtsCredits.filter(item => item.type === 'debt' && !item.is_settled)
+  const allCredits = debtsCredits.filter(item => item.type === 'credit' && !item.is_settled)
+  const totalDebt = allDebts.reduce((sum, item) => sum + item.amount, 0)
+  const totalCredit = allCredits.reduce((sum, item) => sum + item.amount, 0)
 
-  const debts = debtsCredits.filter(item => item.type === 'debt' && !item.is_settled)
-  const credits = debtsCredits.filter(item => item.type === 'credit' && !item.is_settled)
-  const settled = debtsCredits.filter(item => item.is_settled)
-
-  const totalDebt = debts.reduce((sum, item) => sum + item.amount, 0)
-  const totalCredit = credits.reduce((sum, item) => sum + item.amount, 0)
 
   if (loading) {
     return (
@@ -573,26 +564,23 @@ export default function DebtsCredits() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
+      {/* Header: Title + Add Button */}
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
-            <PageGuide
-              title="Debts & Credits"
-              description="Track every penny. Record who owes you (Credits) and who you owe (Debts). Settle up easily when payments are made."
-              tips={[
-                "Use the 'Settle Up' feature to record payments.",
-                "Keep track of informal loans with friends.",
-                "Warning: Deleting an entry removes it permanently. Settle it to keep the history."
-              ]}
-            />
-          </div>
-          {/* <p className="text-gray-600 dark:text-gray-300 mt-1">Track who owes you and who you owe</p> */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Debts & Credits</h1>
+          <PageGuide
+            title="Debts & Credits"
+            description="Track every penny. Record who owes you (Credits) and who you owe (Debts). Settle up easily when payments are made."
+            tips={[
+              "Use the 'Settle Up' feature to record payments.",
+              "Keep track of informal loans with friends.",
+              "Warning: Deleting an entry removes it permanently. Settle it to keep the history."
+            ]}
+          />
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add
@@ -608,10 +596,10 @@ export default function DebtsCredits() {
               <p className="text-2xl font-bold text-red-600 mt-1">
                 {formatCurrency(totalDebt)}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{debts.length} people</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{allDebts.length} people</p>
             </div>
             <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
-              <DollarSign className="w-6 h-6 text-red-600" />
+              <Banknote className="w-6 h-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -623,10 +611,10 @@ export default function DebtsCredits() {
               <p className="text-2xl font-bold text-green-600 mt-1">
                 {formatCurrency(totalCredit)}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{credits.length} people</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{allCredits.length} people</p>
             </div>
             <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-              <DollarSign className="w-6 h-6 text-green-600" />
+              <Banknote className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
@@ -650,58 +638,42 @@ export default function DebtsCredits() {
         </div>
       </div>
 
-      {/* --- START: Edited Mobile-Optimized Code --- */}
-
-      {/* --- START: Edited & Corrected Mobile Code --- */}
-
       {/* Mobile View - Light Colored Cards Layout */}
       <div className="sm:hidden">
         <div className="grid grid-cols-3 gap-3">
-
-          {/* You Owe Card (Light Red) */}
           <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-3 text-center shadow-sm border border-red-100 dark:border-red-800">
             <div className="flex flex-col h-full">
-              {/* FIX: Title has a fixed height and its content is centered */}
               <p className="font-medium text-sm text-red-700 dark:text-red-300 flex items-center justify-center min-h-[2.5rem]">
                 You Owe
               </p>
-
               <div className="flex-grow flex items-center justify-center my-1">
                 <p className="text-xl font-bold text-red-600 dark:text-red-400">
                   {formatCurrency(totalDebt)}
                 </p>
               </div>
-
-              <p className="text-xs text-red-500 dark:text-red-400 mt-auto">{debts.length} people</p>
+              <p className="text-xs text-red-500 dark:text-red-400 mt-auto">{allDebts.length} people</p>
             </div>
           </div>
 
-          {/* Others Owe You Card (Light Green) */}
           <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-3 text-center shadow-sm border border-green-100 dark:border-green-800">
             <div className="flex flex-col h-full">
-              {/* FIX: Title has a fixed height and its content is centered */}
               <p className="font-medium text-sm text-green-700 dark:text-green-300 flex items-center justify-center min-h-[2.5rem]">
                 Others Owe
               </p>
-
               <div className="flex-grow flex items-center justify-center my-1">
                 <p className="text-xl font-bold text-green-600 dark:text-green-400">
                   {formatCurrency(totalCredit)}
                 </p>
               </div>
-
-              <p className="text-xs text-green-500 dark:text-green-400 mt-auto">{credits.length} people</p>
+              <p className="text-xs text-green-500 dark:text-green-400 mt-auto">{allCredits.length} people</p>
             </div>
           </div>
 
-          {/* Net Balance Card (Light Blue) */}
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 text-center shadow-sm border border-blue-100 dark:border-blue-800">
             <div className="flex flex-col h-full">
-              {/* FIX: Title has a fixed height and its content is centered */}
               <p className="font-medium text-sm text-blue-700 dark:text-blue-300 flex items-center justify-center min-h-[2.5rem]">
-                Net Balance
+                Net
               </p>
-
               <div className="flex-grow flex items-center justify-center my-1">
                 <p className={`text-xl font-bold ${totalCredit - totalDebt >= 0
                   ? 'text-blue-600 dark:text-blue-400'
@@ -710,196 +682,270 @@ export default function DebtsCredits() {
                   {formatCurrency(totalCredit - totalDebt)}
                 </p>
               </div>
-
               <p className="text-xs text-blue-500 dark:text-blue-400 mt-auto">
                 {totalCredit >= totalDebt ? 'In favor' : 'You owe'}
               </p>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* --- END: Edited & Corrected Mobile Code --- */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* You Owe (Debts) */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">You Owe</h2>
-          <div className="space-y-3">
-            {debts.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding debts</p>
-            ) : (
-              <>
-                {debts.slice(0, visibleItems).map((debt) => (
-                  <div key={debt.id} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{debt.person_name}</h3>
-                      <span className="text-lg font-bold text-red-600">{formatCurrency(debt.amount)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{debt.description}</p>
-                    {debt.due_date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        Due: {format(new Date(debt.due_date), 'MMM d, yyyy')}
-                      </p>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => initiateSettlement(debt.id, debt.is_settled)}
-                        disabled={processingIds.has(debt.id)}
-                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {debt.is_settled ? (
-                          <>
-                            <ToggleRight className="w-3 h-3 mr-1" />
-                            Settled
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-3 h-3 mr-1" />
-                            {processingIds.has(debt.id) ? 'Processing...' : 'Mark Paid'}
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleEditItem(debt)}
-                        disabled={processingIds.has(debt.id)}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteItem(debt.id)}
-                        disabled={processingIds.has(debt.id)}
-                        className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {debts.length > visibleItems && (
-                  <button
-                    onClick={() => setVisibleItems(prev => prev + ITEMS_PER_PAGE)}
-                    className="w-full py-2 text-sm text-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
-                  >
-                    Load More Debts
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+      {/* --- Filter Controls Row --- */}
+      <div className="flex items-center gap-3 relative z-20">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={handleSearch}
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent"
+          />
         </div>
 
-        {/* Others Owe You (Credits) */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Others Owe You</h2>
-          <div className="space-y-3">
-            {credits.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No outstanding credits</p>
-            ) : (
-              <>
-                {credits.slice(0, visibleItems).map((credit) => (
-                  <div key={credit.id} className="p-4 border border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{credit.person_name}</h3>
-                      <span className="text-lg font-bold text-green-600">{formatCurrency(credit.amount)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{credit.description}</p>
-                    {credit.due_date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        Due: {format(new Date(credit.due_date), 'MMM d, yyyy')}
-                      </p>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => initiateSettlement(credit.id, credit.is_settled)}
-                        disabled={processingIds.has(credit.id)}
-                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {credit.is_settled ? (
-                          <>
-                            <ToggleRight className="w-3 h-3 mr-1" />
-                            Settled
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-3 h-3 mr-1" />
-                            {processingIds.has(credit.id) ? 'Processing...' : 'Mark Received'}
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleEditItem(credit)}
-                        disabled={processingIds.has(credit.id)}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteItem(credit.id)}
-                        disabled={processingIds.has(credit.id)}
-                        className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {credits.length > visibleItems && (
-                  <button
-                    onClick={() => setVisibleItems(prev => prev + ITEMS_PER_PAGE)}
-                    className="w-full py-2 text-sm text-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
-                  >
-                    Load More Credits
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+        <div className="relative shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowFilterDropdown(!showFilterDropdown)
+            }}
+            className="flex items-center justify-between w-[130px] px-3 py-2.5 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600"
+          >
+            <span className="font-medium truncate">
+              {statusFilter === 'all' ? 'All' : statusFilter === 'i_owe' ? 'I Owe' : 'Owes Me'}
+            </span>
+            <ChevronDown className="w-4 h-4 text-gray-500 ml-2" />
+          </button>
+
+          {showFilterDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowFilterDropdown(false)}
+              ></div>
+              <div className="absolute right-0 mt-2 w-40 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                <div className="p-1">
+                  {[
+                    { value: 'all', label: 'All' },
+                    { value: 'i_owe', label: 'I Owe' },
+                    { value: 'owes_me', label: 'Owes Me' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setStatusFilter(option.value as any)
+                        setShowFilterDropdown(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${statusFilter === option.value
+                        ? 'bg-gray-700 text-white font-medium'
+                        : 'text-gray-300 hover:bg-gray-700/50'
+                        }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Settled Items */}
-      {settled.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Settled ({settled.length})</h2>
-          <div className="space-y-3">
-            {settled.map((item) => {
-              const settlementAccount = accounts.find(acc => acc.id === item.settlement_account_id)
+      {/* --- Main List: Person Groups --- */}
+      <div className="space-y-4">
+        {personGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-full mb-3">
+              <Search className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No items found</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 max-w-xs">
+              Try adjusting your filters.
+            </p>
+          </div>
+        ) : (
+          <>
+            {personGroups.slice(0, visibleCount).map((group) => {
+              const isExpanded = expandedPeople.has(group.person_name)
+              const isDebt = group.net_amount < 0
+
               return (
-                <div key={item.id} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 opacity-75">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">{item.person_name}</h3>
-                    <span className="text-lg font-bold text-gray-600 dark:text-gray-300">{formatCurrency(item.amount)}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{item.description}</p>
-                  {settlementAccount && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Settled via: {settlementAccount.name}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-lg">
-                      ✓ Settled
-                    </span>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        disabled={processingIds.has(item.id)}
-                        className="flex items-center px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        {processingIds.has(item.id) ? 'Removing...' : 'Remove'}
-                      </button>
+                <div key={group.person_name} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                  {/* Parent Row */}
+                  <div
+                    onClick={() => togglePersonExpansion(group.person_name)}
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-sm">
+                        {group.person_name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{group.person_name}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{group.items.length} items</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className={`text-base font-bold ${isDebt ? 'text-red-600' : 'text-green-600'}`}>
+                        {isDebt ? '-' : '+'}{formatCurrency(Math.abs(group.net_amount))}
+                      </span>
+                      {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
                     </div>
                   </div>
+
+                  {/* Child Rows (Expanded) */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 dark:border-gray-700 bg-slate-50 dark:bg-slate-900/50">
+                      {(expandedChildLists.has(group.person_name)
+                        ? group.items
+                        : group.items.slice(0, 5)
+                      ).map((item) => (
+                        <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
+
+                          {/* Left Side: Description & Date */}
+                          <div className="flex-grow min-w-0">
+                            <div className="flex items-start justify-between sm:justify-start gap-2 mb-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-relaxed">
+                                {item.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${item.type === 'debt'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                }`}>
+                                {item.type === 'debt' ? 'I Owe' : 'Owes Me'}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(item.created_at), 'MMM d')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Right Side: Amount & Actions */}
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 sm:gap-2 shrink-0">
+                            <span className={`text-base font-bold ${item.type === 'debt' ? 'text-red-500' : 'text-green-500'}`}>
+                              {formatCurrency(item.amount)}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditItem(item)
+                                }}
+                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteItem(item.id)
+                                }}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  initiateSettlement(item.id, item.is_settled)
+                                }}
+                                disabled={processingIds.has(item.id)}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shadow-sm ${item.type === 'debt'
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
+                                  }`}
+                              >
+                                {item.type === 'debt' ? 'Pay' : 'Receive'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* View All Toggle for Children */}
+                      {group.items.length > 5 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const newSet = new Set(expandedChildLists)
+                            if (newSet.has(group.person_name)) {
+                              newSet.delete(group.person_name)
+                            } else {
+                              newSet.add(group.person_name)
+                            }
+                            setExpandedChildLists(newSet)
+                          }}
+                          className="w-full py-2 text-xs font-medium text-gray-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-1"
+                        >
+                          {expandedChildLists.has(group.person_name) ? (
+                            <>Show Less <ChevronUp className="w-3 h-3" /></>
+                          ) : (
+                            <>View all {group.items.length} transactions <ChevronDown className="w-3 h-3" /></>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
-          </div>
+
+            {/* Load More Button */}
+            {visibleCount < personGroups.length && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 15)}
+                  className="px-6 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  Load More
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Settled Items Section */}
+      {settledItems.length > 0 && (
+        <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+          <button
+            onClick={() => setShowSettled(!showSettled)}
+            className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          >
+            {showSettled ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span className="text-sm font-medium">Show Recently Settled ({settledItems.length})</span>
+          </button>
+
+          {showSettled && (
+            <div className="mt-4 space-y-2 opacity-75">
+              {settledItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 line-through">{item.person_name} - {item.description}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-400 line-through">{formatCurrency(item.amount)}</span>
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Account Selection Modal */}
       {showAccountSelection && pendingSettlementItem && (
@@ -964,26 +1010,26 @@ export default function DebtsCredits() {
         </div>
       )}
 
-      {/* Voice Assistant Overlay */}
+      {/* Voice Assistant Overlay - Kept improvements */}
       {isListening && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-200">
             <div className="relative">
               <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
               <div className="relative bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
-                <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <Mic className="w-10 h-10 text-green-600 dark:text-green-400" />
               </div>
             </div>
-            <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Listening...</h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs">
+            <h3 className="mt-6 text-xl font-bold text-gray-900 dark:text-white">Listening...</h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400 text-center max-w-xs text-sm">
               Try saying: <br />
-              <span className="font-medium text-green-600 dark:text-green-400">"Owe John 500 for lunch"</span> <br />
-              or <br />
+              <span className="font-medium text-green-600 dark:text-green-400 block mt-2">"Owe John 500 for lunch"</span>
+              <span className="text-xs text-gray-400 block my-1">or</span>
               <span className="font-medium text-green-600 dark:text-green-400">"Mike owes me 200"</span>
             </p>
             <button
-              onClick={() => setIsListening(false)}
-              className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+              onClick={resetVoiceData}
+              className="mt-8 px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>

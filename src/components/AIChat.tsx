@@ -420,19 +420,34 @@ export default function AIChat() {
     const exactMatch = (patterns: RegExp[]) => patterns.some(p => p.test(lowerQuery))
 
     // --- Greetings & Identity ---
-    if (matches(['hi', 'hello', 'hey', 'yo', 'greetings', 'good morning', 'good afternoon'])) {
+    if (matches([
+      'hi', 'hii', 'hiii', 'hiiii', 'hiiiii', 'hiiiiii',
+      'hello', 'helloo', 'hellooo',
+      'hey', 'heyy', 'heyyy', 'heyyyy',
+      'yo', 'yoo', 'yooo',
+      'greetings', 'morning', 'good morning', 'good afternoon', 'good evening',
+      'hiya', 'heya', 'sup'
+    ])) {
       return "Hello! I'm Traxos AI. How can I help you with your finances today?"
     }
 
-    if (matches(['thanks', 'thank you', 'appreciate'])) {
+    if (matches([
+      'thanks', 'thank you', 'thank u', 'thx', 'ty',
+      'appreciate', 'appreciated', 'grateful'
+    ])) {
       return "You're welcome! Let me know if you need anything else."
     }
 
-    if (matches(['who are you', 'what are you', 'your name'])) {
+    if (matches([
+      'who are you', 'what are you', 'your name', 'who is this',
+      'what is your name', 'introduce yourself'
+    ])) {
       return "I'm Traxos AI, your personal finance assistant. How can I help you?"
     }
 
-    if (matches(['who am i', 'my name', 'what is my name'])) {
+    if (matches([
+      'who am i', 'my name', 'what is my name', 'do you know me', 'my profile'
+    ])) {
       return profile?.full_name
         ? `You are ${profile.full_name}.`
         : `You are logged in as ${user?.email}.`

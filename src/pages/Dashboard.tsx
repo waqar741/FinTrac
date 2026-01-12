@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { PlusCircle, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react'
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calendar
+} from 'lucide-react'
 import { useCurrency } from '../hooks/useCurrency'
 import PageGuide from '../components/PageGuide'
 import {
@@ -524,8 +532,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right ml-3 flex-shrink-0">
-                      <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                      <p className={`font - semibold text - sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        } `}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                       </p>
                     </div>
@@ -619,7 +627,7 @@ export default function Dashboard() {
                       <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
                           className="h-2 rounded-full bg-red-500 transition-all duration-300"
-                          style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                          style={{ width: `${Math.min(item.percentage, 100)}% ` }}
                         />
                       </div>
 
@@ -657,7 +665,7 @@ export default function Dashboard() {
                         <div
                           className="h-2 rounded-full transition-all duration-300"
                           style={{
-                            width: `${progress}%`,
+                            width: `${progress}% `,
                             backgroundColor: progress >= 100 ? '#10B981' : goal.color
                           }}
                         />
@@ -774,8 +782,8 @@ export default function Dashboard() {
                   {formatCurrency(stats.balance)}
                 </p>
               </div>
-              <div className={`p-3 rounded-full ${stats.balance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                <Wallet className={`w-6 h-6 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <div className={`p-3 rounded-full flex items-center justify-center ${stats.balance >= 0 ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-500' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-500'}`}>
+                <Wallet className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -792,8 +800,8 @@ export default function Dashboard() {
                   {getFilterLabel(timeFilter)}
                 </p>
               </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-500 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -810,8 +818,8 @@ export default function Dashboard() {
                   {getFilterLabel(timeFilter)}
                 </p>
               </div>
-              <div className="p-3 bg-red-100 rounded-full">
-                <TrendingDown className="w-6 h-6 text-red-600" />
+              <div className="p-3 bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-500 rounded-full flex items-center justify-center">
+                <TrendingDown className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -825,8 +833,8 @@ export default function Dashboard() {
                   {stats.totalAccounts}
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <PlusCircle className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-500 rounded-full flex items-center justify-center">
+                <Plus className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -1014,7 +1022,7 @@ export default function Dashboard() {
                     <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="h-2 rounded-full bg-red-500 transition-all duration-300"
-                        style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                        style={{ width: `${Math.min(item.percentage, 100)}% ` }}
                       />
                     </div>
 
@@ -1052,7 +1060,7 @@ export default function Dashboard() {
                       <div
                         className="h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${progress}%`,
+                          width: `${progress}% `,
                           backgroundColor: progress >= 100 ? '#10B981' : goal.color
                         }}
                       />

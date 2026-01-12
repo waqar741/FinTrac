@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, CreditCard as Edit2, Trash2, ArrowRightLeft, Loader, Shield } from 'lucide-react'
+import { Plus, Wallet, CreditCard, Banknote, Smartphone, Users, X, Pencil, Trash2, ArrowRightLeft, Loader, Shield } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
 import PageGuide from '../components/PageGuide'
@@ -662,7 +662,7 @@ export default function Accounts() {
                       className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Edit account"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => initiateDeleteAccount(account)}
@@ -755,7 +755,7 @@ export default function Accounts() {
                         className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Edit account"
                       >
-                        <Edit2 className="w-3 h-3" />
+                        <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => initiateDeleteAccount(account)}

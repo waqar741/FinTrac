@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, Target, X, CreditCard as Edit2, Trash2, TrendingUp, Loader } from 'lucide-react'
+import { Plus, Target, X, Pencil, Trash2, TrendingUp, Loader } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import { format } from 'date-fns'
 import { useCurrency } from '../hooks/useCurrency'
@@ -377,7 +377,7 @@ export default function Goals() {
                       onClick={() => handleEditGoal(goal)}
                       className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => initiateDeleteGoal(goal)}
