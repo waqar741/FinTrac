@@ -77,6 +77,29 @@ export default function AIChat() {
     }
   ])
 
+  // --- Visibility State ---
+  const [showChatIcon, setShowChatIcon] = useState(() => {
+    const stored = localStorage.getItem('show_ai_chat')
+    return stored === null ? true : stored === 'true'
+  })
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const stored = localStorage.getItem('show_ai_chat')
+      setShowChatIcon(stored === null ? true : stored === 'true')
+    }
+
+    window.addEventListener('settings:aiChatVisibility', handleVisibilityChange)
+    window.addEventListener('storage', handleVisibilityChange) // For cross-tab sync
+
+    return () => {
+      window.removeEventListener('settings:aiChatVisibility', handleVisibilityChange)
+      window.removeEventListener('storage', handleVisibilityChange)
+    }
+  }, [])
+
+
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // --- AI Context State ---
@@ -898,6 +921,8 @@ export default function AIChat() {
   }
 
   const cleanContent = (content: string) => content.replace(/\*/g, '')
+
+  if (!showChatIcon) return null
 
   return (
     <>

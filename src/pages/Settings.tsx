@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Wallet,
+  MessageCircle,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useDateFormat } from '../hooks/useDateFormat'
@@ -941,6 +942,36 @@ export default function Settings() {
                 {notificationUpdating && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating...</p>
                 )}
+              </SettingItem>
+
+              <SettingItem icon={MessageCircle} title="AI Chat Bot" subtitle="Show or hide the AI assistant icon on your screen.">
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-700 dark:text-gray-300">Show AI Chat Icon</p>
+                  <button
+                    onClick={() => {
+                      const current = localStorage.getItem('show_ai_chat')
+                      const newValue = current === null ? false : current !== 'true' // Default is true, so toggle removes it
+                      localStorage.setItem('show_ai_chat', String(newValue))
+                      window.dispatchEvent(new Event('settings:aiChatVisibility'))
+                      // Force re-render of this button by updating state or just relying on React re-render from parent if triggered? 
+                      // Actually, this simple local toggle won't re-render THIS component's state unless we force it.
+                      // Let's us navigate to force refresh or use a local state.
+                      // Using navigate to same page is a cheap way to refresh, consistent with other settings here.
+                      navigate('.', { replace: true })
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${(localStorage.getItem('show_ai_chat') === null || localStorage.getItem('show_ai_chat') === 'true')
+                      ? 'bg-green-600'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${(localStorage.getItem('show_ai_chat') === null || localStorage.getItem('show_ai_chat') === 'true')
+                        ? 'translate-x-6'
+                        : 'translate-x-1'
+                        }`}
+                    />
+                  </button>
+                </div>
               </SettingItem>
             </div>
           </div>
