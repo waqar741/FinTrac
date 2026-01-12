@@ -532,8 +532,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right ml-3 flex-shrink-0">
-                      <p className={`font - semibold text - sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        } `}>
+                      <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                       </p>
                     </div>
