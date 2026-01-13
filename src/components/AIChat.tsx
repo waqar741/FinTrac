@@ -12,7 +12,8 @@ interface Message {
   quickReplies?: string[]
 }
 
-const API_URL = import.meta.env.VITE_AI_API_URL
+// const API_URL = import.meta.env.VITE_AI_API_URL
+const API_URL = import.meta.env.VITE_AI_API
 
 export default function AIChat() {
   const { user, profile } = useAuth()
