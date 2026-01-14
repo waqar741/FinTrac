@@ -809,6 +809,11 @@ export default function DebtsCredits() {
                               <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-relaxed">
                                 {item.description}
                               </p>
+                              {item.due_date && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap shrink-0 pt-0.5">
+                                  Due {format(new Date(item.due_date), 'MMM d')}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${item.type === 'debt'
