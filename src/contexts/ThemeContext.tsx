@@ -1,33 +1,56 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
+type Theme = 'light' | 'dark' | 'system'
+
 interface ThemeContextType {
+  theme: Theme
+  setTheme: (theme: Theme) => void
   isDark: boolean
-  toggleTheme: () => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme')
-    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (localStorage.getItem('theme') as Theme) || 'system'
   })
 
-  useEffect(() => {
-    localStorage.setItem('theme', isDark ? 'dark' : 'light')
-    if (isDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [isDark])
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
 
-  const toggleTheme = () => {
-    setIsDark(!isDark)
-  }
+  useEffect(() => {
+    const root = document.documentElement
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const removeOldTheme = () => {
+      root.classList.remove('light', 'dark')
+    }
+
+    const applyTheme = () => {
+      removeOldTheme()
+
+      let newResolvedTheme: 'light' | 'dark' = 'light'
+
+      if (theme === 'system') {
+        newResolvedTheme = mediaQuery.matches ? 'dark' : 'light'
+      } else {
+        newResolvedTheme = theme
+      }
+
+      root.classList.add(newResolvedTheme)
+      setResolvedTheme(newResolvedTheme)
+    }
+
+    applyTheme()
+    localStorage.setItem('theme', theme)
+
+    if (theme === 'system') {
+      mediaQuery.addEventListener('change', applyTheme)
+      return () => mediaQuery.removeEventListener('change', applyTheme)
+    }
+  }, [theme])
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, isDark: resolvedTheme === 'dark' }}>
       {children}
     </ThemeContext.Provider>
   )

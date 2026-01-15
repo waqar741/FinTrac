@@ -4,8 +4,12 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const { isDark, toggleTheme } = useTheme();
+    const { isDark, setTheme } = useTheme();
     const location = useLocation();
+
+    const toggleTheme = () => {
+        setTheme(isDark ? 'light' : 'dark');
+    };
 
     return (
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 transition-all duration-300">

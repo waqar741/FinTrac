@@ -168,7 +168,7 @@ const SettingItem = ({ icon: Icon, title, subtitle, children }: any) => (
 
 export default function Settings() {
   const { user, profile, refreshProfile, deleteAccount } = useAuth()
-  const { isDark, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const { formatDate } = useDateFormat()
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -473,17 +473,13 @@ export default function Settings() {
     </button>
   )
 
-  // Theme change handler with protection
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
+  // Theme change handler
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     if (themeChanging) return
 
     setThemeChanging(true)
     try {
-      if (newTheme === 'light' && isDark) {
-        toggleTheme()
-      } else if (newTheme === 'dark' && !isDark) {
-        toggleTheme()
-      }
+      setTheme(newTheme)
     } finally {
       setTimeout(() => setThemeChanging(false), 300)
     }
@@ -710,29 +706,37 @@ export default function Settings() {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Application Preferences</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SettingItem icon={Monitor} title="Theme" subtitle="Switch between light and dark mode.">
-                <div className="flex flex-wrap gap-2">
+              <SettingItem icon={Monitor} title="Theme" subtitle="Switch between light, dark, and system theme.">
+                <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg w-full sm:w-[300px]">
                   <button
                     onClick={() => handleThemeChange('light')}
-                    disabled={themeChanging}
-                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${!isDark
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${theme === 'light'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
                   >
                     <Sun className="w-4 h-4" />
-                    <span>Light</span>
+                    <span className="hidden xs:inline">Light</span>
                   </button>
                   <button
                     onClick={() => handleThemeChange('dark')}
-                    disabled={themeChanging}
-                    className={`px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors ${isDark
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      } ${themeChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${theme === 'dark'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
                   >
                     <Moon className="w-4 h-4" />
-                    <span>Dark</span>
+                    <span className="hidden xs:inline">Dark</span>
+                  </button>
+                  <button
+                    onClick={() => handleThemeChange('system')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${theme === 'system'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    <Monitor className="w-4 h-4" />
+                    <span className="hidden xs:inline">System</span>
                   </button>
                 </div>
                 {themeChanging && (
