@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom' // 🔑 added useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
 
 
 interface LoginForm {
@@ -12,31 +12,40 @@ interface LoginForm {
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
+  const [isMagicLink, setIsMagicLink] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const { signIn, signInWithOtp } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation() // 🔑
+  const location = useLocation()
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setError
+    setError,
+    clearErrors
   } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      await signIn(data.email, data.password)
-      // 🔑 if redirected from ProtectedRoute, go back there, else default to dashboard
-      const redirectTo = (location.state as any)?.from?.pathname || '/app/dashboard'
-      navigate(redirectTo, { replace: true })
+      if (isMagicLink) {
+        await signInWithOtp(data.email)
+        setMagicLinkSent(true)
+      } else {
+        await signIn(data.email, data.password)
+        // if redirected from ProtectedRoute, go back there, else default to dashboard
+        const redirectTo = (location.state as any)?.from?.pathname || '/app/dashboard'
+        navigate(redirectTo, { replace: true })
+      }
     } catch (error: any) {
       setError('root', {
         message: error.message || 'Failed to sign in'
       })
     } finally {
-      setLoading(false)
+      if (!isMagicLink) setLoading(false)
+      else if (isMagicLink && !magicLinkSent) setLoading(false)
     }
   }
 
@@ -68,7 +77,7 @@ export default function Login() {
         <span className="text-sm font-medium hidden sm:block">Home</span>
       </button>
 
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <svg
@@ -91,96 +100,148 @@ export default function Login() {
           <p className="text-gray-600 dark:text-gray-300 mt-2">Track your expenses with ease</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
-              <input
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^\S+@\S+$/i,
-                    message: 'Invalid email address'
-                  }
-                })}
-                type="email"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="your@email.com"
-              />
-            </div>
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
-              <input
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: {
-                    value: 8,
-                    message: 'Password must be at least 8 characters'
-                  }
-                  // minLength: {
-                  //   value: 8,
-                  //   message: 'Password must be at least 8 characters'
-                  // },
-                  // validate: {
-                  //   hasUpperCase: (value) => /[A-Z]/.test(value) || 'Must include uppercase letter',
-                  //   hasLowerCase: (value) => /[a-z]/.test(value) || 'Must include lowercase letter',
-                  //   hasNumber: (value) => /[0-9]/.test(value) || 'Must include number',
-                  //   hasSpecialChar: (value) => /[@$!%*?&]/.test(value) || 'Must include special character (@$!%*?&)',
-                  //   noSpaces: (value) => !/\s/.test(value) || 'Password cannot contain spaces'
-                  // }
-                })}
-                type={showPassword ? 'text' : 'password'}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Enter Password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-            )}
-          </div>
-
-          {errors.root && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <p className="text-red-700 dark:text-red-400 text-sm">{errors.root.message}</p>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end">
-            <Link
-              to="/forgot-password"
-              className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-            >
-              Forgot Password?
-            </Link>
-          </div>
-
+        <div className="flex justify-center mb-6">
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+            onClick={() => {
+              setIsMagicLink(false)
+              setMagicLinkSent(false)
+              clearErrors('root')
+            }}
+            className={`px-4 py-2 rounded-l-lg text-sm font-medium transition-colors border-y border-l ${!isMagicLink
+              ? 'bg-green-600 text-white border-green-600'
+              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            Password
           </button>
-        </form>
+          <button
+            onClick={() => {
+              setIsMagicLink(true)
+              clearErrors('root')
+            }}
+            className={`px-4 py-2 rounded-r-lg text-sm font-medium transition-colors border-y border-r ${isMagicLink
+              ? 'bg-green-600 text-white border-green-600'
+              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4" />
+              <span>Magic Link</span>
+            </div>
+          </button>
+        </div>
+
+        {magicLinkSent && isMagicLink ? (
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+              <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Check your email</h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                We've sent a magic link to the email provided. Click the link to sign in instantly.
+              </p>
+            </div>
+            <button
+              onClick={() => setMagicLinkSent(false)}
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              Try another email
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <input
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^\S+@\S+$/i,
+                      message: 'Invalid email address'
+                    }
+                  })}
+                  type="email"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="your@email.com"
+                />
+              </div>
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            {!isMagicLink && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                  <input
+                    {...register('password', {
+                      required: isMagicLink ? false : 'Password is required',
+                      minLength: {
+                        value: 8,
+                        message: 'Password must be at least 8 characters'
+                      }
+                    })}
+                    type={showPassword ? 'text' : 'password'}
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Enter Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                )}
+              </div>
+            )}
+
+            {errors.root?.message && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-red-700 dark:text-red-400 text-sm">{errors.root.message}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end">
+              {!isMagicLink && (
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                >
+                  Forgot Password?
+                </Link>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {loading
+                ? (isMagicLink ? 'Sending Link...' : 'Signing in...')
+                : (isMagicLink ? (
+                  <>
+                    <span>Send Magic Link</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                ) : 'Sign In')
+              }
+            </button>
+          </form>
+        )}
 
         <div className="mt-6 text-center">
           <p className="text-gray-600 dark:text-gray-300">

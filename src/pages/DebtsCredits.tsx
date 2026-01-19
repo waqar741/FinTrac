@@ -699,7 +699,7 @@ export default function DebtsCredits() {
             placeholder="Search..."
             value={searchQuery}
             onChange={handleSearch}
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -709,7 +709,7 @@ export default function DebtsCredits() {
               e.stopPropagation()
               setShowFilterDropdown(!showFilterDropdown)
             }}
-            className="flex items-center justify-between w-[130px] px-3 py-2.5 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600"
+            className="flex items-center justify-between w-[130px] px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
           >
             <span className="font-medium truncate">
               {statusFilter === 'all' ? 'All' : statusFilter === 'i_owe' ? 'I Owe' : 'Owes Me'}
@@ -723,7 +723,7 @@ export default function DebtsCredits() {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowFilterDropdown(false)}
               ></div>
-              <div className="absolute right-0 mt-2 w-40 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
                 <div className="p-1">
                   {[
                     { value: 'all', label: 'All' },
@@ -737,8 +737,8 @@ export default function DebtsCredits() {
                         setShowFilterDropdown(false)
                       }}
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${statusFilter === option.value
-                        ? 'bg-gray-700 text-white font-medium'
-                        : 'text-gray-300 hover:bg-gray-700/50'
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                         }`}
                     >
                       {option.label}

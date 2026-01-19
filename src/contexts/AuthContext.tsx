@@ -7,11 +7,14 @@ interface AuthContextType {
   profile: any | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithOtp: (email: string) => Promise<void>
   signUp: (email: string, password: string, fullName: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
+  updateEmail: (email: string) => Promise<void>
   refreshProfile: () => Promise<void>
+  reauthenticate: (password: string) => Promise<void>
   deleteAccount: (password: string) => Promise<void>
 }
 
@@ -114,19 +117,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
+  const signInWithOtp = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    })
+    if (error) throw error
+  }
+
   const signUp = async (email: string, password: string, fullName: string) => {
     if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'your_supabase_url') {
       throw new Error('Supabase is not configured. Please set up your Supabase credentials in the .env file.')
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName }
       }
     })
+
+    console.log('SignUp Response:', {
+      user: data.user,
+      session: data.session,
+      confirmed_at: data.user?.email_confirmed_at
+    })
+
     if (error) throw error
+
+    if (data.session) {
+      console.warn('WARNING: Session created immediately. Email verification might be disabled in Supabase settings.')
+    }
   }
 
   const signOut = async () => {
@@ -152,13 +176,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const deleteAccount = async (password: string) => {
-    // 1. Re-authenticate to verify password
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+  const updateEmail = async (email: string) => {
+    const { error } = await supabase.auth.updateUser({
+      email
+    })
+    if (error) throw error
+  }
+
+  const reauthenticate = async (password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
       email: user?.email || '',
       password,
     })
-    if (signInError) throw new Error('Incorrect password')
+    if (error) throw new Error('Incorrect password')
+  }
+
+  const deleteAccount = async (password: string) => {
+    // 1. Re-authenticate to verify password
+    await reauthenticate(password)
 
     // 2. Try to delete via RPC (if configured)
     const { error: rpcError } = await supabase.rpc('delete_user')
@@ -195,13 +230,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     loading,
     signIn,
+    signInWithOtp,
     signUp,
     signOut,
     resetPassword,
     updatePassword,
+    updateEmail,
     refreshProfile: async () => {
       if (user) await fetchProfile(user.id)
     },
+    reauthenticate,
     deleteAccount
   }
 

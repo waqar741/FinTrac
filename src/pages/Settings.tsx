@@ -41,10 +41,84 @@ interface Account {
   is_default: boolean
 }
 
-const ChangePasswordModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const ReauthModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', type = 'generic', loading = false }: any) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            {message}
+          </p>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault()
+            const form = e.currentTarget
+            const formData = new FormData(form)
+            const password = formData.get('password') as string
+            onConfirm(password)
+          }}>
+            <div className="mb-4">
+              <input
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${type === 'danger' ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-green-500 focus:border-green-500'}`}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-4 py-2 text-white rounded-lg font-medium flex items-center ${type === 'danger'
+                  ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'
+                  : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'}`}
+              >
+                {loading ? 'Processing...' : confirmText}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const ChangePasswordModal = ({ isOpen, onClose, reauthenticate }: { isOpen: boolean; onClose: () => void; reauthenticate: (password: string) => Promise<void> }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [step, setStep] = useState(1) // 1: Verify, 2: Update
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1)
+      setError('')
+      setSuccess('')
+      setLoading(false)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -57,7 +131,9 @@ const ChangePasswordModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
                 <Lock className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Change Password</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {step === 1 ? 'Verify Password' : 'Change Password'}
+              </h3>
             </div>
             <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500">
               <X className="w-5 h-5" />
@@ -69,56 +145,94 @@ const ChangePasswordModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               e.preventDefault()
               const form = e.currentTarget
               const formData = new FormData(form)
-              const password = formData.get('password') as string
-              const confirmPassword = formData.get('confirmPassword') as string
 
-              if (password !== confirmPassword) {
-                setError('Passwords do not match')
-                return
-              }
-              if (password.length < 8) {
-                setError('Password must be at least 8 characters')
-                return
-              }
+              if (step === 1) {
+                const password = formData.get('currentPassword') as string
+                try {
+                  setLoading(true)
+                  setError('')
+                  await reauthenticate(password)
+                  setStep(2)
+                } catch (err: any) {
+                  setError('Incorrect password')
+                } finally {
+                  setLoading(false)
+                }
+              } else {
+                const password = formData.get('password') as string
+                const confirmPassword = formData.get('confirmPassword') as string
 
-              try {
-                setLoading(true)
-                setError('')
-                setSuccess('')
-                const { error } = await supabase.auth.updateUser({ password })
-                if (error) throw error
-                setSuccess('Password updated successfully!')
-                setTimeout(() => {
+                if (password !== confirmPassword) {
+                  setError('Passwords do not match')
+                  return
+                }
+                if (password.length < 8) {
+                  setError('Password must be at least 8 characters')
+                  return
+                }
+
+                try {
+                  setLoading(true)
+                  setError('')
                   setSuccess('')
-                  onClose()
-                }, 2000)
-                form.reset()
-              } catch (err: any) {
-                setError(err.message || 'Failed to update password')
-              } finally {
-                setLoading(false)
+
+                  const { error } = await supabase.auth.updateUser({ password })
+                  if (error) throw error
+                  setSuccess('Password updated successfully!')
+                  setTimeout(() => {
+                    setSuccess('')
+                    onClose()
+                  }, 2000)
+                  form.reset()
+                } catch (err: any) {
+                  setError(err.message || 'Failed to update password')
+                } finally {
+                  setLoading(false)
+                }
               }
             }}
             className="space-y-4"
           >
-            <div>
-              <input
-                name="password"
-                type="password"
-                placeholder="New Password"
-                required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <input
-                name="confirmPassword"
-                type="password"
-                placeholder="Confirm New Password"
-                required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+            {step === 1 ? (
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                  Please enter your current password to verify your identity.
+                </p>
+                <input
+                  name="currentPassword"
+                  type="password"
+                  placeholder="Current Password"
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                  Identity verified. Please enter your new password.
+                </p>
+                <div>
+                  <input
+                    name="password"
+                    type="password"
+                    placeholder="New Password"
+                    required
+                    autoFocus
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Confirm New Password"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </>
+            )}
 
             {(error || success) && (
               <div className={`p-3 rounded-lg text-sm ${error ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'}`}>
@@ -139,7 +253,7 @@ const ChangePasswordModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 disabled={loading}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors flex items-center"
               >
-                {loading ? 'Updating...' : 'Update Password'}
+                {loading ? 'Processing...' : step === 1 ? 'Verify' : 'Update Password'}
               </button>
             </div>
           </form>
@@ -167,7 +281,7 @@ const SettingItem = ({ icon: Icon, title, subtitle, children }: any) => (
 )
 
 export default function Settings() {
-  const { user, profile, refreshProfile, deleteAccount } = useAuth()
+  const { user, profile, refreshProfile, deleteAccount, updateEmail, reauthenticate } = useAuth()
   const { theme, setTheme } = useTheme()
   const { formatDate } = useDateFormat()
   const navigate = useNavigate()
@@ -199,6 +313,13 @@ export default function Settings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDeletePassword, setShowDeletePassword] = useState(false)
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [showExportConfirm, setShowExportConfirm] = useState(false)
+
+  // Change Email State
+  const [showChangeEmail, setShowChangeEmail] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [changingEmail, setChangingEmail] = useState(false)
+  const [showReauthForEmail, setShowReauthForEmail] = useState(false)
 
   // Click protection states
   const [themeChanging, setThemeChanging] = useState(false)
@@ -404,6 +525,20 @@ export default function Settings() {
       })) || []
 
       const ws = XLSX.utils.json_to_sheet(exportData)
+
+      // Add column widths
+      const wscols = [
+        { wch: 15 }, // Date
+        { wch: 30 }, // Description
+        { wch: 15 }, // Amount
+        { wch: 10 }, // Type
+        { wch: 20 }, // Category
+        { wch: 20 }, // Account
+        { wch: 10 }, // Recurring
+        { wch: 15 }, // Frequency
+      ]
+      ws['!cols'] = wscols
+
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'Financial Data')
       XLSX.writeFile(wb, `Traxos-Export-${formatDate(new Date())}.xlsx`)
@@ -671,9 +806,53 @@ export default function Settings() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your email is used for login and notifications.</p>
                   </div>
                 </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <span className="text-gray-900 dark:text-white">{profile?.email || user?.email}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Cannot be changed</span>
+                <div className="mt-6">
+                  {!showChangeEmail ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-900 dark:text-white">{profile?.email || user?.email}</span>
+                      <button
+                        onClick={() => setShowChangeEmail(true)}
+                        className="text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium"
+                      >
+                        Change Email
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="Enter new email"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            if (!newEmail || !/^\S+@\S+$/.test(newEmail)) {
+                              setError('Please enter a valid email')
+                              return
+                            }
+                            setError('')
+                            setShowReauthForEmail(true)
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                          Update Email
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowChangeEmail(false)
+                            setNewEmail('')
+                            setError('')
+                          }}
+                          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -833,6 +1012,49 @@ export default function Settings() {
         <ChangePasswordModal
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
+          reauthenticate={reauthenticate}
+        />
+
+        <ReauthModal
+          isOpen={showReauthForEmail}
+          onClose={() => setShowReauthForEmail(false)}
+          title="Verify Password"
+          message="Please enter your password to confirm email change."
+          confirmText="Confirm Change"
+          loading={changingEmail}
+          onConfirm={async (password: string) => {
+            setChangingEmail(true)
+            try {
+              await reauthenticate(password)
+              await updateEmail(newEmail)
+              setSuccess('Confirmation link sent to both emails!')
+              setShowReauthForEmail(false)
+              setShowChangeEmail(false)
+              setNewEmail('')
+            } catch (err: any) {
+              // Reauth error or Update error
+              // If reauth failed, it throws 'Incorrect password' 
+              // We need to show that in the modal if possible, or global error
+              setError(err.message || 'Failed to update email')
+              setShowReauthForEmail(false) // Close modal to show generic error? Or keep open?
+              // Ideally keep open and show error INSIDE modal, but simplistic implementation here:
+            } finally {
+              setChangingEmail(false)
+            }
+          }}
+        />
+
+        <ConfirmModal
+          isOpen={showExportConfirm}
+          onClose={() => setShowExportConfirm(false)}
+          onConfirm={() => {
+            setShowExportConfirm(false)
+            handleExportData()
+          }}
+          title="Export Data?"
+          message="This will download all your financial data (Transactions, Debt & Credits) as an Excel file."
+          confirmText="Yes, Export"
+          type="info"
         />
 
         {/* Delete Account Confirmation Steps */}
@@ -1081,7 +1303,7 @@ export default function Settings() {
               <SettingItem icon={Download} title="Export Data" subtitle="Download your financial data in various formats.">
                 <div className="flex flex-wrap gap-3">
                   <button
-                    onClick={handleExportData}
+                    onClick={() => setShowExportConfirm(true)}
                     disabled={exporting}
                     className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1128,7 +1350,6 @@ export default function Settings() {
             </div>
           </div>
         )}
-
 
       </main>
     </div>
