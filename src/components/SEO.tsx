@@ -17,7 +17,7 @@ export default function SEO({
 }: SEOProps & { canonical?: string; image?: string }) {
     const siteUrl = 'https://traxos.vercel.app';
     const fullImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
-    const fullUrl = canonical ? (canonical.startsWith('http') ? canonical : `${siteUrl}${canonical}`) : siteUrl;
+    const fullUrl = canonical ? (canonical.startsWith('http') ? canonical : `${siteUrl}${canonical}`) : undefined;
 
     const schema = {
         "@context": "https://schema.org",
@@ -41,14 +41,14 @@ export default function SEO({
             {/* Standard metadata tags */}
             <title>{title} | Traxos</title>
             <meta name='description' content={description} />
-            <link rel="canonical" href={fullUrl} />
+            {fullUrl && <link rel="canonical" href={fullUrl} />}
 
             {/* Facebook tags */}
             <meta property="og:type" content={type} />
             <meta property="og:title" content={title} />
             <meta property="og:description" content={description} />
             <meta property="og:image" content={fullImage} />
-            <meta property="og:url" content={fullUrl} />
+            {fullUrl && <meta property="og:url" content={fullUrl} />}
 
             {/* Twitter tags */}
             <meta name="twitter:creator" content={name} />

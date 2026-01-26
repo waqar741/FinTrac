@@ -110,7 +110,7 @@ export default function Info() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-            <SEO title="How it Works - Traxos" description="Master your finances with Traxos." />
+            <SEO title="How it Works - Traxos" description="Master your finances with Traxos." canonical="/info" />
 
             {/* Header / Nav */}
             <Navbar />

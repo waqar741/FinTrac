@@ -3,60 +3,220 @@
         "slug": "students",
         "keyword": "best expense tracker for students",
         "title": "Free Expense Tracker for Students - Secure & Private",
-        "description": "Stop struggling with pocket money. Traxos helps students track expenses, manage tuition fees, and save for goals without any subscription costs."
+        "description": "Stop struggling with pocket money. Traxos helps students track expenses, manage tuition fees, and save for goals without any subscription costs.",
+        "hero_subtitle": "Master your pocket money, track tuition, and save for weekend fun—100% free.",
+        "features": [
+            {
+                "title": "Zero Cost Forever",
+                "description": "No hidden fees or subscriptions. Traxos is completely free, perfect for a student budget."
+            },
+            {
+                "title": "Roommate Splitting",
+                "description": "Easily track who owes you for pizza or rent with our Debts & Credits feature."
+            },
+            {
+                "title": "Goal Savings",
+                "description": "Visualize your progress for that new laptop or spring break trip with intuitive bars."
+            }
+        ],
+        "unique_blurb": "Student life is expensive enough without paying for a finance app. Traxos gives you powerful tools to manage your limited income, ensuring you never run out of cash before the semester ends."
     },
     {
         "slug": "freelancers",
         "keyword": "freelance budget app",
         "title": "Manage Freelance Income & Debts with Traxos",
-        "description": "Track client debts, variable income, and business expenses. The perfect free financial tool for freelancers and gig workers."
+        "description": "Track client debts, variable income, and business expenses. The perfect free financial tool for freelancers and gig workers.",
+        "hero_subtitle": "Stay on top of irregular income and client invoices without the accounting headache.",
+        "features": [
+            {
+                "title": "Track Client Debts",
+                "description": "Never forget an unpaid invoice. Log 'Credits' to know exactly which client owes you what."
+            },
+            {
+                "title": "Variable Income",
+                "description": "Handle the feast and famine cycles by visualizing your cash flow over months."
+            },
+            {
+                "title": "Expense Categorization",
+                "description": "Separate business software costs from personal coffee runs instantly."
+            }
+        ],
+        "unique_blurb": "Freelancing means freedom, but it also means financial uncertainty. Traxos helps you smooth out the bumps by keeping a strict record of every dollar earned and every invoice outstanding."
     },
     {
         "slug": "couples",
         "keyword": "expense tracker for couples",
         "title": "Shared Budgeting & Expense Tracking for Couples",
-        "description": "Manage household expenses, track shared debts, and save for your future together with Traxos's multi-user friendly features."
+        "description": "Manage household expenses, track shared debts, and save for your future together with Traxos's multi-user friendly features.",
+        "hero_subtitle": "Plan your future together, settle household bills, and argue less about money.",
+        "features": [
+            {
+                "title": "Joint Goals",
+                "description": "Saving for a wedding or a house? Track your combined progress in one place."
+            },
+            {
+                "title": "Household Bills",
+                "description": "Log rent, utilities, and groceries to see who paid what and settle up fairly."
+            },
+            {
+                "title": "Transparent Tracking",
+                "description": "Build trust with full transparency on where the household budget goes each month."
+            }
+        ],
+        "unique_blurb": "Money is a leading cause of stress in relationships. Traxos simplifies shared finances for couples, letting you focus on your relationship instead of your spreadsheet."
     },
     {
         "slug": "small-business",
         "keyword": "small business cash flow manager",
         "title": "Simple Cash Flow Management for Small Business",
-        "description": "Keep track of daily sales, vendor payments, and client credits. A seamless, free alternative to complex accounting software."
+        "description": "Keep track of daily sales, vendor payments, and client credits. A seamless, free alternative to complex accounting software.",
+        "hero_subtitle": "Ditch the complex accounting software for a fast, simple cash flow manager.",
+        "features": [
+            {
+                "title": "Vendor Credits",
+                "description": "Keep accurate tabs on what you owe suppliers and what customers owe you."
+            },
+            {
+                "title": "Daily Sales Log",
+                "description": "Quickly enter daily totals to spot revenue trends and slow days immediately."
+            },
+            {
+                "title": "Export Reports",
+                "description": "Generate professional PDF or CSV reports for your accountant or tax filing."
+            }
+        ],
+        "unique_blurb": "Small business owners don't need bloatware. Traxos provides the essential ledger features you need to keep your shop or service running profitably, without the monthly SaaS fees."
     },
     {
         "slug": "travelers",
         "keyword": "travel expense tracker",
         "title": "Travel Expense Tracker for Globetrotters",
-        "description": "Track your travel spending on the go. Traxos ensures you never miss logging a transaction while exploring the world."
+        "description": "Track your travel spending on the go. Traxos ensures you never miss logging a transaction while exploring the world.",
+        "hero_subtitle": "Explore the world without worrying about your budget back home.",
+        "features": [
+            {
+                "title": "On-the-Go Logging",
+                "description": "Mobile-optimized design lets you log a taxi fare or meal in seconds."
+            },
+            {
+                "title": "Trip Budgets",
+                "description": "Set a specific spending limit for your vacation and stick to it."
+            },
+            {
+                "title": "Group Travel",
+                "description": "Traveling with friends? Track who paid for the hotel and settle debts later."
+            }
+        ],
+        "unique_blurb": "Travel should be about experiences, not anxiety. With Traxos in your pocket, you can enjoy that second gelato knowing exactly how much budget you have left for the rest of your trip."
     },
     {
         "slug": "roommates",
         "keyword": "split bills app alternative",
         "title": "Track Shared Bills & Debts for Roommates",
-        "description": "The best free alternative to Splitwise. Track who owes what, settle debts, and manage shared household utilities easily."
+        "description": "The best free alternative to Splitwise. Track who owes what, settle debts, and manage shared household utilities easily.",
+        "hero_subtitle": "No more sticky notes on the fridge. Split bills and rent fairly and instantly.",
+        "features": [
+            {
+                "title": "Bill Splitting",
+                "description": "Log the internet bill and assign shares. We do the math for you."
+            },
+            {
+                "title": "Debt Settlement",
+                "description": "Clear record of 'You owe X' prevents improved arguments and misunderstandings."
+            },
+            {
+                "title": "Shared Expenses",
+                "description": "From cleaning supplies to pizza nights, keep a running total of shared costs."
+            }
+        ],
+        "unique_blurb": "Living together is easier when money isn't an issue. Traxos acts as the neutral party, keeping a precise ledger of every shared expense so everyone pays their fair share."
     },
     {
         "slug": "contractors",
         "keyword": "contractor payment tracker",
         "title": "Payment & Debt Tracker for Contractors",
-        "description": "Log client payments, track outstanding invoices (debts), and manage project materials expenses in one place."
+        "description": "Log client payments, track outstanding invoices (debts), and manage project materials expenses in one place.",
+        "hero_subtitle": "Track material costs and client payments project by project.",
+        "features": [
+            {
+                "title": "Material Expenses",
+                "description": "Log every nail and board. Ensure you bill clients for every reimbursable cost."
+            },
+            {
+                "title": "Payment Tracking",
+                "description": "Record partial payments and know exactly how much is left on the contract."
+            },
+            {
+                "title": "Mobile Ready",
+                "description": "Update your ledger directly from the job site, no laptop required."
+            }
+        ],
+        "unique_blurb": "Contractors live and die by cash flow. Traxos helps you ensure that material costs don't eat into your profits and that every client payment is accounted for."
     },
     {
         "slug": "debt-payoff",
         "keyword": "debt payoff tracker app",
         "title": "Visual Debt Payoff & Savings Tracker",
-        "description": "Visualize your journey to financial freedom. Track debt payments and watch your savings goals grow with intuitive progress bars."
+        "description": "Visualize your journey to financial freedom. Track debt payments and watch your savings goals grow with intuitive progress bars.",
+        "hero_subtitle": "Turn the mountain of debt into a molehill, one payment at a time.",
+        "features": [
+            {
+                "title": "Visual Progress",
+                "description": "Watch the progress bar fill up as you pay down loans. It's addictive motivation."
+            },
+            {
+                "title": "Debt Snowball",
+                "description": "Organize multiple debts and focus your extra cash on clearing them one by one."
+            },
+            {
+                "title": "Interest Avoidance",
+                "description": "Track due dates to avoid late fees and minimize interest payments."
+            }
+        ],
+        "unique_blurb": "Getting out of debt is a psychological game as much as a financial one. Traxos gives you the visual wins you need to stay motivated on your journey to being debt-free."
     },
     {
         "slug": "privacy",
         "keyword": "private finance app no data selling",
         "title": "Secure, Private Personal Finance Tracker",
-        "description": "Your financial data belongs to you. Traxos uses strictly guarded logic to ensure your privacy is never compromised."
+        "description": "Your financial data belongs to you. Traxos uses strictly guarded logic to ensure your privacy is never compromised.",
+        "hero_subtitle": "Your money is your business. We keep it that way.",
+        "features": [
+            {
+                "title": "Strict Privacy",
+                "description": "We do not sell your data. Your financial habits are yours alone."
+            },
+            {
+                "title": "Secure Encryption",
+                "description": "Industry-standard security protocols ensure your information stays safe."
+            },
+            {
+                "title": "No Ad Tracking",
+                "description": "Enjoy a clean interface without creepy ads following your spending habits."
+            }
+        ],
+        "unique_blurb": "In an age where every app wants to sell your data, Traxos stands apart. We built this tool for privacy-conscious users who want control over their digital financial footprint."
     },
     {
         "slug": "minimalist",
         "keyword": "minimalist budget app",
         "title": "Minimalist Expense Manager - No Clutter",
-        "description": "A clean, ad-free interface for users who want to track money without the noise. Simple, fast, and beautiful."
+        "description": "A clean, ad-free interface for users who want to track money without the noise. Simple, fast, and beautiful.",
+        "hero_subtitle": "Finance without the fluff. Clean, fast, and distraction-free.",
+        "features": [
+            {
+                "title": "Clean UI",
+                "description": "No clutter, no popups. Just the essential numbers you need to see."
+            },
+            {
+                "title": "Fast Logging",
+                "description": "Designed for speed. Log a transaction in seconds and get on with your life."
+            },
+            {
+                "title": "Essential metrics",
+                "description": "See your net worth and monthly burn rate at a glance, without complex menus."
+            }
+        ],
+        "unique_blurb": "You don't need a degree in finance to manage your wallet. Traxos embraces minimalism to give you the most efficient, stress-free tracking experience possible."
     }
 ]

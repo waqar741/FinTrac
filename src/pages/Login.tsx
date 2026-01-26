@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
+import SEO from '../components/SEO'
 
 
 interface LoginForm {
@@ -59,6 +60,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 px-4">
+      <SEO title="Login" description="Sign in to your Traxos account." canonical="/login" />
       {/* Back Button - Top Left */}
       <button
         onClick={handleGoBack}

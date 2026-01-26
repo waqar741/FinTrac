@@ -34,7 +34,7 @@ export default function LandingPage() {
                         {pageData.title}
                     </h1>
                     <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-2xl mx-auto">
-                        {pageData.description}
+                        {(pageData as any).hero_subtitle || pageData.description}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link to="/signup" className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all bg-green-600 rounded-lg hover:bg-green-700 hover:shadow-lg transform hover:-translate-y-1">
@@ -51,36 +51,53 @@ export default function LandingPage() {
             <section className="py-16 bg-gray-50 dark:bg-gray-800/50">
                 <div className="container mx-auto px-6 max-w-6xl">
                     <div className="grid md:grid-cols-3 gap-8">
+                        {/* Feature 1 */}
                         <div className="p-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-6">
                                 <DollarSign className="w-6 h-6 text-green-600" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3">100% Free to Use</h3>
+                            <h3 className="text-xl font-bold mb-3">{(pageData as any).features?.[0]?.title || "100% Free to Use"}</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                Perfect for {pageData.slug.replace('-', ' ')}. No subscriptions, no ads, just powerful financial tracking.
+                                {(pageData as any).features?.[0]?.description || `Perfect for ${pageData.slug.replace('-', ' ')}. No subscriptions, no ads.`}
                             </p>
                         </div>
+                        {/* Feature 2 */}
                         <div className="p-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mb-6">
                                 <Shield className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Private & Secure</h3>
+                            <h3 className="text-xl font-bold mb-3">{(pageData as any).features?.[1]?.title || "Private & Secure"}</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                Your data stays on your device. We use industry-standard encryption and never sell your personal financial information.
+                                {(pageData as any).features?.[1]?.description || "Your data stays on your device. We use industry-standard encryption."}
                             </p>
                         </div>
+                        {/* Feature 3 */}
                         <div className="p-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mb-6">
                                 <PieChart className="w-6 h-6 text-purple-600" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Smart Analytics</h3>
+                            <h3 className="text-xl font-bold mb-3">{(pageData as any).features?.[2]?.title || "Smart Analytics"}</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                visualize your spending habits with beautiful charts. Understand exactly where your money goes every month.
+                                {(pageData as any).features?.[2]?.description || "Visualize your spending habits with beautiful charts."}
                             </p>
                         </div>
                     </div>
                 </div>
             </section>
+
+            {/* Unique Value Prop Section */}
+            {(pageData as any).unique_blurb && (
+                <section className="py-20">
+                    <div className="container mx-auto px-6 max-w-4xl text-center">
+                        <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+                            Why Traxos for {pageData.slug.replace('-', ' ')}?
+                        </h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+                            {(pageData as any).unique_blurb}
+                        </p>
+                    </div>
+                </section>
+            )}
 
             {/* Trust Section */}
             <section className="py-20 text-center">
