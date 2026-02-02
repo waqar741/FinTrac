@@ -1,6 +1,57 @@
 {
-  "cleanUrls": true,
   "rewrites": [
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/signup.html"
+    },
+    {
+      "source": "/info",
+      "destination": "/info.html"
+    },
+    {
+      "source": "/students",
+      "destination": "/students.html"
+    },
+    {
+      "source": "/freelancers",
+      "destination": "/freelancers.html"
+    },
+    {
+      "source": "/couples",
+      "destination": "/couples.html"
+    },
+    {
+      "source": "/small-business",
+      "destination": "/small-business.html"
+    },
+    {
+      "source": "/travelers",
+      "destination": "/travelers.html"
+    },
+    {
+      "source": "/roommates",
+      "destination": "/roommates.html"
+    },
+    {
+      "source": "/contractors",
+      "destination": "/contractors.html"
+    },
+    {
+      "source": "/debt-payoff",
+      "destination": "/debt-payoff.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/minimalist",
+      "destination": "/minimalist.html"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
@@ -8,7 +59,7 @@
   ],
   "headers": [
     {
-      "source": "/(dashboard|transactions|account|settings)(.*)",
+      "source": "/(app|dashboard|transactions|account|settings)(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
