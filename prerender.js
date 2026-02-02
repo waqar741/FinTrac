@@ -82,12 +82,9 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
                     });
                 });
 
-                // Capture logs to file
-                const logFile = toAbsolute('prerender.log');
-                const log = (msg) => fs.appendFileSync(logFile, msg + '\n');
-
-                page.on('console', msg => log(`PAGE LOG [${route}]: ${msg.text()}`));
-                page.on('pageerror', err => log(`PAGE ERROR [${route}]: ${err.toString()}`));
+                // Capture logs (console only)
+                page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+                page.on('pageerror', err => console.error('PAGE ERROR:', err.toString()));
 
                 console.log(`Prerendering: ${route}`);
                 const targetUrl = `${url}${route}`;
@@ -112,11 +109,14 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
                     }
                 }
 
-                // Ensure directory exists
-                const routePath = route === '/' ? '/index.html' : `${route}/index.html`;
+                // Generate flat file path
+                // / -> /index.html
+                // /login -> /login.html
+                const routePath = route === '/' ? '/index.html' : `${route}.html`;
                 const filePath = toAbsolute(`dist${routePath}`);
-                const dirPath = path.dirname(filePath);
 
+                // Ensure directory exists (only for nested routes if any, though we have flat structure mostly)
+                const dirPath = path.dirname(filePath);
                 if (!fs.existsSync(dirPath)) {
                     fs.mkdirSync(dirPath, { recursive: true });
                 }
