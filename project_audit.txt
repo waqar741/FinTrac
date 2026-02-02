@@ -1,0 +1,133 @@
+Traxos Project Audit Report
+===========================
+
+1. Executive Summary
+--------------------
+Traxos is a comprehensive Personal Finance Management and Group Expense Sharing application built with a modern React tech stack. It leverages Supabase for backend services (Auth, Database) and provides a rich user interface using Tailwind CSS. The application is well-structured, separating concerns between UI (Pages), Logic (Contexts/Hooks), and Data (Supabase Client).
+
+2. Technology Stack & Architecture
+----------------------------------
+- **Frontend Framework**: React 18, Vite.
+- **Language**: TypeScript.
+- **Styling**: Tailwind CSS, PostCSS.
+- **Backend/Database**: Supabase (PostgreSQL).
+- **Routing**: React Router DOM (v6+).
+- **State Management**: Context API (AuthContext, ThemeContext, NotificationContext).
+- **Key Libraries**:
+  - `recharts`: For financial analytics and visualization.
+  - `react-hook-form`: For robust form handling and validation.
+  - `date-fns`: For date manipulation.
+  - `lucide-react`: For consistent iconography.
+  - `jspdf` / `xlsx`: For exporting financial data.
+
+3. Detailed Page Analysis
+-------------------------
+
+### 3.1. Dashboard (`src/pages/Dashboard.tsx`)
+- **Purpose**: Central hub for financial overview.
+- **Key Features**:
+  - Aggregates real-time data from Accounts, Transactions, Debts, and Goals.
+  - Dynamic time-range filtering (This Month, Last Month, etc.).
+  - Visual summary cards for Total Balance, Net Worth, Income, and Expenses.
+  - Responsive layout adjusting for mobile and desktop views.
+
+### 3.2. Transactions (`src/pages/Transactions.tsx`)
+- **Purpose**: Core engine for logging financial activity.
+- **Logic & Data Flow**:
+  - Supports Income, Expense, and Transfer types.
+  - **CRUD**: Full Create, Read, Update, Delete capabilities.
+  - **Validation**: Strict validation preventing edits to transactions older than 6 hours (business rule).
+  - **Account Integration**: Adding/Deleting a transaction automatically updates the linked Account's balance via frontend logic.
+  - **Voice Input**: Experimental feature for hands-free logging.
+
+### 3.3. Analytics (`src/pages/Analytics.tsx`)
+- **Purpose**: Deep dive into spending habits.
+- **Key Features**:
+  - Breakdown of spending by Category (Pie Chart).
+  - Monthly Income vs. Expense trends (Bar/Area Charts).
+  - Calculates Average Daily Spend.
+
+### 3.4. Goals (`src/pages/Goals.tsx`)
+- **Purpose**: Track savings targets.
+- **Logic**:
+  - Users create goals with a target amount and deadline.
+  - "Contributions" are created as Transactions (Debit Account -> Credit Goal logic, effectively).
+  - Visual progress bars color-coded by proximity to target.
+
+### 3.5. Debts & Credits (`src/pages/DebtsCredits.tsx`)
+- **Purpose**: Manage personal loans and IOUs.
+- **Logic**:
+  - Tracks "Who owes me" (Credits) and "Who I owe" (Debts).
+  - **Settlement**: Marking an item as settled triggers a Transaction creation to reflect the money movement in Accounts.
+  - Groups debts by person for a net balance view.
+
+### 3.6. Group Expenses (`src/pages/GroupExpenses.tsx`)
+- **Purpose**: Shared expense tracking (e.g., trips, roommates).
+- **Logic**:
+  - Users can create Groups and invite others via unique codes.
+  - Expenses added to a group are split (currently supporting equal splits).
+  - Calculates "Balances" to show who owes whom within the group.
+
+### 3.7. Settings (`src/pages/Settings.tsx`)
+- **Purpose**: User configuration and Data Management.
+- **Features**:
+  - Profile Management (Avatar, Name).
+  - Security (Password Update, 2FA placeholders).
+  - Preferences (Theme Toggle, Currency).
+  - **Data Control**: functionality to Export all data (JSON/CSV) or Delete Account (Cascading delete of all user data).
+
+### 3.8. Authentication
+- **Pages**: Login, SignUp, ForgotPassword, UpdatePassword.
+- **Flow**: Uses Supabase Auth.
+- **Signup Hook**: A SQL Trigger (`handle_new_user`) automatically creates a `profiles` row when a new user signs up in `auth.users`.
+
+4. Component Deep Dive
+----------------------
+
+### 4.1. AIChat (`src/components/AIChat.tsx`)
+- **Description**: An embedded assistant for financial insights.
+- **Architecture**:
+  - **Hybrid Mode**: Operates in "Offline" (Rule-based regex matching) or "Online" (LLM-based) modes.
+  - **Privacy-First**: Implements a robust **Data Masking** system. Sensitive data (Names, Amounts) are replaced with tokens (`[[VAL_1]]`) before sending to the LLM and unmasked upon return.
+  - **Context Window**: Dynamically builds a context string containing the user's recent financial snapshot (Balance, recent txns) to feed the AI.
+
+### 4.2. AuthContext (`src/contexts/AuthContext.tsx`)
+- **Role**: The backbone of application security.
+- **Function**: Persists user session, handles login/logout, and provides the `user` object to all protected routes.
+
+5. Database Schema Analysis
+---------------------------
+Extracted from Supabase Migrations (`supabase/migrations/*.sql`). The database is fully relational and normalized.
+
+### Core Tables
+1.  **`profiles`**: Extends `auth.users`. Stores display info (`full_name`, `avatar_url`).
+2.  **`accounts`**: The source of funds.
+    - Fields: `id`, `user_id`, `name`, `type` (Bank, Cash, etc.), `balance`, `currency`.
+3.  **`transactions`**: Individual financial records.
+    - Fields: `id`, `user_id`, `account_id` (FK), `amount`, `type` (income/expense), `category`.
+4.  **`transfers`**: Movement between accounts.
+    - Fields: `id`, `from_account_id`, `to_account_id`, `amount`.
+5.  **`goals`**: Savings targets.
+    - Fields: `id`, `target_amount`, `current_amount`, `deadline`.
+6.  **`debts_credits`**: Personal IOUs.
+    - Fields: `id`, `person_name`, `amount`, `type`, `is_settled`.
+
+### Group Features Tables
+7.  **`groups`**: Shared expense groups.
+8.  **`group_members`**: Link table (User <-> Group).
+9.  **`group_expenses`**: Expenses logged within a group.
+10. **`expense_splits`**: Detail records of how a group expense is divided among members.
+
+### Security
+- **RLS (Row Level Security)** is enabled on ALL tables. Keys are strictly scoped to `auth.uid() = user_id`, ensuring users can never access each other's data.
+
+6. Conclusion & Recommendations
+-------------------------------
+The Traxos codebase is mature and production-ready for a beta release.
+- **Strengths**: Strong type safety (TypeScript), modular component design, privacy-focused AI implementation, and robust Supabase integration.
+- **Potential Improvements**:
+  - Move complex transactional logic (e.g., adding a transaction and updating account balance) into Database Functions (RPC) to ensure atomicity and prevent client-side desync.
+  - Expand Group Expense splitting logic to support unequal splits.
+
+Audit Completed by: Antigravity Agent
+Date: October 2025

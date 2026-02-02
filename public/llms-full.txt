@@ -15,11 +15,9 @@ Traxos is a modern, high-performance personal finance application designed to he
 - **Tech Stack**: React, TypeScript, Vite, TailwindCSS, Supabase (PostgreSQL)
 - **Hosting**: Vercel for scalable deployment.
 
-## Resources
-
-- **Docs**: [https://traxos.vercel.app/info](https://traxos.vercel.app/info)
+- **Docs**: [https://traxos.in/info](https://traxos.in/info)
 - **Repo**: [https://github.com/waqar741/FinTrac](https://github.com/waqar741/FinTrac)
-- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.vercel.app/docs/Traxos-Technical-Data-Processing-Guide.pdf)
+- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.in/docs/Traxos-Technical-Data-Processing-Guide.pdf)
 
 ---
 
@@ -29,7 +27,7 @@ Traxos is a modern, high-performance personal finance application designed to he
 
 **Traxos** is a comprehensive personal finance tracker built to help you manage your income and expenses effortlessly. It leverages a modern tech stack for high performance and real-time data synchronization.
 
-**🔗 Live Demo:** [https://traxos.vercel.app/](https://traxos.vercel.app/)
+**🔗 Live Demo:** [https://traxos.in/](https://traxos.in/)
 
 ## ✨ Features
 

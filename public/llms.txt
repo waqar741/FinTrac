@@ -22,9 +22,9 @@ Traxos is a modern, high-performance personal finance application designed to he
 
 ## Resources
 
-- **Docs**: [https://traxos.vercel.app/info](https://traxos.vercel.app/info)
+- **Docs**: [https://traxos.in/info](https://traxos.in/info)
 - **Repo**: [https://github.com/waqar741/FinTrac](https://github.com/waqar741/FinTrac)
-- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.vercel.app/docs/Traxos-Technical-Data-Processing-Guide.pdf)
+- **Data Privacy**: [Traxos-Technical-Data-Processing-Guide.pdf](https://traxos.in/docs/Traxos-Technical-Data-Processing-Guide.pdf)
 
 ## Ideal For
 - Students looking for a secure free expense tracker

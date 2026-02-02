@@ -15,7 +15,7 @@ export default function SEO({
     canonical,
     image = '/online-ai-dark.png'
 }: SEOProps & { canonical?: string; image?: string }) {
-    const siteUrl = 'https://traxos.vercel.app';
+    const siteUrl = 'https://traxos.in';
     const fullImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
     const fullUrl = canonical ? (canonical.startsWith('http') ? canonical : `${siteUrl}${canonical}`) : undefined;
 

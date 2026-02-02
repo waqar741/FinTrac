@@ -17,6 +17,8 @@ interface Account {
   is_active: boolean
   created_at: string
   is_default: boolean
+  interest_rate?: number
+  interest_frequency?: string
 }
 
 interface AccountForm {
@@ -24,6 +26,8 @@ interface AccountForm {
   type: string
   balance: number
   color: string
+  interest_rate?: number
+  interest_frequency?: string
 }
 
 interface TransferForm {
@@ -53,9 +57,18 @@ export default function Accounts() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
     setError
-  } = useForm<AccountForm>()
+  } = useForm<AccountForm>({
+    defaultValues: {
+      type: 'bank',
+      balance: 0,
+      color: '#3B82F6'
+    }
+  })
+
+  const watchedType = watch('type')
 
   const {
     register: registerTransfer,
@@ -100,7 +113,9 @@ export default function Accounts() {
         const updateData: any = {
           name: data.name,
           type: data.type,
-          color: data.color
+          color: data.color,
+          interest_rate: data.interest_rate || null,
+          interest_frequency: data.interest_frequency || null
         }
 
         const { data: transactions } = await supabase
@@ -156,7 +171,9 @@ export default function Accounts() {
             balance: data.balance,
             color: data.color,
             is_active: true,
-            is_default: accounts.length === 0 // Make first account default
+            is_default: accounts.length === 0, // Make first account default
+            interest_rate: data.interest_rate || null,
+            interest_frequency: data.interest_frequency || null
           })
 
         if (error) throw error
@@ -276,7 +293,9 @@ export default function Accounts() {
       name: account.name,
       type: account.type,
       balance: account.balance,
-      color: account.color
+      color: account.color,
+      interest_rate: account.interest_rate,
+      interest_frequency: account.interest_frequency
     })
     setShowModal(true)
   }
@@ -327,7 +346,8 @@ export default function Accounts() {
           <button
             onClick={() => {
               setEditingAccount(null)
-              reset()
+              setEditingAccount(null)
+              reset({ type: 'bank' })
               setShowModal(true)
             }}
             className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
@@ -423,6 +443,42 @@ export default function Accounts() {
                   </p>
                 </div>
 
+                {/* Conditional Interest Fields - DEBUG MODE (Always Visible) */}
+                <div className="p-2 bg-blue-50 text-blue-800 text-xs mb-2 rounded border border-blue-200">
+                  DEBUG INFO: Account Type is "{watchedType}"
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Interest Rate (%)
+                    </label>
+                    <input
+                      {...register('interest_rate', { valueAsNumber: true })}
+                      type="number"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="e.g. 6.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Interest Frequency
+                    </label>
+                    <select
+                      {...register('interest_frequency')}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
+                      <option value="Bi-Annually">Bi-Annually</option>
+                      <option value="Annually">Annually</option>
+                    </select>
+                  </div>
+                </div>
+
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Color
@@ -477,10 +533,11 @@ export default function Accounts() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-      </div>
+            </div >
+          </div >
+        )
+        }
+      </div >
     )
   }
 
@@ -515,7 +572,7 @@ export default function Accounts() {
       <div className="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Accounts (Updated)</h1>
             <PageGuide
               title="Accounts"
               description="Manage your physical and digital wallets. Track balances across different banks and keep your net worth updated."
@@ -538,7 +595,11 @@ export default function Accounts() {
             Transfer
           </button>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingAccount(null)
+              reset({ type: 'bank' })
+              setShowModal(true)
+            }}
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -572,7 +633,11 @@ export default function Accounts() {
             <ArrowRightLeft className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingAccount(null)
+              reset({ type: 'bank' })
+              setShowModal(true)
+            }}
             className="flex items-center p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             title="Add Account"
           >
@@ -652,6 +717,11 @@ export default function Accounts() {
                       <h3 className="font-semibold text-gray-900 dark:text-white">{account.name}</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
                         {accountTypes.find(t => t.value === account.type)?.label || account.type}
+                        {account.interest_rate && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                            {account.interest_rate}% {account.interest_frequency && `(${account.interest_frequency})`}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -739,6 +809,11 @@ export default function Accounts() {
                       <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.name}</h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
                         {accountTypes.find(t => t.value === account.type)?.label || account.type}
+                        {account.interest_rate && (
+                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                            {account.interest_rate}%
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>

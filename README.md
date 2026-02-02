@@ -2,7 +2,7 @@
 
 **Traxos** is a comprehensive personal finance tracker built to help you manage your income and expenses effortlessly. It leverages a modern tech stack for high performance and real-time data synchronization.
 
-**🔗 Live Demo:** [https://traxos.vercel.app/](https://traxos.vercel.app/)
+**🔗 Live Demo:** [https://traxos.in/](https://traxos.in/)
 
 ## ✨ Features
 
