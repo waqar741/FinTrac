@@ -13,7 +13,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets/|image/|docs/|favicon|site.webmanifest|robots.txt|sitemap.xml|info|login|signup|students|freelancers|couples|small-business|travelers|roommates|contractors|debt-payoff|privacy|minimalist).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
