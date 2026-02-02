@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
-import { preview } from 'vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const toAbsolute = (p) => path.resolve(__dirname, p);
@@ -12,6 +10,38 @@ const seoTargets = JSON.parse(fs.readFileSync(toAbsolute('src/data/seo-targets.j
 const seoRoutes = seoTargets.map(t => `/${t.slug}`);
 
 const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
+
+// Detect if running in serverless environment (Vercel)
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+async function getBrowser() {
+    if (isServerless) {
+        // Use puppeteer-core with @sparticuz/chromium for serverless
+        console.log('Serverless environment detected, using @sparticuz/chromium...');
+        const puppeteerCore = await import('puppeteer-core');
+        const chromium = await import('@sparticuz/chromium');
+
+        return await puppeteerCore.default.launch({
+            args: chromium.default.args,
+            defaultViewport: chromium.default.defaultViewport,
+            executablePath: await chromium.default.executablePath(),
+            headless: chromium.default.headless,
+        });
+    } else {
+        // Use standard puppeteer for local development
+        console.log('Local environment detected, using standard puppeteer...');
+        const puppeteer = await import('puppeteer');
+        return await puppeteer.default.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--proxy-server=direct://',
+                '--proxy-bypass-list=*'
+            ],
+        });
+    }
+}
 
 (async () => {
     let serverProcess;
@@ -51,21 +81,13 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
 
         console.log(`\nServer detected at ${url}`);
 
-        // Launch Puppeteer
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--proxy-server=direct://',
-                '--proxy-bypass-list=*'
-            ],
-        });
+        // Launch browser (auto-detects environment)
+        browser = await getBrowser();
 
         for (const route of routesToPrerender) {
             const page = await browser.newPage();
             try {
-                // Set viewport to mobile to match some responsiveness checks if needed, or default
+                // Set viewport
                 await page.setViewport({ width: 1280, height: 800 });
 
                 // Mock matchMedia
@@ -102,7 +124,6 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
                 // Check title to ensure it's not an error page
                 const title = await page.title();
                 if (title === '127.0.0.1' || title === 'localhost' || title.includes('Error')) {
-                    // Verify body content doesn't look like chrome error
                     const content = await page.content();
                     if (content.includes('ERR_CONNECTION_REFUSED') || content.includes('The Chromium Authors')) {
                         throw new Error(`Loaded error page instead of content for ${targetUrl}`);
@@ -115,7 +136,7 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
                 const routePath = route === '/' ? '/index.html' : `${route}.html`;
                 const filePath = toAbsolute(`dist${routePath}`);
 
-                // Ensure directory exists (only for nested routes if any, though we have flat structure mostly)
+                // Ensure directory exists
                 const dirPath = path.dirname(filePath);
                 if (!fs.existsSync(dirPath)) {
                     fs.mkdirSync(dirPath, { recursive: true });
@@ -144,10 +165,8 @@ const routesToPrerender = ['/info', '/login', '/signup', ...seoRoutes, '/'];
     } finally {
         if (browser) await browser.close();
         if (serverProcess) {
-            // Windows kill might need tree kill or just kill
             try {
-                process.kill(serverProcess.pid); // Attempt graceful kill
-                // For windows shell spawn, we might need a stronger kill if it spawned a subtree, but usually fine for simple use
+                process.kill(serverProcess.pid);
             } catch (e) { /* ignore */ }
         }
         // Force exit to ensure no hanging processes
