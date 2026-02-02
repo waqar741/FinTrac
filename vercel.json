@@ -13,7 +13,15 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/app/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/update-password",
       "destination": "/index.html"
     }
   ]
