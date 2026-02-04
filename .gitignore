@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Session documentation (private debugging notes)
+docs/session-*.md
+prerender.log

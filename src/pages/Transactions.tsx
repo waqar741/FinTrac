@@ -13,13 +13,15 @@ import autoTable from 'jspdf-autotable'
 import { useDateFormat } from '../hooks/useDateFormat'
 import SEO from '../components/SEO'
 import PageGuide from '../components/PageGuide'
+import CalendarView from '../components/CalendarView'
 
 // --- Voice Recognition Types ---
-interface Window {
-  SpeechRecognition: any;
-  webkitSpeechRecognition: any;
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
 }
-declare var window: Window;
 
 
 
@@ -73,6 +75,10 @@ interface TransactionForm {
 
 export default function Transactions() {
   const { user } = useAuth()
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
+    const saved = localStorage.getItem('transaction_view_mode')
+    return saved === 'calendar' ? 'calendar' : 'list'
+  })
   const { formatCurrency, currency } = useCurrency()
   const { formatDate } = useDateFormat()
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
@@ -209,6 +215,23 @@ export default function Transactions() {
 
     return () => clearTimeout(timer)
   }, [searchTerm])
+
+  // Listen for view mode changes from Settings
+  useEffect(() => {
+    const handleViewModeChange = () => {
+      const saved = localStorage.getItem('transaction_view_mode')
+      setViewMode(saved === 'calendar' ? 'calendar' : 'list')
+    }
+    const w = globalThis.window as typeof globalThis.window
+    w.addEventListener('storage', handleViewModeChange)
+    // Also listen for custom event from same tab
+    const customHandler = () => handleViewModeChange()
+    w.addEventListener('settings:viewModeChange' as any, customHandler)
+    return () => {
+      w.removeEventListener('storage', handleViewModeChange)
+      w.removeEventListener('settings:viewModeChange' as any, customHandler)
+    }
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -986,295 +1009,312 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* Transactions List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-        {transactions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-2 text-green-600 hover:text-green-700 font-medium"
-            >
-              Add your first transaction
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {transactions.map((transaction) => {
-                const isOld = isTransactionOld(transaction.created_at)
-                const isGoalTransaction = !!transaction.goal_id
-                const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
-                const isDeleting = deletingTransactionId === transaction.id
-                const isExpanded = expandedTransactionId === transaction.id
-
-                return (
-                  <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    {/* Mobile Layout */}
-                    <div className="block sm:hidden">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
-                            style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                              {transaction.description}
-                            </h3>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}
-                              </span>
-                              {isGoalTransaction && (
-                                <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
-                                  {goal ? `Goal: ${goal.name} ` : 'Goal'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                          {/* View Details Button */}
-                          <button
-                            onClick={() => toggleTransactionDetails(transaction.id)}
-                            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title="View details"
-                          >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-
-
-
-                          {/* Delete Button */}
-                          {!isOld && (
-                            <button
-                              onClick={() => initiateDeleteTransaction(transaction)}
-                              disabled={isDeleting}
-                              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                              title="Delete transaction"
-                            >
-                              {isDeleting ? (
-                                <Loader className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-4 h-4" />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="capitalize">{transaction.category}</span>
-                            {transaction.is_recurring && (
-                              <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium">
-                                {transaction.recurring_frequency}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs">{formatDate(transaction.created_at)}</span>
-                        </div>
-
-                        <div className="text-right">
-                          <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' :
-                            transaction.type === 'expense' ? 'text-red-600' : 'text-blue-600'
-                            } `}>
-                            {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}{formatCurrency(transaction.amount)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
-                        </div>
-                      </div>
-
-                      {/* Expanded Details for Mobile */}
-                      {isExpanded && (
-                        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-600 rounded-lg space-y-2">
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Created:</span>
-                              <p>{formatDate(transaction.created_at)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Account:</span>
-                              <p>{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Category:</span>
-                              <p>{transaction.category}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Description:</span>
-                              <p>{transaction.description}</p>
-                            </div>
-                            {transaction.is_recurring && (
-                              <div>
-                                <span className="text-gray-500 dark:text-gray-400">Recurring:</span>
-                                <p>{transaction.recurring_frequency}</p>
-                              </div>
-                            )}
-                            {isGoalTransaction && (
-                              <div>
-                                <span className="text-gray-500 dark:text-gray-400">Goal:</span>
-                                <p>{goal ? goal.name : 'Goal Contribution'}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Desktop Layout */}
-                    <div className="hidden sm:flex items-center justify-between">
-                      <div className="flex items-center space-x-4 flex-1">
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                              {transaction.description}
-                            </h3>
-                            {isGoalTransaction && (
-                              <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
-                                {goal ? `Goal: ${goal.name} ` : 'Goal Contribution'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            <span className="truncate">{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</span>
-                            <span className="truncate">{transaction.category}</span>
-                            <span>{formatDate(transaction.created_at)}</span>
-                            {transaction.is_recurring && (
-                              <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium flex-shrink-0">
-                                {transaction.recurring_frequency}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                            } `}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {/* View Details Button for Desktop */}
-                          <button
-                            onClick={() => toggleTransactionDetails(transaction.id)}
-                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title="View details"
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </button>
-
-
-
-                          {/* Delete Button */}
-                          {!isOld && (
-                            <button
-                              onClick={() => initiateDeleteTransaction(transaction)}
-                              disabled={isDeleting}
-                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                              title="Delete transaction"
-                            >
-                              {isDeleting ? (
-                                <Loader className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-4 h-4" />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expanded Details for Desktop */}
-                    {isExpanded && (
-                      <div className="hidden sm:block mt-4 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Created Date:</span>
-                            <p className="mt-1">{formatDate(transaction.created_at)}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Account:</span>
-                            <p className="mt-1">{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Category:</span>
-                            <p className="mt-1">{transaction.category}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Description:</span>
-                            <p className="mt-1">{transaction.description}</p>
-                          </div>
-                          {transaction.is_recurring && (
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Recurring:</span>
-                              <p className="mt-1 capitalize">{transaction.recurring_frequency}</p>
-                            </div>
-                          )}
-                          {isGoalTransaction && (
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Goal:</span>
-                              <p className="mt-1">{goal ? goal.name : 'Goal Contribution'}</p>
-                            </div>
-                          )}
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Status:</span>
-                            <p className="mt-1">{isOld ? 'Archived' : 'Active'}</p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2 mt-4">
-                          <button
-                            onClick={() => toggleTransactionDetails(transaction.id)}
-                            className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                          >
-                            Close Details
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Load More Button */}
-            {/* Load More Button moved outside */}
-          </>
-        )}
-      </div>
-
-      {hasMore && (
-        <div className="flex justify-center pb-4">
-          <button
-            onClick={loadMoreTransactions}
-            disabled={loadingMore}
-            className="group relative inline-flex items-center justify-center px-4 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 transition-all duration-200 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-800/50 rounded-full hover:border-green-600 dark:hover:border-green-500 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loadingMore ? (
-              <div className="flex items-center justify-center">
-                <Loader className="w-4 h-4 animate-spin mr-2" />
-                Loading...
+      {/* Transactions View - List or Calendar */}
+      {viewMode === 'calendar' ? (
+        // Calendar View
+        <CalendarView
+          transactions={allTransactions}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          goals={goals}
+          setShowModal={setShowModal}
+          initiateDeleteTransaction={initiateDeleteTransaction}
+          isTransactionOld={isTransactionOld}
+          deletingTransactionId={deletingTransactionId}
+        />
+      ) : (
+        // List View
+        <>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            {transactions.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="mt-2 text-green-600 hover:text-green-700 font-medium"
+                >
+                  Add your first transaction
+                </button>
               </div>
             ) : (
               <>
-                <span className="mr-2">Load More ({pageSize} more)</span>
-                <ChevronDown className="w-4 h-4 transition-transform group-hover:translate-y-1" />
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {transactions.map((transaction) => {
+                    const isOld = isTransactionOld(transaction.created_at)
+                    const isGoalTransaction = !!transaction.goal_id
+                    const goal = isGoalTransaction ? goals.find(g => g.id === transaction.goal_id) : null
+                    const isDeleting = deletingTransactionId === transaction.id
+                    const isExpanded = expandedTransactionId === transaction.id
+
+                    return (
+                      <div key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        {/* Mobile Layout */}
+                        <div className="block sm:hidden">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              <div
+                                className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                                style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                                  {transaction.description}
+                                </h3>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}
+                                  </span>
+                                  {isGoalTransaction && (
+                                    <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
+                                      {goal ? `Goal: ${goal.name} ` : 'Goal'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                              {/* View Details Button */}
+                              <button
+                                onClick={() => toggleTransactionDetails(transaction.id)}
+                                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                                title="View details"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+
+
+
+                              {/* Delete Button */}
+                              {!isOld && (
+                                <button
+                                  onClick={() => initiateDeleteTransaction(transaction)}
+                                  disabled={isDeleting}
+                                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                                  title="Delete transaction"
+                                >
+                                  {isDeleting ? (
+                                    <Loader className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="capitalize">{transaction.category}</span>
+                                {transaction.is_recurring && (
+                                  <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium">
+                                    {transaction.recurring_frequency}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs">{formatDate(transaction.created_at)}</span>
+                            </div>
+
+                            <div className="text-right">
+                              <p className={`font-semibold text-sm ${transaction.type === 'income' ? 'text-green-600' :
+                                transaction.type === 'expense' ? 'text-red-600' : 'text-blue-600'
+                                } `}>
+                                {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}{formatCurrency(transaction.amount)}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details for Mobile */}
+                          {isExpanded && (
+                            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-600 rounded-lg space-y-2">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Created:</span>
+                                  <p>{formatDate(transaction.created_at)}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Account:</span>
+                                  <p>{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Category:</span>
+                                  <p>{transaction.category}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Description:</span>
+                                  <p>{transaction.description}</p>
+                                </div>
+                                {transaction.is_recurring && (
+                                  <div>
+                                    <span className="text-gray-500 dark:text-gray-400">Recurring:</span>
+                                    <p>{transaction.recurring_frequency}</p>
+                                  </div>
+                                )}
+                                {isGoalTransaction && (
+                                  <div>
+                                    <span className="text-gray-500 dark:text-gray-400">Goal:</span>
+                                    <p>{goal ? goal.name : 'Goal Contribution'}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Desktop Layout */}
+                        <div className="hidden sm:flex items-center justify-between">
+                          <div className="flex items-center space-x-4 flex-1">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: transaction.type === 'transfer' ? '#3B82F6' : (transaction.accounts?.color || '#9CA3AF') }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                                  {transaction.description}
+                                </h3>
+                                {isGoalTransaction && (
+                                  <span className="flex items-center px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-medium flex-shrink-0">
+                                    {goal ? `Goal: ${goal.name} ` : 'Goal Contribution'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                <span className="truncate">{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</span>
+                                <span className="truncate">{transaction.category}</span>
+                                <span>{formatDate(transaction.created_at)}</span>
+                                {transaction.is_recurring && (
+                                  <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-medium flex-shrink-0">
+                                    {transaction.recurring_frequency}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                                } `}>
+                                {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                              </p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{transaction.type}</p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              {/* View Details Button for Desktop */}
+                              <button
+                                onClick={() => toggleTransactionDetails(transaction.id)}
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                                title="View details"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+
+
+
+                              {/* Delete Button */}
+                              {!isOld && (
+                                <button
+                                  onClick={() => initiateDeleteTransaction(transaction)}
+                                  disabled={isDeleting}
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                                  title="Delete transaction"
+                                >
+                                  {isDeleting ? (
+                                    <Loader className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Details for Desktop */}
+                        {isExpanded && (
+                          <div className="hidden sm:block mt-4 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-500 dark:text-gray-400">Created Date:</span>
+                                <p className="mt-1">{formatDate(transaction.created_at)}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 dark:text-gray-400">Account:</span>
+                                <p className="mt-1">{transaction.type === 'transfer' ? 'Transfer' : transaction.accounts?.name}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 dark:text-gray-400">Category:</span>
+                                <p className="mt-1">{transaction.category}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 dark:text-gray-400">Description:</span>
+                                <p className="mt-1">{transaction.description}</p>
+                              </div>
+                              {transaction.is_recurring && (
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Recurring:</span>
+                                  <p className="mt-1 capitalize">{transaction.recurring_frequency}</p>
+                                </div>
+                              )}
+                              {isGoalTransaction && (
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Goal:</span>
+                                  <p className="mt-1">{goal ? goal.name : 'Goal Contribution'}</p>
+                                </div>
+                              )}
+                              <div>
+                                <span className="text-gray-500 dark:text-gray-400">Status:</span>
+                                <p className="mt-1">{isOld ? 'Archived' : 'Active'}</p>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2 mt-4">
+                              <button
+                                onClick={() => toggleTransactionDetails(transaction.id)}
+                                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                              >
+                                Close Details
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Load More Button */}
+                {/* Load More Button moved outside */}
               </>
             )}
-          </button>
-        </div>
+          </div>
+
+          {hasMore && viewMode === 'list' && (
+            <div className="flex justify-center pb-4">
+              <button
+                onClick={loadMoreTransactions}
+                disabled={loadingMore}
+                className="group relative inline-flex items-center justify-center px-4 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 transition-all duration-200 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-800/50 rounded-full hover:border-green-600 dark:hover:border-green-500 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingMore ? (
+                  <div className="flex items-center justify-center">
+                    <Loader className="w-4 h-4 animate-spin mr-2" />
+                    Loading...
+                  </div>
+                ) : (
+                  <>
+                    <span className="mr-2">Load More ({pageSize} more)</span>
+                    <ChevronDown className="w-4 h-4 transition-transform group-hover:translate-y-1" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Voice Assistant Overlay */}

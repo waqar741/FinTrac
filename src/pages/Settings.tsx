@@ -26,6 +26,8 @@ import {
   EyeOff,
   Wallet,
   MessageCircle,
+  Calendar,
+  List,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useDateFormat } from '../hooks/useDateFormat'
@@ -326,6 +328,11 @@ export default function Settings() {
   const [notificationUpdating, setNotificationUpdating] = useState(false)
   const [accountVisibilityUpdating, setAccountVisibilityUpdating] = useState<string | null>(null)
   const [archiveToggleUpdating, setArchiveToggleUpdating] = useState(false)
+  const [transactionViewMode, setTransactionViewMode] = useState<'list' | 'calendar'>(() => {
+    const saved = localStorage.getItem('transaction_view_mode')
+    return (saved === 'calendar' ? 'calendar' : 'list') as 'list' | 'calendar'
+  })
+  const [viewModeUpdating, setViewModeUpdating] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -648,6 +655,18 @@ export default function Settings() {
     }
   }
 
+  // Transaction view mode toggle handler (uses localStorage)
+  const handleViewModeChange = (mode: 'list' | 'calendar') => {
+    if (viewModeUpdating || transactionViewMode === mode) return
+
+    setViewModeUpdating(true)
+    setTransactionViewMode(mode)
+    localStorage.setItem('transaction_view_mode', mode)
+    // Dispatch event so Transactions page can react
+    window.dispatchEvent(new Event('settings:viewModeChange'))
+    setViewModeUpdating(false)
+  }
+
   return (
     <div className="p-4 md:p-8 pb-24 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <header>
@@ -938,6 +957,36 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
+              </SettingItem>
+
+              <SettingItem icon={Calendar} title="Transaction View" subtitle="Choose how transactions are displayed on the Transactions page.">
+                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                  <button
+                    onClick={() => handleViewModeChange('list')}
+                    disabled={viewModeUpdating}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 flex-1 ${transactionViewMode === 'list'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    <List className="w-4 h-4" />
+                    <span>List</span>
+                  </button>
+                  <button
+                    onClick={() => handleViewModeChange('calendar')}
+                    disabled={viewModeUpdating}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 flex-1 ${transactionViewMode === 'calendar'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>Calendar</span>
+                  </button>
+                </div>
+                {viewModeUpdating && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating view mode...</p>
+                )}
               </SettingItem>
 
               {/* <SettingItem icon={FileText} title="Date Format" subtitle="Choose how dates are displayed across the app.">

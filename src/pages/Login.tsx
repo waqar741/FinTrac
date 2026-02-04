@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Home, ArrowLeft } from 'lucide-react'
 import SEO from '../components/SEO'
 
 
@@ -13,10 +13,8 @@ interface LoginForm {
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
-  const [isMagicLink, setIsMagicLink] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [magicLinkSent, setMagicLinkSent] = useState(false)
-  const { signIn, signInWithOtp } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -24,29 +22,22 @@ export default function Login() {
     register,
     handleSubmit,
     formState: { errors },
-    setError,
-    clearErrors
+    setError
   } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      if (isMagicLink) {
-        await signInWithOtp(data.email)
-        setMagicLinkSent(true)
-      } else {
-        await signIn(data.email, data.password)
-        // if redirected from ProtectedRoute, go back there, else default to dashboard
-        const redirectTo = (location.state as any)?.from?.pathname || '/app/dashboard'
-        navigate(redirectTo, { replace: true })
-      }
+      await signIn(data.email, data.password)
+      // if redirected from ProtectedRoute, go back there, else default to dashboard
+      const redirectTo = (location.state as any)?.from?.pathname || '/app/dashboard'
+      navigate(redirectTo, { replace: true })
     } catch (error: any) {
       setError('root', {
         message: error.message || 'Failed to sign in'
       })
     } finally {
-      if (!isMagicLink) setLoading(false)
-      else if (isMagicLink && !magicLinkSent) setLoading(false)
+      setLoading(false)
     }
   }
 
@@ -102,148 +93,85 @@ export default function Login() {
           <p className="text-gray-600 dark:text-gray-300 mt-2">Track your expenses with ease</p>
         </div>
 
-        <div className="flex justify-center mb-6">
-          <button
-            onClick={() => {
-              setIsMagicLink(false)
-              setMagicLinkSent(false)
-              clearErrors('root')
-            }}
-            className={`px-4 py-2 rounded-l-lg text-sm font-medium transition-colors border-y border-l ${!isMagicLink
-              ? 'bg-green-600 text-white border-green-600'
-              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-          >
-            Password
-          </button>
-          <button
-            onClick={() => {
-              setIsMagicLink(true)
-              clearErrors('root')
-            }}
-            className={`px-4 py-2 rounded-r-lg text-sm font-medium transition-colors border-y border-r ${isMagicLink
-              ? 'bg-green-600 text-white border-green-600'
-              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4" />
-              <span>Magic Link</span>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <input
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^\S+@\S+$/i,
+                    message: 'Invalid email address'
+                  }
+                })}
+                type="email"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="your@email.com"
+              />
             </div>
-          </button>
-        </div>
-
-        {magicLinkSent && isMagicLink ? (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-              <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Check your email</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                We've sent a magic link to the email provided. Click the link to sign in instantly.
-              </p>
-            </div>
-            <button
-              onClick={() => setMagicLinkSent(false)}
-              className="text-green-600 hover:text-green-700 font-medium"
-            >
-              Try another email
-            </button>
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+            )}
           </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <input
-                  {...register('email', {
-                    required: 'Email is required',
-                    pattern: {
-                      value: /^\S+@\S+$/i,
-                      message: 'Invalid email address'
-                    }
-                  })}
-                  type="email"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="your@email.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-              )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <input
+                {...register('password', {
+                  required: 'Password is required',
+                  minLength: {
+                    value: 8,
+                    message: 'Password must be at least 8 characters'
+                  }
+                })}
+                type={showPassword ? 'text' : 'password'}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Enter Password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
-
-            {!isMagicLink && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                  <input
-                    {...register('password', {
-                      required: isMagicLink ? false : 'Password is required',
-                      minLength: {
-                        value: 8,
-                        message: 'Password must be at least 8 characters'
-                      }
-                    })}
-                    type={showPassword ? 'text' : 'password'}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter Password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-                )}
-              </div>
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
             )}
+          </div>
 
-            {errors.root?.message && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <p className="text-red-700 dark:text-red-400 text-sm">{errors.root.message}</p>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end">
-              {!isMagicLink && (
-                <Link
-                  to="/forgot-password"
-                  className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                >
-                  Forgot Password?
-                </Link>
-              )}
+          {errors.root?.message && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-red-700 dark:text-red-400 text-sm">{errors.root.message}</p>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+          <div className="flex items-center justify-end">
+            <Link
+              to="/forgot-password"
+              className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
             >
-              {loading
-                ? (isMagicLink ? 'Sending Link...' : 'Signing in...')
-                : (isMagicLink ? (
-                  <>
-                    <span>Send Magic Link</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                ) : 'Sign In')
-              }
-            </button>
-          </form>
-        )}
+              Forgot Password?
+            </Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
 
         <div className="mt-6 text-center">
           <p className="text-gray-600 dark:text-gray-300">
