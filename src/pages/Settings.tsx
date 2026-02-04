@@ -30,6 +30,8 @@ import {
   List,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { useDateFormat } from '../hooks/useDateFormat'
 import PageGuide from '../components/PageGuide'
 import ConfirmModal from '../components/ConfirmModal'
@@ -308,6 +310,16 @@ export default function Settings() {
   const [showArchivedAccounts, setShowArchivedAccounts] = useState(profile?.show_archived_accounts ?? false)
   const [exporting, setExporting] = useState(false)
 
+  // Debts/Credits Export State
+  const [showDebtsExportModal, setShowDebtsExportModal] = useState(false)
+  const [debtsExportFormat, setDebtsExportFormat] = useState<'excel' | 'pdf'>('pdf')
+  const [debtsExportType, setDebtsExportType] = useState<'all' | 'debts' | 'credits'>('debts') // Default to debts
+  const [allPeople, setAllPeople] = useState<string[]>([])
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([])
+  const [peoplePhones, setPeoplePhones] = useState<Record<string, string>>({}) // phone numbers by person
+  const [loadingPeople, setLoadingPeople] = useState(false)
+  const [exportingDebts, setExportingDebts] = useState(false)
+
   // Modals
   // Modals
   const [showAIModal, setShowAIModal] = useState(false)
@@ -558,6 +570,288 @@ export default function Settings() {
     } finally {
       setExporting(false)
     }
+  }
+
+  // Open Debts/Credits export modal and fetch people list
+  const openDebtsExportModal = async () => {
+    setShowDebtsExportModal(true)
+    setLoadingPeople(true)
+    setSelectedPeople([])
+    setPeoplePhones({})
+    try {
+      // Query person_name (and phone_number if column exists)
+      // Note: phone_number column needs to be added via SQL: 
+      // ALTER TABLE debts_credits ADD COLUMN phone_number TEXT DEFAULT NULL;
+      const { data, error } = await supabase
+        .from('debts_credits')
+        .select('person_name')
+        .eq('user_id', user?.id)
+
+      if (error) throw error
+
+      // Get unique person names
+      const phoneMap: Record<string, string> = {}
+      const uniquePeople = [...new Set(data?.map(d => d.person_name) || [])]
+
+      setAllPeople(uniquePeople)
+      setSelectedPeople(uniquePeople) // Select all by default
+      setPeoplePhones(phoneMap) // Empty for now - will populate once phone_number column is added
+    } catch (err: any) {
+      console.error('Error loading people:', err)
+      setError('Failed to load people list')
+      setShowDebtsExportModal(false)
+    } finally {
+      setLoadingPeople(false)
+    }
+  }
+
+  // Toggle person selection
+  const togglePersonSelection = (personName: string) => {
+    setSelectedPeople(prev =>
+      prev.includes(personName)
+        ? prev.filter(p => p !== personName)
+        : [...prev, personName]
+    )
+  }
+
+  // Select/Deselect all people
+  const toggleSelectAll = () => {
+    if (selectedPeople.length === allPeople.length) {
+      setSelectedPeople([])
+    } else {
+      setSelectedPeople([...allPeople])
+    }
+  }
+
+  // Export Debts/Credits data based on selection
+  const handleExportDebtsCredits = async () => {
+    if (exportingDebts || selectedPeople.length === 0) return
+
+    setExportingDebts(true)
+    setError('')
+    try {
+      // Fetch debts/credits for selected people
+      let query = supabase
+        .from('debts_credits')
+        .select('*')
+        .eq('user_id', user?.id)
+        .in('person_name', selectedPeople)
+        .order('created_at', { ascending: false })
+
+      // Apply type filter
+      if (debtsExportType === 'debts') {
+        query = query.eq('type', 'debt')
+      } else if (debtsExportType === 'credits') {
+        query = query.eq('type', 'credit')
+      }
+
+      const { data: records, error } = await query
+
+      if (error) throw error
+
+      if (!records || records.length === 0) {
+        setError('No records found to export')
+        setExportingDebts(false)
+        return
+      }
+
+      // Calculate totals
+      const totalDebts = records.filter(r => r.type === 'debt').reduce((sum, r) => sum + r.amount, 0)
+      const totalCredits = records.filter(r => r.type === 'credit').reduce((sum, r) => sum + r.amount, 0)
+      const netBalance = totalCredits - totalDebts
+
+      const exportData = records.map(r => ({
+        'Person Name': r.person_name,
+        'Amount': r.amount,
+        'Type': r.type === 'debt' ? 'You Owe' : 'Owes You',
+        'Description': r.description || '-',
+        'Due Date': r.due_date ? formatDate(r.due_date) : '-',
+        'Status': r.is_settled ? 'Settled' : 'Pending',
+        'Created': formatDate(r.created_at)
+      }))
+
+      const typeLabel = debtsExportType === 'all' ? 'All' : debtsExportType === 'debts' ? 'Debts' : 'Credits'
+      const peopleLabel = selectedPeople.length === allPeople.length ? 'All' : `${selectedPeople.length}People`
+
+      if (debtsExportFormat === 'excel') {
+        // Excel export
+        const ws = XLSX.utils.json_to_sheet(exportData)
+        const wscols = [
+          { wch: 20 }, // Person Name
+          { wch: 15 }, // Amount
+          { wch: 12 }, // Type
+          { wch: 30 }, // Description
+          { wch: 15 }, // Due Date
+          { wch: 10 }, // Status
+          { wch: 15 }, // Created
+        ]
+        ws['!cols'] = wscols
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Debts Credits')
+        XLSX.writeFile(wb, `Traxos-${typeLabel}-${peopleLabel}-${formatDate(new Date())}.xlsx`)
+      } else {
+        // PDF export - same styling as Transactions page
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+
+        // --- Branding & Header ---
+        // Green Banner (same as Transactions)
+        doc.setFillColor(34, 197, 94) // Tailwind Green-500 (#22c55e)
+        doc.rect(0, 0, pageWidth, 40, 'F')
+
+        // Logo / Title
+        doc.setTextColor(255, 255, 255)
+        doc.setFontSize(24)
+        doc.setFont('helvetica', 'bold')
+        doc.text('TRAXOS', 20, 25)
+
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.text('Debts & Credits Report', 20, 32)
+
+        // Date Info (Right side of Banner)
+        doc.text(`Generated: ${formatDate(new Date())}`, pageWidth - 20, 25, { align: 'right' })
+        doc.text(`Records: ${records.length}`, pageWidth - 20, 32, { align: 'right' })
+
+        // --- Summary Section ---
+        const colY = 55
+        const margin = 20
+        const gap = 10
+        const availableWidth = pageWidth - (margin * 2)
+        const cardWidth = (availableWidth - (gap * 2)) / 3
+
+        // Helper to draw summary card (same as Transactions)
+        const drawCard = (x: number, title: string, amount: number, color: [number, number, number]) => {
+          // Card Background
+          doc.setFillColor(249, 250, 251) // Gray-50
+          doc.setDrawColor(229, 231, 235) // Gray-200
+          doc.roundedRect(x, colY, cardWidth, 25, 3, 3, 'FD')
+
+          // Title
+          doc.setTextColor(107, 114, 128) // Gray-500
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'bold')
+          doc.text(title.toUpperCase(), x + 5, colY + 8)
+
+          // Amount
+          doc.setTextColor(color[0], color[1], color[2])
+          doc.setFontSize(12)
+          doc.text(`${currency} ${amount.toFixed(2)}`, x + 5, colY + 18)
+        }
+
+        drawCard(margin, 'TOTAL DEBTS', totalDebts, [220, 38, 38]) // Red-600
+        drawCard(margin + cardWidth + gap, 'TOTAL CREDITS', totalCredits, [22, 163, 74]) // Green-600
+        drawCard(margin + (cardWidth + gap) * 2, 'NET BALANCE', netBalance, netBalance >= 0 ? [22, 163, 74] : [220, 38, 38])
+
+        // --- Table ---
+        const tableBody = exportData.map(r => [
+          r['Created'],
+          r['Person Name'],
+          r['Description'],
+          r['Type'],
+          r['Status'],
+          r['Amount'].toString()
+        ])
+
+        autoTable(doc, {
+          startY: 90,
+          head: [['Date', 'Person', 'Description', 'Type', 'Status', 'Amount']],
+          body: tableBody,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [6, 78, 59], // Emerald-900 (Dark Green)
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [240, 253, 244] // Green-50
+          },
+          styles: {
+            font: 'helvetica',
+            fontSize: 9,
+            cellPadding: 3
+          },
+          columnStyles: {
+            5: { halign: 'right' } // Amount aligned right
+          },
+          didDrawPage: () => {
+            // Footer on each page
+            const pageCount = doc.getNumberOfPages()
+            doc.setFontSize(8)
+            doc.setTextColor(156, 163, 175) // Gray-400
+            doc.text(
+              `Generated by Traxos Finance - Page ${pageCount}`,
+              margin,
+              pageHeight - 10
+            )
+          }
+        })
+
+        doc.save(`Traxos-${typeLabel}-${peopleLabel}-${formatDate(new Date())}.pdf`)
+      }
+
+      setSuccess('Debts/Credits exported successfully!')
+      setShowDebtsExportModal(false)
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error exporting debts/credits:', err)
+      setError(err.message || 'Failed to export debts/credits')
+    } finally {
+      setExportingDebts(false)
+    }
+  }
+
+  // Share via WhatsApp - generates file and opens WhatsApp
+  const handleShareWhatsApp = async () => {
+    if (selectedPeople.length !== 1) {
+      setError('Please select exactly one person to share via WhatsApp')
+      return
+    }
+
+    const personName = selectedPeople[0]
+    const phoneNumber = peoplePhones[personName]
+
+    if (!phoneNumber) {
+      setError(`No phone number found for ${personName}. Please add their phone number in Debts & Credits page.`)
+      return
+    }
+
+    // First export the file
+    await handleExportDebtsCredits()
+
+    // Calculate totals for message
+    const { data: records } = await supabase
+      .from('debts_credits')
+      .select('*')
+      .eq('user_id', user?.id)
+      .eq('person_name', personName)
+      .eq('is_settled', false)
+
+    const debtsTotal = records?.filter(r => r.type === 'debt').reduce((sum, r) => sum + r.amount, 0) || 0
+    const creditsTotal = records?.filter(r => r.type === 'credit').reduce((sum, r) => sum + r.amount, 0) || 0
+
+    // Generate message based on export type
+    let message = ''
+    if (debtsExportType === 'debts') {
+      message = `Hi ${personName}! 👋\n\nThis is a reminder about the amount I owe you.\n\n💰 Total Due: ${currency} ${debtsTotal.toFixed(2)}\n\nPlease find the attached statement from Traxos Finance.\n\nThank you! 🙏`
+    } else if (debtsExportType === 'credits') {
+      message = `Hi ${personName}! 👋\n\nThis is a friendly reminder about your pending payment.\n\n💳 Amount Due: ${currency} ${creditsTotal.toFixed(2)}\n\nPlease find the attached statement from Traxos Finance.\n\nKindly settle at your earliest convenience. Thank you! 🙏`
+    } else {
+      // All
+      const net = creditsTotal - debtsTotal
+      message = `Hi ${personName}! 👋\n\nHere's our financial summary:\n\n📊 You owe me: ${currency} ${creditsTotal.toFixed(2)}\n📊 I owe you: ${currency} ${debtsTotal.toFixed(2)}\n💰 Net Balance: ${currency} ${Math.abs(net).toFixed(2)} ${net >= 0 ? '(you owe me)' : '(I owe you)'}\n\nPlease find the attached statement from Traxos Finance.\n\nThank you! 🙏`
+    }
+
+    // Clean phone number (remove spaces, dashes, etc.)
+    const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '').replace(/^\+/, '')
+
+    // Open WhatsApp with pre-filled message
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
+
+    setSuccess('PDF downloaded! Please attach it in WhatsApp.')
+    setShowDebtsExportModal(false)
   }
 
   const updatePreference = async (field: string, value: any) => {
@@ -1361,9 +1655,20 @@ export default function Settings() {
                     ) : (
                       <FileText className="w-4 h-4" />
                     )}
-                    <span>{exporting ? 'Exporting...' : 'Export as Excel'}</span>
+                    <span>{exporting ? 'Exporting...' : 'Export Transactions (Excel)'}</span>
                   </button>
                 </div>
+              </SettingItem>
+
+              {/* Debts/Credits Export */}
+              <SettingItem icon={Wallet} title="Export Debts & Credits" subtitle="Select people and download as Excel or PDF.">
+                <button
+                  onClick={openDebtsExportModal}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Select & Export</span>
+                </button>
               </SettingItem>
 
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 shadow-sm">
@@ -1401,6 +1706,151 @@ export default function Settings() {
         )}
 
       </main>
+
+      {/* Debts/Credits Export Modal */}
+      {showDebtsExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Export Debts & Credits</h3>
+              <button
+                onClick={() => setShowDebtsExportModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              {loadingPeople ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : allPeople.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">No debts or credits found.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Select All */}
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Select People</span>
+                    <button
+                      onClick={toggleSelectAll}
+                      className="text-sm text-green-600 hover:text-green-700 dark:text-green-400 font-medium"
+                    >
+                      {selectedPeople.length === allPeople.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+
+                  {/* People List */}
+                  <div className="space-y-2">
+                    {allPeople.map((person) => (
+                      <label
+                        key={person}
+                        className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPeople.includes(person)}
+                          onChange={() => togglePersonSelection(person)}
+                          className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <span className="text-gray-900 dark:text-white font-medium">{person}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Format Selection & Export Button */}
+            {allPeople.length > 0 && !loadingPeople && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                {/* Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Record Type</label>
+                  <div className="flex gap-2">
+                    {(['all', 'debts', 'credits'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setDebtsExportType(type)}
+                        className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${debtsExportType === type
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                      >
+                        {type === 'all' ? 'All' : type === 'debts' ? 'Debts Only' : 'Credits Only'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Format */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Export Format</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setDebtsExportFormat('excel')}
+                      className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm rounded-lg transition-colors ${debtsExportFormat === 'excel'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Excel</span>
+                    </button>
+                    <button
+                      onClick={() => setDebtsExportFormat('pdf')}
+                      className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm rounded-lg transition-colors ${debtsExportFormat === 'pdf'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Export Button */}
+                <button
+                  onClick={handleExportDebtsCredits}
+                  disabled={exportingDebts || selectedPeople.length === 0}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exportingDebts ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Download className="w-5 h-5" />
+                  )}
+                  <span>
+                    {exportingDebts
+                      ? 'Exporting...'
+                      : `Download ${selectedPeople.length} ${selectedPeople.length === 1 ? 'Person' : 'People'}`}
+                  </span>
+                </button>
+
+                {/* WhatsApp Share Button */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  disabled={exportingDebts || selectedPeople.length !== 1 || !peoplePhones[selectedPeople[0]]}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>
+                    {selectedPeople.length === 1 && peoplePhones[selectedPeople[0]]
+                      ? `Share via WhatsApp to ${selectedPeople[0]}`
+                      : selectedPeople.length === 1
+                        ? 'No phone number for this person'
+                        : 'Select 1 person for WhatsApp'}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

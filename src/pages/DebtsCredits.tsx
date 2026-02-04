@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useForm } from 'react-hook-form'
-import { Plus, User, X, Trash2, Wallet, Mic, Search, ChevronDown, ChevronUp, Pencil, Calendar, Banknote } from 'lucide-react'
+import { Plus, User, X, Trash2, Wallet, Mic, Search, ChevronDown, ChevronUp, Pencil, Calendar, Banknote, Phone } from 'lucide-react'
 import { format } from 'date-fns'
 import ConfirmModal from '../components/ConfirmModal'
 import { useCurrency } from '../hooks/useCurrency'
@@ -19,6 +19,7 @@ interface DebtCredit {
   due_date: string | null
   is_settled: boolean
   created_at: string
+  phone_number: string | null
   settlement_transaction_id: string | null
   settlement_account_id: string | null
   settlement_transaction?: {
@@ -49,6 +50,7 @@ interface DebtCreditForm {
   type: 'debt' | 'credit'
   description: string
   due_date?: string
+  phone_number?: string
 }
 
 export default function DebtsCredits() {
@@ -82,6 +84,7 @@ export default function DebtsCredits() {
   // Custom Alert State
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [errorTitle, setErrorTitle] = useState('Error')
 
   // Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -222,7 +225,8 @@ export default function DebtsCredits() {
             amount: data.amount,
             type: data.type,
             description: data.description,
-            due_date: data.due_date || null
+            due_date: data.due_date || null,
+            phone_number: data.phone_number || null
           })
           .eq('id', editingItem.id)
 
@@ -237,6 +241,7 @@ export default function DebtsCredits() {
             type: data.type,
             description: data.description,
             due_date: data.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            phone_number: data.phone_number || null,
             is_settled: false
           })
 
@@ -246,6 +251,45 @@ export default function DebtsCredits() {
       await fetchDebtsCredits()
       handleCloseModal()
     } catch (error: any) {
+      // Fallback: If phone_number column doesn't exist yet, retry without it
+      if (error.message?.includes('phone_number') || error.message?.includes('schema cache')) {
+        try {
+          if (editingItem) {
+            const { error: retryError } = await supabase
+              .from('debts_credits')
+              .update({
+                person_name: data.person_name,
+                amount: data.amount,
+                type: data.type,
+                description: data.description,
+                due_date: data.due_date || null
+              })
+              .eq('id', editingItem.id)
+            if (retryError) throw retryError
+          } else {
+            const { error: retryError } = await supabase
+              .from('debts_credits')
+              .insert({
+                user_id: user?.id,
+                person_name: data.person_name,
+                amount: data.amount,
+                type: data.type,
+                description: data.description,
+                due_date: data.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                is_settled: false
+              })
+            if (retryError) throw retryError
+          }
+          await fetchDebtsCredits()
+          handleCloseModal()
+          setErrorMessage('Note: Phone number was not saved because the database needs to be updated. Other details were saved.')
+          setErrorTitle('Database Update Required')
+          setShowErrorModal(true)
+          return
+        } catch (retryErr) {
+          // If it still fails, show original error
+        }
+      }
       setError('root', { message: error.message })
     } finally {
       setIsSubmitting(false)
@@ -306,6 +350,7 @@ export default function DebtsCredits() {
 
         if (transactionType === 'expense' && settlementAccount.balance < item.amount) {
           setErrorMessage(`Insufficient funds in ${settlementAccount.name}.\n\nAvailable: ${formatCurrency(settlementAccount.balance)}\nRequired: ${formatCurrency(item.amount)}`)
+          setErrorTitle('Insufficient Funds')
           setShowErrorModal(true)
           setProcessingIds(prev => {
             const next = new Set(prev)
@@ -465,7 +510,8 @@ export default function DebtsCredits() {
       amount: item.amount,
       type: item.type,
       description: item.description,
-      due_date: item.due_date ? format(new Date(item.due_date), 'yyyy-MM-dd') : undefined
+      due_date: item.due_date ? format(new Date(item.due_date), 'yyyy-MM-dd') : undefined,
+      phone_number: item.phone_number || undefined
     })
     setShowModal(true)
   }
@@ -1181,6 +1227,24 @@ export default function DebtsCredits() {
                 </p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    <span>Phone Number (for WhatsApp)</span>
+                  </div>
+                </label>
+                <input
+                  {...register('phone_number')}
+                  type="tel"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="+91 98765 43210"
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Optional: Add phone to share reminders via WhatsApp
+                </p>
+              </div>
+
               {errors.root && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                   <p className="text-red-700 dark:text-red-400 text-sm">{errors.root.message}</p>
@@ -1223,7 +1287,7 @@ export default function DebtsCredits() {
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         onConfirm={() => setShowErrorModal(false)}
-        title="Insufficient Funds"
+        title={errorTitle}
         message={errorMessage}
         confirmText="OK"
         showCancel={false}
