@@ -114,8 +114,8 @@ export default function Accounts() {
           name: data.name,
           type: data.type,
           color: data.color,
-          interest_rate: data.interest_rate || null,
-          interest_frequency: data.interest_frequency || null
+          // interest_rate: data.interest_rate || null,
+          // interest_frequency: data.interest_frequency || null
         }
 
         const { data: transactions } = await supabase
@@ -172,8 +172,8 @@ export default function Accounts() {
             color: data.color,
             is_active: true,
             is_default: accounts.length === 0, // Make first account default
-            interest_rate: data.interest_rate || null,
-            interest_frequency: data.interest_frequency || null
+            // interest_rate: data.interest_rate || null,
+            // interest_frequency: data.interest_frequency || null
           })
 
         if (error) throw error
