@@ -12,8 +12,7 @@ interface Message {
   quickReplies?: string[]
 }
 
-// const API_URL = import.meta.env.VITE_AI_API_URL
-const API_URL = import.meta.env.VITE_AI_API
+const API_URL = import.meta.env.VITE_AI_API_URL
 
 export default function AIChat() {
   const { user, profile } = useAuth()
@@ -211,7 +210,7 @@ export default function AIChat() {
       const currentMap = new Map<string, string>()
 
       const lowerQ = query.toLowerCase()
-      let startDate = startOfMonth(new Date()) // Default: Current Month
+      let startDate = subMonths(new Date(), 1) // Default: Last 1 Month
 
       // Dynamic Range based on Query
       if (lowerQ.includes('last month') || lowerQ.includes('previous month')) {
@@ -478,8 +477,26 @@ export default function AIChat() {
     }
 
     try {
+      const lowerQ = query.toLowerCase()
+      let startDate = subMonths(new Date(), 1) // Default: Last 1 Month
+
+      // Dynamic Range based on Query
+      if (lowerQ.includes('last month') || lowerQ.includes('previous month')) {
+        startDate = startOfMonth(subMonths(new Date(), 1))
+      } else if (lowerQ.includes('this month') || lowerQ.includes('current month')) {
+        startDate = startOfMonth(new Date())
+      } else if (lowerQ.includes('year') || lowerQ.includes('annual')) {
+        startDate = startOfYear(new Date())
+      } else if (lowerQ.includes('all') || lowerQ.includes('history') || lowerQ.includes('total')) {
+        startDate = new Date(0) // Start of epoch
+      }
+
       const [trRes, acRes, dcRes, glRes] = await Promise.all([
-        supabase.from('transactions').select('*, accounts(name)').eq('user_id', user?.id).order('created_at', { ascending: false }),
+        supabase.from('transactions')
+          .select('*, accounts(name)')
+          .eq('user_id', user?.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false }),
         supabase.from('accounts').select('*').eq('user_id', user?.id).eq('is_active', true),
         supabase.from('debts_credits').select('*').eq('user_id', user?.id).eq('is_settled', false),
         supabase.from('goals').select('*').eq('user_id', user?.id).eq('is_active', true)
